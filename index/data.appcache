@@ -1,0 +1,18 @@
+CACHE MANIFEST
+# 2016-03-30 v1.0.0
+/Users/Aaron/Desktop/Code/nodejs/index/COS.html
+/Users/Aaron/Desktop/Code/nodejs/index/js/socket.io.js
+/Users/Aaron/Desktop/Code/nodejs/index/js/helpLib.js
+/Users/Aaron/Desktop/Code/nodejs/index/js/utils.js
+/Users/Aaron/Desktop/Code/nodejs/index/js/blabla.js
+/Users/Aaron/Desktop/Code/nodejs/index/js/mapImageOverlay.js
+/Users/Aaron/Desktop/Code/nodejs/index/images/carinverted.png
+/Users/Aaron/Desktop/Code/nodejs/index/images/car.png
+/Users/Aaron/Desktop/Code/nodejs/index/css/style.css
+/Users/Aaron/Desktop/Code/nodejs/index/offline.html
+
+NETWORK:
+*
+
+FALLBACK:
+/Users/Aaron/Desktop/Code/nodejs/index/offline.html

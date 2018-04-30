@@ -1,0 +1,350 @@
+@import url("font-awesome.min.css");
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600");
+body {
+    background:#f2f2f2;
+    display: block;
+    padding: 0.385em;
+    font-size: 13px;
+    font-family: "SF Pro Display", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    overflow-y: hidden;
+    overflow-x: hidden;
+}
+hr
+{
+    /*background-image:url("../img/hr3.png");
+    background-repeat: no-repeat;*/
+    /*position: relative;
+    border-bottom: solid 0.154em #e5e5e5;
+    box-shadow: inset 0px -8px 0px 0px #fff, inset 0px -10px 0px 0px #e5e5e5;
+    border: 0;
+    display: block;
+    width: 75%;
+    height: 0;
+    text-align:right;
+    margin-right:0;
+    padding: 1.923em;*/
+    border: 0;
+    border-top: solid 0.154em #ddd;
+}
+::-webkit-scrollbar             {width:         12px;background-color: #ebebeb;}
+::-webkit-scrollbar-track       {border-radius: 0px;}
+::-webkit-scrollbar-thumb       {border-radius: 0px;background-color: #bebebe;}
+::-webkit-scrollbar-thumb:hover {border-radius: 0px; background-color: #7C7972;}
+img {
+    max-width: 100%;
+}
+input, textarea {
+  max-width: 100%;
+}
+select.sort {
+    border: 0 !important;  
+    -webkit-appearance: none;  
+    -moz-appearance: none; 
+    background: #0088cc url(../img/select-arrow.png) no-repeat 95% center;
+    font-size: 1.308em;
+    width: 360px; 
+    text-indent: 0.01px; 
+    text-overflow: ""; 
+
+    color: #000;
+    background-color: #ebebeb;
+    border-radius: 15px;
+    padding: 5px;
+    box-shadow: inset 0 0 5px rgba(000,000,000, 0.5);
+}
+button.sort {
+    border: 0 !important;  
+    font-size: 1em;
+    text-indent: 0.01px; 
+    margin-top: 10px;
+
+    color: #000;
+    background-color: #ebebeb;
+    border-radius: 2px;
+    box-shadow: inset 0 0 5px rgba(000,000,000, 0.5);
+}
+.sort {
+    transition: background-color 0.15s easeout;
+}
+button.sort:active {
+    background-color: darkgrey;
+
+}
+button.passcode {
+    border: 0 !important;  
+    font-size: 1em;
+    text-indent: 0.01px; 
+    margin-top: 10px;
+
+    color: #000;
+    background-color: #ebebeb;
+    border-radius: 100%;
+    padding: 10px;
+    box-shadow: inset 0 0 5px rgba(000,000,000, 0.5);
+}
+.passcode {
+    transition: 0.5s easeout;
+}
+button.passcode:active {
+    background-color: darkgrey;
+}
+button.passcode:hover {
+    background-color: grey;
+}
+
+img.noload {
+    background: url("../img/loading.gif") 50% no-repeat !important;
+    position: relative;
+    overflow: hidden;
+    width: 2.462em;
+    height: 2.462em;
+    padding: 2.462em 2.462em 0 0;
+    box-sizing: border-box;
+    display: block;
+    margin: 0 auto;
+    border: none !important;
+}
+video.noload {
+    background: url("../img/loading.gif") 50% no-repeat !important;
+    position: relative;
+    overflow: hidden;
+    width: 2.462em;
+    height: 2.462em;
+    padding: 2.462em 2.462em 0 0;
+    box-sizing: border-box;
+    display: block;
+    margin: 0 auto;
+    border: none !important;
+}
+.title {
+    font-size: 3em;
+    text-align: left;
+    color: black;
+   -webkit-text-fill-color: white; /* Will override color (regardless of order) */
+   -webkit-text-stroke-width: 1px;
+   -webkit-text-stroke-color: black;
+    font-weight: 400;
+    padding-top: 1px;
+    margin: 0 auto;
+}
+.logintext {
+    font-size: 3em;
+    text-align: left;
+    color: black;
+   -webkit-text-fill-color: white; /* Will override color (regardless of order) */
+   -webkit-text-stroke-width: 1px;
+   -webkit-text-stroke-color: black;
+    font-weight: 400;
+    padding-top: 1px;
+    margin: 0 auto;
+    text-decoration: underline;
+}
+@media screen and (max-width: 500px) {
+/* applies only if the screen is narrower than 500px */
+  .title {
+    font-size: 3em;
+  }
+}
+div.inforight {
+    text-align: right;
+    display: block;
+    position: fixed;
+    right: 2%;
+    top: 10%;
+}
+.loader {
+    border: 1.231em solid #f3f3f3; /* Light grey */
+    border-top: 1.231em solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 9.231em;
+    height: 9.231em;
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.main p, .main li, .main ul, .main pre, .main s, .main del, .main span {
+    font-size: 1.308em;
+    color: black;
+    font-weight: 200;
+}
+@media screen and (max-width: 500px) {
+/* applies only if the screen is narrower than 500px */
+  .main p, .main li, .main ul{
+    font-size: 1em;
+  }
+}
+.main {
+    padding-left: 15.385em !important;
+    padding-right: 15.385em !important;
+}
+@media screen and (max-width: 500px) {
+/* applies only if the screen is narrower than 500px */
+  .main {
+    padding-left: 1em !important;
+    padding-right: 1em !important;
+  }
+}
+.title2 {
+    font-size: 2.692em;
+    text-align: center;
+    color: black;
+   -webkit-text-fill-color: #595959; /* Will override color (regardless of order) */
+   -webkit-text-stroke-width: 1px;
+   -webkit-text-stroke-color: black;
+    font-weight: 400;
+}
+.important {
+    font-size: 6.154em;
+    text-align: center;
+    color: black;
+   -webkit-text-fill-color: #ff4d4d; /* Will override color (regardless of order) */
+   -webkit-text-stroke-width: 1px;
+   -webkit-text-stroke-color: black;
+    font-weight: 400;
+}
+div.img { 
+    height: 7.692em;
+    text-align:center; 
+}
+
+div.img img { 
+    vertical-align:middle;
+}
+.main {
+    display: none;
+    line-height: 1.538em;
+}
+.menu {
+    z-index: 1000;
+    text-align:center;
+    position: fixed;
+    list-style-type: none;
+    margin: auto;
+    width: 98%;
+    padding: 0;
+    overflow: hidden;
+    font-weight: 200;
+    /*font-family: 'Source Sans Pro';*/
+
+/* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
+background: #aebcbf; /* Old browsers */
+background: -moz-linear-gradient(left, #aebcbf 0%, #0a0e0a 0%, #bebebe 0%, #ebebeb 50%, #bebebe 100%); /* FF3.6-15 */
+background: -webkit-linear-gradient(left, #aebcbf 0%,#0a0e0a 0%,#bebebe 0%,#ebebeb 50%,#bebebe 100%); /* Chrome10-25,Safari5.1-6 */
+background: linear-gradient(to right, #aebcbf 0%,#0a0e0a 0%,#bebebe 0%,#ebebeb 50%,#bebebe 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#aebcbf', endColorstr='#bebebe',GradientType=1 ); /* IE6-9 */
+
+
+    /*background: #d9d9d9;*/
+/*    background: -webkit-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Safari 5.1 to 6.0 */
+/*    background: -o-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Opera 11.1 to 12.0 */
+/*    background: -moz-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Firefox 3.6 to 15 */
+/*    background: linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* Standard syntax */
+}
+@media screen and (max-width: 500px) {
+/* applies only if the screen is narrower than 500px */
+  .menu {
+    position: static;
+  }
+}
+.menu li {
+    display: inline-block;
+    transition: 0.4s;
+}
+.menuitemnoanim {
+    display: inline-block;
+    font-family: 'Source Sans Pro';
+    font-size: 32px;
+    vertical-align: middle;
+    line-height: normal;
+    transform: scale(0.5, 1.15);
+    margin-bottom: 15px;
+    font-weight: 100;
+}
+.menulink {
+    font-size: 1.538em;
+    color: #4d4d4d;
+    padding: 1.077em 1.231em;
+    text-decoration: none;
+    text-align: center;
+    transition: 0.3s;
+    display:inline-block;
+}
+.menu li:hover {
+    background: #666666;
+}
+.menulink:hover {
+    color: #cccccc;
+}
+
+@keyframes fadeout {
+    0%  {opacity:1;}
+    10% {opacity:0.9;}
+    20% {opacity:0.8;}
+    30% {opacity:0.7;}
+    40% {opacity:0.6;}
+    50% {opacity:0.5;}
+    60% {opacity:0.4;}
+    70% {opacity:0.3;}
+    80% {opacity:0.2;}
+    90% {opacity:0.1;}
+    100% {opacity:0; display: none; visibility: none;}
+}
+@keyframes fadein {
+    0%  {opacity:0;}
+    10% {opacity:0.1;}
+    20% {opacity:0.2;}
+    30% {opacity:0.3;}
+    40% {opacity:0.4;}
+    50% {opacity:0.5;}
+    60% {opacity:0.6;}
+    70% {opacity:0.7;}
+    80% {opacity:0.8;}
+    90% {opacity:0.9;}
+    100% {opacity:1;}
+}
+.fadeout {
+    animation-name: fadeout;
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+}
+.fadein {
+    animation-name: fadein;
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+    display: block !important;
+}
+.delayfadein {
+    animation-name: fadein;
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+    display: block !important;
+}
+.loginpasscode {
+    -moz-border-radius-bottomright: 30px;
+    -webkit-border-bottom-right-radius: 30px;
+    border-bottom-right-radius: 30px;
+    -moz-border-radius-bottomleft: 30px;
+    -webkit-border-bottom-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    border: 1px solid #848484;
+    outline:0;
+    height:25px;
+    width: 275px;
+    padding-left:20px;
+    padding-right:20px;
+} 
+.fullScreenMap {
+    min-height: 100%;
+    position: inherit !important;
+}
+.mapWrapper img, .mapWrapper h1, .mapWrapper p, .mapWrapper span, {
+    position: fixed;
+    z-index: 1000;
+}
+.mapWrapper {
+    height: 100%;
+    margin: 0;
+}

@@ -1,0 +1,28 @@
+#rpibackend.py by Aaron Becker
+#C.OS. V1
+
+#imports
+import os
+import sys
+import math
+from time import sleep
+from socketIO_client import SocketIO, LoggingNamespace
+from datetime import datetime
+from multiprocessing.pool import Pool
+from screeninfo import get_monitors
+
+#mons = get_monitors('osx')
+mons = {}
+if len(mons) > 1:
+    print("More than 1 monitor detected! Using first monitor.")
+    monitor = mons[0]
+elif len(mons) == 0:
+    print("No monitors detected. Using default resolution.")
+    monitor = { "width": 640, "height": 480 }
+else:
+    print("Monitor detected")
+    monitor = mons[0]
+
+print("init: monitor width, height "+str(monitor["width"]),str(monitor["height"]))
+x = 0
+y = 0
