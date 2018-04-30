@@ -452,6 +452,7 @@ io.on('connection', function (socket) { //on connection
 											speechParser.algorithm.addRNGClass(classification[0][0]); //generate rng class from classification
 											response = speechParser.algorithm.dumpAndClearQueue();
 										} else {
+											console.warn("Classification length is 0, response is nothing")
 											response = "";
 										}
 										socketHandler.socketEmitToKey(key,"POST",{action: "speechMatchingResult", classification: classification, transcript: data.speech, classifiedTranscript: classifiedSpeech, response: response});

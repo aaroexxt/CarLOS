@@ -35,8 +35,9 @@
     {"class":"joke", "sentence":"Make me laugh"},
     {"class":"joke", "sentence":"joke"},
 
-    {"class":"thanks", "sentence":"Thank you."},
-    {"class":"thanks", "sentence":"Thanks."},
+    {"class":"thanks", "sentence":"Thank you"},
+    {"class":"thanks", "sentence":"Thank u"},
+    {"class":"thanks", "sentence":"Thanks"},
 
     {"class":"random", "sentence":"Give me a random number."},
     {"class":"random", "sentence":"Random number from x to x"},

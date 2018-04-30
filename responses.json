@@ -26,7 +26,7 @@
 
     {"class":"thanks", "sentence":"No problem"},
     {"class":"thanks", "sentence":"You are welcome"},
-    {"class":"thanks", "sentence":"Your're welcome"},
+    {"class":"thanks", "sentence":"You're welcome"},
     {"class":"thanks", "sentence":"No problemo"},
 
     {"class":"random", "sentence":"*:random 0 100*"},
