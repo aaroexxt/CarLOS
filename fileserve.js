@@ -426,7 +426,7 @@ io.on('connection', function (socket) { //on connection
 												finalClassifications.push(classifications[i]);
 											}
 										}
-										console.log("classifications: "+JSON.stringify(classifications)+", cutoff filtered classifications: "+JSON.stringify(finalClassifications));
+										console.log("Classifications: "+JSON.stringify(classifications)+", cutoff filtered classifications: "+JSON.stringify(finalClassifications));
 										//pick the more likely response from the ones provided
 										var likelyResponse = ["",[0]];
 										for (var i=0; i<finalClassifications.length; i++) {
