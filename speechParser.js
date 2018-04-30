@@ -51,7 +51,7 @@ var speechParser = {
                 var randIndiceIndex = Math.floor(Math.random() * (indices.length + 1)); //generate a random indice from the list of random indices
                 if (randIndiceIndex >= indices.length) { //sanity checks might help errors?
                     randIndiceIndex = indices.length-1;
-                    console.warn("[SPEECH_PARSER] indice check failed >len, sanity check engaged")
+                    console.warn("[SPEECH_PARSER] indice check failed i>len, sanity check engaged")
                 } else if (randIndiceIndex < 0) {
                     randIndiceIndex = 0;
                     console.warn("[SPEECH_PARSER] indice check failed <0, sanity check engaged")

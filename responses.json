@@ -50,17 +50,18 @@
 
     {"class":"text", "sentence":"Got it. *:action text*"},
 
-    {"class":"time", "sentence":"What's the time?"},
+    {"class":"time", "sentence":"The time is *:time*"},
 
-    {"class":"calendar", "sentence":"Check my calendar for x"},
+    {"class":"calendar", "sentence":"Today, you have *:calendar*"},
 
-    {"class":"reminder", "sentence":"Set a reminder for x time"},
+    {"class":"reminder", "sentence":"A reminder for *:time* has been set."},
 
-    {"class":"securityMode", "sentence":"Switch to security mode"},
+    {"class":"securityMode", "sentence":"Activating security mode."},
 
     {"class":"validateUser", "sentence":"Validate current user"},
 
-    {"class":"lock", "sentence":"Lock"},
+    {"class":"lock", "sentence":"I am locking myself now."},
+    {"class":"lock", "sentence":"Locked & loaded. Goodbye."},
 
     {"class":"shutDown", "sentence":"Turn yourself off"},
     
