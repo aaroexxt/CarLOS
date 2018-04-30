@@ -1,0 +1,8 @@
+
+node_modules/yeast/package.json
+node_modules/.bin/acorn
+node_modules/.bin/browser-pack
+node_modules/*
+compile/*
+*.DS_Store
+package-lock.json
