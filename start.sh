@@ -25,35 +25,41 @@ newscript="false";
 newroot="false";
 nodebackground="false";
 usenodemon="false";
-debugval=""
+newpython="false";
+debugval="";
 
 defaultroot="/Users/Aaron/Desktop/Code/nodejs/index";
 defaultscript="/Users/Aaron/Desktop/Code/nodejs/fileserve.js";
+defaultpython="/Users/Aaron/Desktop/Code/nodejs/index/python/rpibackend.py";
+
 port="80";
 
-while getopts :orsbndc option
+while getopts :orsbndcp option
 do
     case "$option" in
     o)
-         echo "-o option passed"; openpage="true";
+         echo "-o option passed, opening the page"; openpage="true";
          ;;
     r)
-         echo "-r option passed"; newroot="true";
+         echo "-r option passed, prompting user for root"; newroot="true";
          ;;
     s)
-         echo "-s option passed"; newscript="true";
+         echo "-s option passed, prompting user for script"; newscript="true";
          ;;
     b)
-         echo "-b option passed"; nodebackground="true";
+         echo "-b option passed, running nodejs in the background"; nodebackground="true";
          ;;
     n)
-         echo "-n option passed"; usenodemon="true";
+         echo "-n option passed, using nodemon instead of regular node (must have nodemon installed)"; usenodemon="true";
          ;;
     d)
-         echo "-d option passed"; debugval=*;
+         echo "-d option passed, allowing debug values from packages in console"; debugval=*;
          ;;
     c)
-         echo "-c options passed, clearing screen"; clear && printf '\e[3J';
+         echo "-c option passed, clearing screen"; clear && printf '\e[3J';
+         ;;
+    p)
+         echo "-p option passed, prompting for new python script"; newpython="true";
          ;;
     *)
         echo "Hmm, an invalid option was received."
@@ -61,6 +67,17 @@ do
         ;;
         esac
 done
+
+echo "Identifying platform...";
+platform='unknown'
+unamestr=`uname`
+if [[ "$unamestr" == 'Linux' ]]; then
+   platform='linux'
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   platform='mac'
+fi
+echo "Platform: $platform, unamestr $unamestr"
+
 
 dir="";
 hdirallow="true";
@@ -123,7 +140,7 @@ nodeloc="";
 cdloc="";
 if [ "$newscript" = "true" ]; then
     while true; do
-        echo ""; read -r -p "What node file would you like to use? : " ans;
+        echo ""; read -r -p "What node file would you like to use (enter path)? : " ans;
             echo "Testing file: $ans...";
             if [ ! -e "$ans" ]; then
                 echo "File '$ans' invalid. Please try again.";
@@ -154,6 +171,50 @@ else
     fi
 fi
 
+pythondir="";
+if [ "$newpython" = "true" ]; then
+    while true; do
+        echo ""; read -r -p "What python file would you like to use (enter path)? : " ans;
+            echo "Testing file: $ans...";
+            if [ ! -e "$ans" ]; then
+                echo "File '$ans' invalid. Please try again.";
+            else
+                echo "File '$ans' does exist!";
+                pythondir=$ans;
+                break;
+            fi
+    done
+else
+    echo "Checking if default python file is valid ($defaultpython)...";
+    if [ ! -e "$defaultpython" ]; then
+        echo "File '$defaultpython' is invalid. Please enter a valid python directory file.";
+        while true; do
+            echo ""; read -r -p "What python file would you like to use (enter path)? : " ans;
+                echo "Testing file: $ans...";
+                if [ ! -e "$ans" ]; then
+                    echo "File '$ans' invalid. Please try again.";
+                else
+                    echo "File '$ans' does exist!";
+                    pythondir=$ans;
+                    break;
+                fi
+        done
+    else
+        echo "Python file '$defaultpython' exists. Proceeding...";
+        pythondir="$defaultpython";
+    fi
+fi
+echo "";
+echo "Starting python script in a new window.";
+if [[ $platform == 'linux' ]]; then
+   gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || konsole -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
+elif [[ $platform == 'mac' ]]; then
+    osascript -e 'tell application "Terminal"
+        do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo "Exiting terminal..."; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\" &"
+    end tell'
+    #do script "echo \"Starting python script in this window...\"; echo -n -e \"\033]0;BackendPython\007\"; sudo python3 $pythondir; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\" &"
+fi
+
 echo "";
 echo "Starting node server with file...";
 echo "Full node path: '$nodedir'";
@@ -177,10 +238,10 @@ if [ "$usenodemon" = "true" ]; then
     if [ "$nodebackground" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
-        DEBUG=$debugval nodemon --inspect $nodeloc &
+        DEBUG=$debugval nodemon --inspect --verbose $nodeloc &
     else
         echo "Starting node server in foreground...";
-        DEBUG=$debugval nodemon --inspect $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        DEBUG=$debugval nodemon --inspect --verbose $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
     fi
 else
     if [ "$nodebackground" = "true" ]; then

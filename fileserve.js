@@ -16,7 +16,7 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
-console.clear();
+//console.clear();
 console.log("");
 debuginit("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 

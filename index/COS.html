@@ -25,7 +25,14 @@
 			<pre id="connectnode">Are you connected to node backend: No</pre>
 			<pre id="info">Info: </pre>
 		</div>
-		<div id="login">
+		<div id="loading">
+			<center>
+				<h1>Connected to server.</h1>
+				<div class="loader"></div>
+				<h3>Waiting for connection to python backend...</h3>
+			</center>
+		</div>
+		<div id="login" style="display: none;">
 			<h1 class="logintext">Login To CarOS</h1>
 			<h3 id="attemptNumber">Login attempt: 1 of 3</h3>
 			<center>
@@ -38,7 +45,6 @@
 						<button class="sort" onclick="if(login.usingVideo){login.transitionPasscode()}else{login.transitionVideo()}">Switch Login Method</button>
 					</center>
 				</div>
-				<div id="loading" class="loader"></div>
 				<span id="login-passcodeField" style="font-size: large; text-decoration: underline"></span>
 				<div id="login-passcode" style="display:none">
 					<div>
@@ -275,12 +281,22 @@
 				pageReady: function(){
 					globals.loginVideo.snapshot();
 					ID("loading").style.display = "none";
+					ID("login").style.display = "block";
 					ID("loginvideo").style.display = "block";
+				},
+				readySteps: {
+					pageLoad: true,
+					videoLoad: false,
+					nodeConnected: false,
+					pythonConnected: false,
+					validAuthkey: false,
+					internetConnected: false
 				},
 				passcodeUpdate: function(){
 					ID("login-passcodeField").innerHTML = login.passcodeTracker;
 				},
 				initializeMap: function(){
+					login.readySteps.internetConnected = true;
 					globals.map.mapReference = new google.maps.Map(ID('mainMap'), { //setup map
 						zoom: globals.map.defaultZoom,
 						center: globals.map.locations.burlingame,
@@ -337,6 +353,23 @@
 					});
 				}
 			}
+
+			setInterval(function(){ //validate key listener
+				socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
+				socketListener.addListener("validatekey",function (data){
+					console.log("Authkey valid?: "+data.valid);
+					if (data.valid == "false" && globals.authkey != "") {
+						console.error("Authkey invalid");
+						/*if (confirm("Authkey has expired. Reload page?")) {
+							window.location.reload();
+						}*/
+						window.location.reload();
+					} else if (data.valid == "false") {
+						console.log("Still waiting on python for valid authkey, not prompting user");
+						//alert("Python is not initialized, waiting for authkey from server...")
+					}
+				})
+			}, 25000);
 			//setTimeout(function(){login.approvedLogin()},2000);
 
 
@@ -431,23 +464,6 @@
 				console.log("nodejs disconnect");
 			});
 
-			setInterval(function(){
-				socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
-				socketListener.addListener("validatekey",function (data){
-					console.log("Authkey valid?: "+data.valid);
-					if (data.valid == "false" && globals.authkey != "") {
-						console.error("Authkey invalid");
-						/*if (confirm("Authkey has expired. Reload page?")) {
-							window.location.reload();
-						}*/
-						window.location.reload();
-					} else if (data.valid == "false") {
-						console.log("Still waiting on python for valid authkey, not prompting user");
-						//alert("Python is not initialized, waiting for authkey from server...")
-					}
-				})
-			}, 25000);
-
 			navigator.getUserMedia  = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 			navigator.getUserMedia({video: true}, function(localMediaStream) {
 				globals.loginVideoStream = localMediaStream;
@@ -462,8 +478,8 @@
 				globals.loginVideo.oncanplaythrough = function(e) {
 					console.log("Video loaded; sending snapshot")
 					setTimeout(function(){
-						login.pageReady();
-					},500); //give some time for camera to adjust
+						login.readySteps.videoLoad = true;
+					},300); //give some time for camera to adjust
 				};
 			}, function(){
 				console.log("error getting getusermedia")
