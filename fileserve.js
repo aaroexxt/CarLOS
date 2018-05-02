@@ -605,7 +605,10 @@ function handler(req, res) {
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
 	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
-	allemit("pydata","q"); //quit python
+	for (var i=0; i<sockets.length; i++) {
+		sockets[i].socket.emit("pydata","q"); //quit python
+		sockets[i].socket.emit("disconnect","");
+	}
 	for (var i=pyimgnum; i>=0; i--) {
 		var path = pyimgbasepath+"in/image"+i+".png";
 		console.log("Removing image file (in): "+path);
@@ -618,13 +621,18 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 			console.log("Error removing?: "+err)
 		})
 	}
-	allemit("disconnect","");
-	process.exit(); //exit completely
+	setTimeout(function(){
+		console.log("Exiting in 1500ms (waiting for sockets to send...)")
+		process.exit(); //exit completely
+	},1500); //give some time for sockets to send
 });
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
-		allemit("pydata","q"); //quit python listeners
+		for (var i=0; i<sockets.length; i++) {
+			sockets[i].socket.emit("pydata","q"); //quit python
+			sockets[i].socket.emit("disconnect","");
+		}
 		for (var i=pyimgnum; i>=0; i--) {
 			var path = pyimgbasepath+"in/image"+i+".png";
 			console.log("Removing image file (in): "+path);
@@ -638,7 +646,9 @@ if (catchErrors) {
 			});
 		}
 		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n")
-		allemit("disconnect","");
-		process.exit(); //exit completely
+		setTimeout(function(){
+			console.log("Exiting in 1500ms (waiting for sockets to send...)")
+			process.exit(); //exit completely
+		},1500); //give some time for sockets to send
 	});
 }

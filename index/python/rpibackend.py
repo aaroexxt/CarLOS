@@ -181,7 +181,7 @@ while(running):
         elif (command=="q"):
             running = False
             print('Sending pydisconnect event...')
-            socket.emit('pydisconnect','')
+            #socket.emit('pydisconnect','')
         elif (command=="i"):
             pyimgnum = int(argument)
         elif (command=="o"):
@@ -231,6 +231,7 @@ while(running):
                 #socket.emit("GET", {"action": "readback", "data": str(pyimgnum)+','+path}, sockcallback)
                 pyimgnum+=1
         socketin.remove(ev)
-    socket.wait(seconds=1)
+    if (running==True):
+        socket.wait(seconds=1)
 
 print("Quitting...")
