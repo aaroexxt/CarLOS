@@ -1,6 +1,6 @@
 {
     "faces": ["QWFyb24="],
     "passes": ["cGFzc2NvZGU=","MTIzNDU="],
-    "maxVideoAttempts": 3,
+    "maxVideoAttempts": 7,
     "maxPasscodeAttempts": 10
 }

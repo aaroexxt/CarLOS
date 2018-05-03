@@ -39,7 +39,7 @@ var userPool = new utils.authPool();
 var denyFileNames = ["pass.json","rpibackend.py","fileserve.js","nodeutils.js","training.py","live.py","commands.json"];
 var ignoreDenyFileExtensions = true;
 
-var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
+var securityOff = false; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
 
 server.listen(port, function(){

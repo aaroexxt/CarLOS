@@ -17,8 +17,10 @@ import numpy as np
 print ("init training")
 print ("opencv version "+cv2.__version__)
 
-pyimgbasepath = "/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/out/"
-pyimgnum = 0
+imgbasepath = "/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/training/"
+imgnum = 0
+
+displayFullImage = False
 
 #OpenCv face cascade
 faceCascade = cv2.CascadeClassifier("/Users/Aaron/Desktop/Code/nodejs/index/python/opencv/haarcascade_frontalface_default.xml")
@@ -78,7 +80,7 @@ def Distance(p1,p2):
   dy = p2[1] - p1[1]
   return math.sqrt(dx*dx+dy*dy)
 
-def ScaleRotateTranslate(image, angle, center = None, new_center = None, scale = None, resample=Image.BICUBIC):
+def ScaleRotateTranslate(image, angle, center = None, new_center = None, scale = None):
   if (scale is None) and (center is None):
     return image.rotate(angle=angle, resample=resample)
   nx,ny = x,y = center
@@ -95,7 +97,10 @@ def ScaleRotateTranslate(image, angle, center = None, new_center = None, scale =
   d = -sine/sy
   e = cosine/sy
   f = y-nx*d-ny*e
-  return image.transform(image.size, Image.AFFINE, (a,b,c,d,e,f), resample=resample)
+  M = np.float32([[a,b,c],[d,e,f]])
+  rows,cols = image.shape
+  #return image.transform(image.size, Image.AFFINE, (a,b,c,d,e,f), resample=resample)
+  return cv2.warpAffine(image,M,(cols,rows))
 
 def CropFace(image, eye_left=(0,0), eye_right=(0,0), offset_pct=(0.2,0.2), dest_sz = (70,70)):
   # calculate offsets in original image
@@ -199,20 +204,17 @@ else:
 running = True
 while(running):
     ret, image = capture.read()
-    print("Input image shape: "+str(image.shape))
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.equalizeHist(gray)
     #detect faces
-    facef, cropped = detect(gray, faceCascade, 60, 50, -90, 0)
-    print ("Found "+str(len(facef))+" faces!")
+    facef, cropped = detect(gray, faceCascade, 60, -60, -30, -30)
     # Draw a rectangle around the faces
     try:
         i = 0
         for x1, y1, x2, y2 in facef:
             label = faceRecognizer.predict(cropped[i]) #predict face
-            print(str(label))
-            print("Face prediction: "+subjects[label[0]])
-            print("Confidence: "+str(label[1])+"%")
+            #print("Face prediction: "+subjects[label[0]])
+            #print("Confidence: "+str(label[1])+"%")
             labeltxt = subjects[label[0]]
             cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(image, labeltxt, (x1, y1-5), cv2.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 0), 2)
@@ -220,40 +222,46 @@ while(running):
             i+=1
     except:
         print("uh wat an error occurred in calculate")
-    try:
-        if (len(cropped) == 0):
-            print("cropped len 0, no face detected")
+    if (len(cropped) == 0):
+        print("cropped len 0, no face detected")
+    elif (len(cropped) > 1):
+        print("cropped len > 1, too many faces")
+    else:
+      try:
+        if (displayFullImage == True):
+          cv2.resize(image, (0,0), fx=0.25, fy=0.25)
+          cv2.imshow("training", image)
         else:
-            cv2.resize(image, (0,0), fx=0.25, fy=0.25)
-            cv2.imshow("training", image)
-            def keywait():
-                
-                key=cv2.waitKey(0) & 0xFF
-                key=ord(key)
-                keys = {
-                    1: "k",
-                    2: "s",
-                    3: "q",
-                }
-                press=keys.get(key, None) #filter through list
-                return press
-            press=keywait()
-            if (press == None):
-                print("invalid key")
-                keywait()
-            else:
-                if (press == "k"):
-                    print("bad image")
-                elif (press == "s"):
-                    print("saving image")
-                elif (press == "q"):
-                    print("quitting")
-                    cv2.destroyAllWindows()
-                    running = False;
-                else:
-                    print("invalid key 2 (shouldnt happen)")
-
-    except:
-        print("O no another error occured in imshow")
+          cv2.imshow("training", cropped[0])
+      except:
+        print("error in imgshow/imgresize")
+      def keywait():
+          
+          key=cv2.waitKey(0) & 0xFF
+          #key=chr(key)
+          keys = {
+              107: "k",
+              115: "s",
+              113: "q",
+          }
+          press=keys.get(key, None) #filter through list
+          return press
+      press=keywait()
+      if (press == None):
+          print("invalid key")
+      else:
+          if (press == "k"):
+              print("Bad image, skipping")
+          elif (press == "s"):
+              print("Saving image")
+              path = imgbasepath+"image"+str(imgnum)+".jpg"
+              cv2.imwrite(path, cropped[0]) #write the image
+              imgnum+=1
+          elif (press == "q"):
+              print("quitting")
+              cv2.destroyAllWindows()
+              running = False;
+          else:
+              print("invalid key 2 (shouldnt happen)")
 print("TERM signal sent, exiting")
 cv2.destroyAllWindows()

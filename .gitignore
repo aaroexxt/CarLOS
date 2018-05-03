@@ -5,4 +5,6 @@ node_modules/.bin/browser-pack
 node_modules/*
 compile/*
 *.DS_Store
+*DS_Store
+.DS_Store
 package-lock.json
