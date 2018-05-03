@@ -218,7 +218,7 @@ io.on('connection', function (socket) { //on connection
 										allemit("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
 									} else {
 										socketHandler.socketEmitToPython("pydata","i:"+pyimgnum) //Sync imagenum variable
-										socketHandler.socketEmitToPython("pydata","o:"+path); //send with 'o' flag to tell python that it's face recognition
+										socketHandler.socketEmitToPython("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
 									}
 									/*allon(("opencvresp:"+pyimgnum), function (data) {
 										console.log("data from opencv "+JSON.stringify(data));
@@ -254,65 +254,70 @@ io.on('connection', function (socket) { //on connection
 				break;
 				case "login-opencvresponse":
 					if (typeof data == "undefined") {
-						console.log("dat undefined!!! uhoh");
+						console.log("dat opencv response undefined!!! uhoh");
 					} else {
 						var dat = data.data;
 						var innum = dat.imgnum;
 						var pathout = dat.path;
-						var conf = dat.confidences.split(",");
-						var labels = dat.labels.split(",");
-						var rects = dat.rects.split(",[");
-						var maxVidAttempts = approval.maxVideoAttempts;
 						var pykey = dat.key;
-						var vidAttempt = -1;
-						var pykeyObject = userPool.findKey(pykey);
-						if (pykeyObject == null) {
-							console.error("PyKey "+pykey+" not found in userPoolDB. Was request made before server restart?");
-							socketHandler.socketEmitToID(socket.id,"POST",{action: "processingError", error: "OpenCVClientMissingKey, key:"+pykey});
-						} else if (typeof pykeyObject.properties.videoAttemptNumber !== "number") {
-							socketHandler.socketEmitToID(socket.id,"POST",{action: "processingError", error: "OpenCVClientKeyMissingVidAttemptProperty"});
-							console.error("VidAttempt not valid on key "+pykey);
+						if (innum == "error" || path == "error") {
+							console.error("Some internal python error ocurred :(");
+							socketHandler.socketEmitToKey(pykey,"POST",{action: "processingError", error: "OpenCVBackendServerError"});
 						} else {
-							vidAttempt = pykeyObject.properties.videoAttemptNumber;
-							//console.log("checked key "+pykey+" for prop vidAttempt");
-							//console.log(conf,labels,rects,pykey)
-							for (var i=0; i<rects.length; i++) { //fix removal of colons
-								if (rects[i] !== "") {
-									if (rects[i].substring(0,1) !== "[") { //fix if not containing starter bracket
-										rects[i] = "["+rects[i];
+							var conf = dat.confidences.split(",");
+							var labels = dat.labels.split(",");
+							var rects = dat.rects.split(",[");
+							var maxVidAttempts = approval.maxVideoAttempts;
+							var vidAttempt = -1;
+							var pykeyObject = userPool.findKey(pykey);
+							if (pykeyObject == null) {
+								console.error("PyKey "+pykey+" not found in userPoolDB. Was request made before server restart?");
+								socketHandler.socketEmitToID(socket.id,"POST",{action: "processingError", error: "OpenCVClientMissingKey, key:"+pykey});
+							} else if (typeof pykeyObject.properties.videoAttemptNumber !== "number") {
+								socketHandler.socketEmitToKey(pykey,"POST",{action: "processingError", error: "OpenCVClientKeyMissingVidAttemptProperty"});
+								console.error("VidAttempt not valid on key "+pykey);
+							} else {
+								vidAttempt = pykeyObject.properties.videoAttemptNumber;
+								//console.log("checked key "+pykey+" for prop vidAttempt");
+								//console.log(conf,labels,rects,pykey)
+								for (var i=0; i<rects.length; i++) { //fix removal of colons
+									if (rects[i] !== "") {
+										if (rects[i].substring(0,1) !== "[") { //fix if not containing starter bracket
+											rects[i] = "["+rects[i];
+										}
+										//console.log("rectsi "+rects[i])
+										rects[i] = JSON.parse(rects[i]); //parse the data
 									}
-									//console.log("rectsi "+rects[i])
-									rects[i] = JSON.parse(rects[i]); //parse the data
 								}
-							}
-							fs.unlink(pyimgbasepath+"/in/image"+innum+".png",function(err){
-								console.log("Error removing?: "+err);
-							})
-							//console.log("pathout "+pathout);
-							fs.readFile(pathout, function(err, buf) {
-								var approved = false;
-								for (var i=0; i<labels.length; i++) {
-									for (var j=0; j<approval.faces.length; j++) {
-										console.log("label "+labels[i]+", face "+approval.faces[j])
-										if (labels[i] === approval.faces[j]) {
-											approved = true;
+								fs.unlink(pyimgbasepath+"/in/image"+innum+".png",function(err){
+									console.log("Error removing?: "+err);
+								})
+								//console.log("pathout "+pathout);
+								fs.readFile(pathout, function(err, buf) {
+									var approved = false;
+									for (var i=0; i<labels.length; i++) {
+										for (var j=0; j<approval.faces.length; j++) {
+											console.log("label "+labels[i]+", face "+approval.faces[j])
+											if (labels[i] === approval.faces[j]) {
+												approved = true;
+											}
 										}
 									}
-								}
-								if (approved) {
-									pykeyObject.properties.approved = true;
-									console.log("modified key "+pykey+" with approved attrib")
-								} else {
-									pykeyObject.properties.videoAttemptNumber += 1;
-									vidAttempt += 1;
-									console.log("modified key "+pykey+" with attempt attrib")
-								}
-								socketHandler.socketEmitToKey(pykey, "POST", {action: 'login-opencvdata', queue: innum, buffer: buf.toString('base64'), confidences: conf, labels: labels, rects: rects, approved: approved, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-								pykeyObject.properties.allowOpenCV = true; //reallow sending opencv because processing is completed
-								fs.unlink(pathout, function(err) {
-									console.log("Error removing sent img?: "+err);
+									if (approved) {
+										pykeyObject.properties.approved = true;
+										console.log("modified key "+pykey+" with approved attrib")
+									} else {
+										pykeyObject.properties.videoAttemptNumber += 1;
+										vidAttempt += 1;
+										console.log("modified key "+pykey+" with attempt attrib")
+									}
+									socketHandler.socketEmitToKey(pykey, "POST", {action: 'login-opencvdata', queue: innum, buffer: buf.toString('base64'), confidences: conf, labels: labels, rects: rects, approved: approved, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+									pykeyObject.properties.allowOpenCV = true; //reallow sending opencv because processing is completed
+									fs.unlink(pathout, function(err) {
+										console.log("Error removing sent img?: "+err);
+									})
 								})
-							})
+							}
 						}
 					}
 				break;
@@ -621,8 +626,8 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 			console.log("Error removing?: "+err)
 		})
 	}
+	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
-		console.log("Exiting in 1500ms (waiting for sockets to send...)")
 		process.exit(); //exit completely
 	},1500); //give some time for sockets to send
 });
@@ -645,9 +650,9 @@ if (catchErrors) {
 				console.log("Error removing?: "+err)
 			});
 		}
-		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n")
+		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
+		console.log("Exiting in 1500ms (waiting for sockets to send...)");
 		setTimeout(function(){
-			console.log("Exiting in 1500ms (waiting for sockets to send...)")
 			process.exit(); //exit completely
 		},1500); //give some time for sockets to send
 	});

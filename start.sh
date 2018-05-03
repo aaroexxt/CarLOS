@@ -222,7 +222,7 @@ if [ "$launchpython" = "true" ]; then
        gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || konsole -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
     elif [[ $platform == 'mac' ]]; then
         osascript -e 'tell application "Terminal"
-            do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; exit;"
+            do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; nexit;"
         end tell'
         #lower script closes window manually, upper one justs exits
         #do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\"; exit;"

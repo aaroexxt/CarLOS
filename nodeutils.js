@@ -1,5 +1,6 @@
 //TODO move all socket functions to outside socket handler so they can't be modified
 
+var sanitizeData = false;
 function authPool(authTimeout) { //class to represent authkeys
     if (typeof authTimeout == "undefined") {
         console.error("[NODE_UTILS] AuthTimeout not passed into creation of authPool, defaulting");
@@ -213,27 +214,29 @@ var socketHandler = function(uPool,sPool){ //socket functions
         var bad = false;
         for (var i=0; i<data.length; i++) {
             if (typeof data[i] == "undefined") { //add data rules here
-                console.log("dataund")
+                console.error("data undefined validateData")
                 bad = true;
             }
         }
         return !bad;
     }
     this.sanitizeData = function(data) {
-        for (var i=0; i<data.length; i++) {
-            if (typeof data[i] == "undefined") {
-                console.error("data i undefined")
-            } else {
-                try {
-                    if (typeof data[i] == "object") {
-                        data[i] = JSON.parse(JSON.stringify(data[i]).replace(/[^a-z0-9áéíóúñü{}:" \.,_-]/gim,"").trim());
-                    } else {
-                        data[i] = data[i].replace(/[^a-z0-9áéíóúñü{}:" \.,_-]/gim,"").trim();
+        if (sanitizeData) {
+            for (var i=0; i<data.length; i++) {
+                if (typeof data[i] == "undefined") {
+                    console.error("data i undefined")
+                } else {
+                    try {
+                        if (typeof data[i] == "object") {
+                            data[i] = JSON.parse(JSON.stringify(data[i]).replace(/[^a-z0-9áéíóúñü{}:" \.,_-]/gim,"").trim());
+                        } else {
+                            data[i] = data[i].replace(/[^a-z0-9áéíóúñü{}:" \.,_-]/gim,"").trim();
+                        }
+                    } catch(e) {
+                        console.error("sanitizeData failed, data may be bad")
                     }
-                } catch(e) {
-                    console.error("sanitizeData failed, data may be bad")
+                    
                 }
-                
             }
         }
         return data;

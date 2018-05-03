@@ -192,6 +192,7 @@ while(running):
             #image = cv2.imread("/Users/Aaron/Desktop/Code/nodejs/index/python/opencv/training-data/u1,Aaron/image0.png")
             if image is None:
                 print("err, shape is none")
+                socket.emit("GET", {"action": "login-opencvresponse", "data": {"imgnum": "error", "path": "error", "labels": [], "rects": [], "confidences": [], "key": key}}, sockcallback)
             else:
                 print("Input image shape: "+str(image.shape))
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
