@@ -258,6 +258,8 @@
 					ID("login").className += " fadeout";
 					globals.loginVideoStream.getTracks()[0].stop();
 					ID("main").className += " fadein";
+					// Render KITT's interface
+					SpeechKITT.render();
 					setTimeout(function(){
 						ID("login").style.display = "none";
 					},globals.fadeInOutDelay);
@@ -430,7 +432,7 @@
 					}
 				})
 			}, 25000);
-			//setTimeout(function(){login.approvedLogin()},2000);
+			setTimeout(function(){login.approvedLogin()},2000);
 
 
 			//SET UP SOCKET LISTENERS
@@ -584,8 +586,6 @@
 					// Define a stylesheet for KITT to use
 					SpeechKITT.setStylesheet('js/speechkittthemes/flat.css');
 					SpeechKITT.displayRecognizedSentence(false); //broken so implemented my own
-					// Render KITT's interface
-					SpeechKITT.render();
 				} else {
 					console.error("SpeechKITT not defined; annyang is active however");
 				}
