@@ -30,10 +30,10 @@ debugval="";
 launchpython="true";
 
 printtitle="true";
-
-defaultroot="/Users/Aaron/Desktop/Code/nodejs/index";
-defaultscript="/Users/Aaron/Desktop/Code/nodejs/fileserve.js";
-defaultpython="/Users/Aaron/Desktop/Code/nodejs/index/python/rpibackend.py";
+cwd=$(pwd)
+defaultroot="$cwd/index";
+defaultscript="$cwd/fileserve.js";
+defaultpython="$cwd/index/python/rpibackend.py";
 
 port="80";
 
@@ -78,6 +78,8 @@ if [[ "$printtitle" == "true" ]]; then
     echo "ANSS (Automatic Node Start Script), by Aaron Becker"; echo "---------------------------------------------------";
 fi
 
+echo "CWD: $cwd";
+
 echo "Identifying platform...";
 platform='unknown'
 unamestr=`uname`
@@ -87,7 +89,6 @@ elif [[ "$unamestr" == 'Darwin' ]]; then
    platform='mac'
 fi
 echo "Platform: $platform, unamestr $unamestr"
-
 
 dir="";
 hdirallow="true";
@@ -219,7 +220,8 @@ if [ "$launchpython" = "true" ]; then
     echo "";
     echo "Starting python script in a new window.";
     if [[ $platform == 'linux' ]]; then
-       gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || konsole -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
+       gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; gksudo -m \"Please provide permission to run python\" python3 $pythondir;"
+       #xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
     elif [[ $platform == 'mac' ]]; then
         osascript -e 'tell application "Terminal"
             do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; exit;"
@@ -252,23 +254,40 @@ if [ "$usenodemon" = "true" ]; then
     if [ "$nodebackground" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
-        DEBUG=$debugval nodemon --inspect --verbose $nodeloc &
+        if [ "$platform" = "linux" ]; then
+            DEBUG=$debugval nodemon --verbose $nodeloc &
+        else
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc &
+        fi
+        
     else
         echo "Starting node server in foreground...";
         #the 2x start was a little bit annoying
         #DEBUG=$debugval nodemon --inspect --verbose $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
-        DEBUG=$debugval nodemon --inspect --verbose $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        if [ "$platform" = "linux" ]; then
+            DEBUG=$debugval nodemon --verbose $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        else
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        fi
     fi
 else
     if [ "$nodebackground" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
-        DEBUG=$debugval node --inspect $nodeloc &
+        if [ "$platform" = "linux" ]; then
+            DEBUG=$debugval node $nodeloc &
+        else
+            DEBUG=$debugval node --inspect $nodeloc &
+        fi
     else
         echo "Starting node server in foreground...";
         #the 2x start was a little bit annoying
         #DEBUG=$debugval node --inspect $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
-        DEBUG=$debugval node --inspect $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        if [ "$platform" = "linux" ]; then
+            DEBUG=$debugval node $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        else
+            DEBUG=$debugval node --inspect $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+        fi
     fi
 fi
 
