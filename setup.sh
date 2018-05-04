@@ -15,10 +15,10 @@ echo "Platform: $platform, unamestr $unamestr";
 
 echo "Making directories...";
 mkdir -p $cwd/node_modules;
-if [ "$platform" = "linux"]; then
+if [ "$platform" = "linux" ]; then
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
-elif [ "$platform" = "mac"]; then
+elif [ "$platform" = "mac" ]; then
     echo "Installing python and pip (mac)...";
     brew install python python3;
     sudo easy_install pip;
