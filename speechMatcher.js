@@ -414,7 +414,7 @@ var NeuralMatcher = {
                     }
                 }
             }
-            var max = Math.max(...scores);
+            var max = Math.max.apply(null,scores);
             var indices = [];
             for(var i=0; i<scores.length; i++) {
                 if (scores[i] == max) {
