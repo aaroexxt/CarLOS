@@ -28,9 +28,16 @@ y = 0
 socketin = []
 pt = ""
 global socket
+global cwd
+
+#face recognition globals
+global faces
+global labels
+global subjects
 
 #OpenCv face cascade
-faceCascade = cv2.CascadeClassifier("/Users/Aaron/Desktop/Code/nodejs/index/python/opencv/haarcascade_frontalface_default.xml")
+global faceCascade
+#faceCascade = cv2.CascadeClassifier("/Users/Aaron/Desktop/Code/nodejs/index/python/opencv/haarcascade_frontalface_default.xml")
 #OpenCv face recognizer
 faceRecognizer = cv2.face.LBPHFaceRecognizer_create()
 
@@ -48,6 +55,32 @@ def py_ready(*data):
 def sockcallback(*data):
     print(data)
 
+def cwdcallback(*data):
+    global cwd
+    cwd = str(data)[2:len(str(data))-3]
+    print("CWD Recieved: "+cwd)
+    pyimgbasepath = cwd+"/index/tmpimgs/out/";
+    global faceCascade
+    faceCascade = cv2.CascadeClassifier(cwd+"/index/python/opencv/haarcascade_frontalface_default.xml")
+    print("Preparing facial training data...")
+    global faces
+    global labels
+    global subjects
+    faces, labels, subjects = prepare_training_data(cwd+"/index/python/opencv/training-data",faceCascade)
+    print("Data prepared")
+     
+    #print total faces and labels
+    print("Total faces: ", len(faces))
+    print("Total labels: ", len(labels))
+    if (len(faces) == 0):
+        print("WARNING: Why is faces 0? This will create an error probably, not training")
+    else:
+        #Train face recognizer with training data
+        print("Training facial recognizer with training data...")
+        faceRecognizer.train(faces, np.array(labels))
+        print("Facial recognizer trained.")
+        print("Waiting for responses from client...")
+
 print("setting up socket.io")
 socket = SocketIO( 'localhost', 80, LoggingNamespace );
 if (debugMode == "true"):
@@ -55,14 +88,6 @@ if (debugMode == "true"):
     logging.getLogger('socketIO-client').setLevel(logging.DEBUG)
     logging.basicConfig()
 
-socket.emit('initpython', 'ready');
-
-print("setting up socket functions")
-#setup socket functions
-socket.on('connect', socket_connected )
-socket.on('pyready', py_ready )
-socket.on('pydata', on_recieve )
-socket.wait(seconds=1)
 
 def detect(img, cascade, offsettop, offsetbottom, offsetright, offsetleft):
     crop = []
@@ -154,21 +179,15 @@ def prepare_training_data(data_folder_path,cascade):
     cv2.destroyAllWindows()
     return faces, labels, subjects
 
-print("Preparing facial training data...")
-faces, labels, subjects = prepare_training_data("/Users/Aaron/Desktop/Code/nodejs/index/python/opencv/training-data",faceCascade)
-print("Data prepared")
- 
-#print total faces and labels
-print("Total faces: ", len(faces))
-print("Total labels: ", len(labels))
-if (len(faces) == 0):
-    print("WARNING: Why is faces 0? This will create an error probably, not training")
-else:
-    #Train face recognizer with training data
-    print("Training facial recognizer with training data...")
-    faceRecognizer.train(faces, np.array(labels))
-    print("Facial recognizer trained.")
-    print("Waiting for responses from client...")
+print("Waiting for CWD from server...")
+print("Setting up socket functions")
+#setup socket functions
+socket.on('connect', socket_connected )
+socket.on('pyready', py_ready )
+socket.on('pydata', on_recieve )
+socket.on('pycwd', cwdcallback )
+socket.emit('initpython', 'ready');
+socket.wait(seconds=1)
 
 running = True
 while(running):
@@ -198,6 +217,10 @@ while(running):
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 gray = cv2.equalizeHist(gray)
                 #detect faces
+                global faceCascade
+                global faces
+                global labels
+                global subjects
                 facef, cropped = detect(gray, faceCascade, 50, 0, 0, 0)
                 print ("Found "+str(len(facef))+" faces!")
                 # Draw a rectangle around the faces

@@ -2,6 +2,7 @@ var http = require('http');
 var url = require('url');
 var fs = require('fs');
 var port = 80;
+var cwd = __dirname;
 
 var formidable = require('formidable');
 var debughttp = require('debug')('http');
@@ -16,9 +17,9 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
-//console.clear();
+console.clear();
 console.log("");
-debuginit("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
 var server = http.createServer(handler);
 debuginit("~-Server Created Successfully-~")
@@ -490,6 +491,12 @@ socket shenanigans (thx jerry)
 
 function initpython(data,socket,socketHandler,track) {
 	//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
+	if (securityOff) {
+		console.warn("WARNING: Python security is OFF")
+		allemit('pycwd', cwd); //emit cwd
+	} else {
+		socketHandler.socketEmitToPython('pycwd', cwd); //check if python script is running
+	}
 	socketHandler.socketEmitToWeb('webready', {data: "ready?"}); //check if there is a web browser connected
 	allon('webok', function (data) { //if there is, send data
 		//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
@@ -500,7 +507,7 @@ function initweb(data,socket,socketHandler,track) {
 	//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
 	if (securityOff) {
 		console.warn("WARNING: Python security is OFF")
-		allemit('pyready', {data: "ready?"});
+		allemit('pyready', {data: "ready?"}); //emit cwd
 	} else {
 		socketHandler.socketEmitToPython('pyready', {data: "ready?"}); //check if python script is running
 	}
