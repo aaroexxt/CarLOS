@@ -174,9 +174,9 @@ def prepare_training_data(data_folder_path,cascade):
                     #add label for this face
                     labels.append(label)
                 
-    cv2.destroyAllWindows()
-    cv2.waitKey(1)
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
+    #cv2.waitKey(1)
+    #cv2.destroyAllWindows()
     return faces, labels, subjects
 
 print("Waiting for CWD from server...")
