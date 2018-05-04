@@ -50,7 +50,7 @@ server.listen(port, function(){
 
 var sockets = [];
 var pyimgnum = 0;
-var pyimgbasepath = "/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/";
+var pyimgbasepath = cwd+"/index/tmpimgs/";
 
 var approval = {faces: "", passes: "", maxVideoAttempts: "", maxPasscodeAttempts: ""};
 console.log("dirname '"+__dirname+"'");
