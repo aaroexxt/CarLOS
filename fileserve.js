@@ -39,6 +39,7 @@ var userPool = new utils.authPool();
 
 var denyFileNames = ["pass.json","rpibackend.py","fileserve.js","nodeutils.js","training.py","live.py","commands.json"];
 var ignoreDenyFileExtensions = true;
+var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
@@ -592,7 +593,12 @@ function handler(req, res) {
 			}
 		}
 		if (bad == false) {
-			fs.readFile(filename, function(err, data) {
+			if (appendCWDtoRequest) {
+				var request = cwd+"/index/"+filename;
+			} else {
+				var request = filename;
+			}
+			fs.readFile(request, function(err, data) {
 				if (filename != "./json/version" && filename != "./json" && filename != "/json/version" && filename != "/json") {
 					debughttp("GET filename: '"+filename+"', status: "+((err)?404:200));
 				}
