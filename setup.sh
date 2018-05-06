@@ -17,7 +17,8 @@ echo "Making directories...";
 mkdir -p $cwd/node_modules;
 if [ "$platform" = "linux" ]; then
     echo "Installing node (linux)...";
-    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - || echo "Nodejs 8.x install failed. Using older global binaries..." && sudo apt-get install -y nodejs npm;
+    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+    sudo apt-get install -y nodejs npm;
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
 elif [ "$platform" = "mac" ]; then
