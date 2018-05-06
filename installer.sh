@@ -4,7 +4,7 @@
 #sudo bash ./installer.sh
 clear;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-echo "Welcome to the CarOS automated installer script V1, by Aaron Becker.";
+echo "Welcome to the CarOS automated installer script V2, by Aaron Becker.";
 echo "This script will install all other scripts and packages necessary to run CarOS in full.";
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 
