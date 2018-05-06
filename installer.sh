@@ -4,7 +4,7 @@
 #sudo bash ./installer.sh
 clear;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-echo "Welcome to the CarOS automated installer script V2, by Aaron Becker.";
+echo "Welcome to the CarOS automated installer script V3, by Aaron Becker.";
 echo "This script will install all other scripts and packages necessary to run CarOS in full.";
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 
@@ -62,11 +62,11 @@ while true; do
     fi
 done
 dir=${dir%/}; #remove trailing slash
-echo "Step 1/5: Installing required packages...";
+echo "Step 1/4: Installing required packages...";
 sudo apt-get install -y git;
 #old package cmd which doesn't exist;
 echo "Packages installed successfully.";
-echo "Step 2/5: Downloading Installer files...";
+echo "Step 2/4: Downloading Installer files...";
 cd "$dir";
 if ! [ -d "CarOS" ]; then
     echo "CarOS directory doesn't exist. Downloading fresh...";
@@ -81,19 +81,13 @@ else
         esac
     done
 fi
-cd CarOS;
-echo "Installer files downloaded successfully.";
-if [ "$installall" = "true" ]; then
-    shopt -s nullglob;
-    filesdir="${dir}/CarOS/*";
-    echo "Running setup file from directory $filesdir";
-    sudo bash setup.sh;
-    shopt -u nullglob;
-    echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-    echo "All installer scripts have been run successfully.";
-else
-    echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-    echo "CarOS is now installed on your machine. If you would like to start it, CD into $dir and run sudo bash start.sh";
+echo "CarOS files downloaded successfully.";
+echo "Step 3/4: CD-ing into new CarOS directory"
+cd "$dir/CarOS";
+echo "Step 4/4: Running setup file from directory $filesdir";
+sudo bash setup.sh;
+echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
+echo "CarOS is now installed on your machine. If you would like to start it, CD into $dir and run sudo bash start.sh";
 fi
 END=$(date +%s);
 echo -n "Time: ";
