@@ -71,6 +71,11 @@ var speechParser = {
             }
         }
     },
+    evaluateCommands: function(command) {
+        var commandOperator = ":";
+        var commandGroup = ["user","random","action","pause","time","calendar",""];
+
+    },
     clearQueue: function() {
         speechParser.queue = [];
     },
