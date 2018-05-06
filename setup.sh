@@ -18,7 +18,8 @@ mkdir -p $cwd/node_modules;
 if [ "$platform" = "linux" ]; then
     echo "Installing node (linux)...";
     curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-    sudo apt-get install -y nodejs npm;
+    sudo apt-get install -y nodejs;
+    sudo apt-get install -y gcc g++ make;
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
 elif [ "$platform" = "mac" ]; then
