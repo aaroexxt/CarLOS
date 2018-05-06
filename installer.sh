@@ -4,7 +4,7 @@
 #sudo bash ./installer.sh
 clear;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-echo "Welcome to the CarOS automated installer script V5, by Aaron Becker.";
+echo "Welcome to the CarOS automated installer script V6, by Aaron Becker.";
 echo "This script will install all other scripts and packages necessary to run CarOS in full.";
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 
@@ -85,7 +85,7 @@ fi
 echo "CarOS files downloaded successfully.";
 echo "Step 3/4: CD-ing into new CarOS directory"
 cd "$dir/CarOS";
-echo "Step 4/4: Running setup file from directory $filesdir";
+echo "Step 4/4: Running setup file from directory $dir";
 sudo bash setup.sh;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 echo "CarOS is now installed on your machine. If you would like to start it, CD into $dir and run sudo bash start.sh";
