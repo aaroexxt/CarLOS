@@ -4,7 +4,7 @@
 #sudo bash ./installer.sh
 clear;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-echo "Welcome to the CarOS automated installer script V4, by Aaron Becker.";
+echo "Welcome to the CarOS automated installer script V5, by Aaron Becker.";
 echo "This script will install all other scripts and packages necessary to run CarOS in full.";
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 
@@ -34,17 +34,18 @@ START=$(date +%s);
 installall="false";
 dir="";
 hdirallow="true";
+defaultdir="/home/pi/Desktop/"
 while true; do
-    echo ""; read -r -p "What directory do you want the installer files to be located in? (Defaults to ~/Desktop if nothing entered): " ans;
+    echo ""; read -r -p "What directory do you want the installer files to be located in? (Defaults to $defaultdir if nothing entered): " ans;
     if [ "$ans" = "" ] || [ "$ans" = " " ]; then
         if [ "$hdirallow" = "true" ]; then
             echo "Default directory selected. Testing default directory (just in case)...";
-            if [ -d "~/Desktop/" ]; then
-                echo "Directory ~/Desktop is valid.";
-                dir="~/Desktop/";
+            if [ -d "$defaultdir" ]; then
+                echo "Directory $defaultdir is valid.";
+                dir="$defaultdir";
                 break;
             else
-                echo "The default directory (~/Desktop/) is not a valid directory. Please enter a valid directory.";
+                echo "The default directory ($defaultdir) is not a valid directory. Please enter a valid directory.";
                 hdirallow="false";
             fi
         else
