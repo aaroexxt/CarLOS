@@ -4,7 +4,7 @@
 #sudo bash ./installer.sh
 clear;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
-echo "Welcome to the CarOS automated installer script V3, by Aaron Becker.";
+echo "Welcome to the CarOS automated installer script V4, by Aaron Becker.";
 echo "This script will install all other scripts and packages necessary to run CarOS in full.";
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 
@@ -75,7 +75,7 @@ else
     while true; do
         read -r -p "CarOS directory already exists. Would you like to replace it with a new copy? " ans;
         case $ans in
-            [Yy]* ) echo "Downloading new copy..."; sudo rm -r "CarOS"; sudo git clone https://github.com/aahaxor/CarOS.git; break;;
+            [Yy]* ) echo "Downloading new copy..."; sudo rm -r "CarOS"; sudo git clone https://github.com/aaroexxt/CarOS.git; break;;
             [Nn]* ) echo "Not downloading new copy. This may cause issues if there is scripts that you don't want run in the folder.";  break;;
             * ) echo "Please answer yes or no (or just y or n).";;
         esac
