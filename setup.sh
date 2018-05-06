@@ -16,9 +16,13 @@ echo "Platform: $platform, unamestr $unamestr";
 echo "Making directories...";
 mkdir -p $cwd/node_modules;
 if [ "$platform" = "linux" ]; then
+    echo "Installing node (linux)...";
+    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash - || echo "Nodejs 8.x install failed. Using older global binaries..." && sudo apt-get install -y nodejs npm;
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
 elif [ "$platform" = "mac" ]; then
+    echo "Installing node (mac)...";
+    brew install node
     echo "Installing python and pip (mac)...";
     brew install python python3;
     sudo easy_install pip;

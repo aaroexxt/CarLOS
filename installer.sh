@@ -89,7 +89,6 @@ echo "Step 4/4: Running setup file from directory $dir";
 sudo bash setup.sh;
 echo "~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-";
 echo "CarOS is now installed on your machine. If you would like to start it, CD into $dir and run sudo bash start.sh";
-fi
 END=$(date +%s);
 echo -n "Time: ";
 echo $((END-START)) | awk '{print int($1/3600)"h:"int($1/60)"m:"int($1%60)"s"}';
