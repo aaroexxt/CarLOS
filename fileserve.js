@@ -1,8 +1,12 @@
+var port = 80;
+var cwd = __dirname;
+//console.clear();
+console.log("");
+console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+
 var http = require('http');
 var url = require('url');
 var fs = require('fs');
-var port = 80;
-var cwd = __dirname;
 
 var formidable = require('formidable');
 var debughttp = require('debug')('http');
@@ -17,13 +21,45 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
-//console.clear();
-console.log("");
-console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+var serialDevice = "";
+var arduinoConnected = false;
+process.argv.forEach(function (val, index, array) {
+	var ind = val.indexOf("serial=");
+	if (ind > -1) {
+		serialDevice = val.split("=")[1];
+		console.log("Serial device from start script: "+serialDevice);
+	}
+});
+var SerialPort = require('serialport');
+if (serialDevice == "") {
+	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
+} else {
+	var arduino = new SerialPort(serialDevice, {
+		baudRate: 9600,
+		autoOpen: false
+	});
+	arduino.open(function (err) {
+		if (err) {
+			console.error("Error opening serial port to arduino at "+serialDevice+".");
+			arduinoConnected = false;
+		} else {
+			arduinoConnected = true;
+			arduino.on('readable', function(data) {
+				handleArduinoData(arduino.read());
+			})
+		}
+	})
+}
+var arduinoCommandSplitChar = ";";
+var arduinoCommandValueChar = ":";
 
-var server = http.createServer(handler);
+var server = http.createServer(handler); //setup server
 debuginit("~-Server Created Successfully-~")
 var io = require('socket.io')(server);
+
+server.listen(port, function(){ //listener
+	console.log((new Date()) + ' Node server is listening on port '+port);
+});
 
 var utils = require('./nodeutils.js'); //include the utils file
 
@@ -43,10 +79,6 @@ var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
-
-server.listen(port, function(){
-	console.log((new Date()) + ' Node server is listening on port '+port);
-});
 
 var sockets = [];
 var pyimgnum = 0;
@@ -128,13 +160,48 @@ fs.readFile(__dirname+"/commands.json", function(err,data){
 	}
 });
 
+var arduinoCommandBuffer = ""; //need buffer because might not recieve whole command in one recieve
+function handleArduinoData(data) {
+	var command = arduinoCommandBuffer;
+	var sdata = String(data).split("");
+	for (var i=0; i<sdata.length; i++) {
+		if (sdata[i] == arduinoCommandSplitChar) {
+			arduinoCommandRecognized(arduinoCommandBuffer);
+			arduinoCommandBuffer = "";
+		} else {
+			arduinoCommandBuffer+=sdata[i];
+		}
+	}
+}
+function arduinoCommandRecognized(command) {
+	if (command == "AOK") {
+		arduino.write("SOK"); //tell arduino that server is ready
+	} else if (command == "CONN") {
+		console.log("Arduino is connected :)")
+	}
+	console.log("Complete command recognized: "+command)
+}
+function sendArduinoCommand(command) {
+	arduino.write(command+arduinoCommandSplitChar);
+}
+
 var stdinput = process.openStdin();
 var stdinputListener = new utils.advancedEventListener(stdinput,"data");
+var sendArduinoMode = false;
 stdinputListener.addPersistentListener("*",function(d) {
 	var uI = d.toString().trim();
 	console.log("you entered: [" + uI + "]");
 	if (uI == "help") {
-		console.log("I'll put this feature in later. Sorry that it's not ready right now!")
+		console.log("Right now, sA or sendArduinoMode toggles sending raw to arduino.")
+	} else if (uI == "sA" || uI == "sendArduinoMode") {
+		sendArduinoMode = !sendArduinoMode;
+		console.log("Send arduino mode toggled");
+	} else {
+		if (sendArduinoMode) {
+			sendArduinoCommand(uI);
+		} else {
+			console.log("Command not recognized")
+		}
 	}
 });
 

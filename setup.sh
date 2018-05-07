@@ -32,7 +32,9 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async formidable debug child-process brain.js opn window-size single-line-log;
+sudo npm install --prefix $cwd request browserify watchify async formidable debug child-process brain.js opn window-size single-line-log serialport;
+sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
+sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools
 sudo npm install --prefix $cwd socket.io@1.7.2;
 sudo npm install -g nodemon;
 sudo pip3 install numpy;
@@ -43,5 +45,10 @@ sudo python3 -m pip install pyaudio;
 #if this doesn't work, https://stackoverflow.com/questions/44363066/error-cannot-find-module-lib-utils-unsupported-js-while-using-ionic
 #sudo rm -R /usr/local/lib/node_modules/npm; brew uninstall --force --ignore-dependencies node; brew install node;
 echo "Done :)";
-echo "Run 'sudo bash $cwd/start.sh' to start the sever"
+echo "Run 'sudo bash $cwd/start.sh' to start the sever";
 exit;
+#VNC STUFF BELOW
+echo "Starting vnc..."
+sudo apt-get update;
+sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
+sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"

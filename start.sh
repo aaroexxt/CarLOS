@@ -11,13 +11,13 @@ abort()
     exit 1;
 }
 
-set -e -u;
+#set -e -u;
 
 if [[ $(id -u) -ne 0 ]]
   then echo "Sorry, but it appears that you didn't run this script as root. Please run it as a root user!";
   exit 1;
 fi
-trap 'abort' 0;
+#trap 'abort' 0;
 
 #program variables
 openpage="false";
@@ -87,6 +87,9 @@ if [[ "$unamestr" == 'Linux' ]]; then
    platform='linux'
 elif [[ "$unamestr" == 'Darwin' ]]; then
    platform='mac'
+else
+    echo "Unable to identify platform: '$unamestr' does not match 'linux' or 'mac'";
+    exit 1;
 fi
 echo "Platform: $platform, unamestr $unamestr"
 
@@ -230,6 +233,93 @@ if [ "$launchpython" = "true" ]; then
         #do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\"; exit;"
     fi
 fi
+#script that reads and prints dir from command, used below
+: '
+array=(`ls`)
+
+len=${#array[*]}
+
+i=0
+while [ $i -lt $len ]; do
+echo "$i: ${array[$i]}"
+let i++
+done
+'
+
+
+echo "";
+echo "Finding arduino serial port...";
+
+printSerial()
+{
+    echo "Serial device found!";
+    foundDevice="true"
+    maxArrValue=`expr $len - 1`;
+    if [[ $len == 1 ]]; then
+        device=${array[0]}
+    else
+        echo; echo "There are multiple devices found. Please choose one, or type e to exit if none of these are the target device."
+        echo "Devices:"
+        i=0
+        while [ $i -lt $len ]; do
+            echo "$i: ${array[$i]}"
+            let i++
+        done
+        while true; do
+            echo ""; read -r -p "Select a device by entering its number (or e to exit). Device number: " devnum;
+            if [[ devnum == "e" ]]; then
+                echo "Exiting without selecting device.";
+                re='^[0-9]+([.][0-9]+)?$'
+                if ! [[ $devnum =~ $re ]]; then
+                   echo "Invalid: You didn't enter a number";
+                elif [[ $devnum > $maxArrValue ]]; then
+                    echo "Invalid: The number that you entered is greater then the number of options. (Maximum value: $maxArrValue)";
+                else
+                    echo "Device $devnum selected.";
+                    device=${array[$devnum]}
+                    break;
+                fi
+            fi
+        done
+        
+
+    fi
+}
+
+array=(`ls /dev/tty.usbserial*`) || array=() && echo "Error accessing /dev/tty.usbserial"
+len=${#array[*]}
+device=""
+foundDevice="false" #pointer to store if device is found
+
+if [[ $len > 0 ]]; then
+    printSerial
+else
+    echo "Scan of /dev/tty.usbserial results in no devices found";
+    array=(`ls /dev/tty.usbmodem*`) || array=() && echo "Error accessing /dev/tty.usbmodem"
+    len=${#array[*]}
+    if [[ $len > 0 ]]; then
+        printSerial
+    else
+        echo "Scan of /dev/tty.usbmodem results in no devices found";
+        array=(`ls /dev/ttyUSB*`) || array=() && echo "Error accessing /dev/ttyUSB"
+        len=${#array[*]}
+        if [[ $len > 0 ]]; then
+            printSerial
+        else
+            echo "Scan of /dev/ttyUSB results in no devices found";
+            array=(`ls /dev/tty.ACM*`) || array=() && echo "Error accessing /dev/ttyACM"
+            len=${#array[*]}
+            if [[ $len > 0 ]]; then
+                printSerial
+            else
+                foundDevice="false"
+                echo "Error: No devices could be found."
+            fi
+        fi
+    fi
+fi
+
+echo "FOUND DEVICE?: $foundDevice, devicename $device"
 
 echo "";
 echo "Starting node server with file...";
@@ -255,9 +345,9 @@ if [ "$usenodemon" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc &
+            DEBUG=$debugval nodemon --verbose $nodeloc serial=$device &
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc &
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc serial=$device &
         fi
         
     else
@@ -265,9 +355,9 @@ if [ "$usenodemon" = "true" ]; then
         #the 2x start was a little bit annoying
         #DEBUG=$debugval nodemon --inspect --verbose $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --verbose $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 else
@@ -275,21 +365,21 @@ else
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval node $nodeloc &
+            DEBUG=$debugval node $nodeloc serial=$device&
         else
-            DEBUG=$debugval node --inspect $nodeloc &
+            DEBUG=$debugval node --inspect $nodeloc serial=$device&
         fi
     else
         echo "Starting node server in foreground...";
         #the 2x start was a little bit annoying
         #DEBUG=$debugval node --inspect $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval node $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval node $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval node --inspect $nodeloc || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval node --inspect $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 fi
 
-trap : 0;
+#trap : 0;
 #exit 0; #removed because this closes the terminal
