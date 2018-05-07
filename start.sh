@@ -269,6 +269,7 @@ printSerial()
             echo ""; read -r -p "Select a device by entering its number (or e to exit). Device number: " devnum;
             if [[ devnum == "e" ]]; then
                 echo "Exiting without selecting device.";
+            else
                 re='^[0-9]+([.][0-9]+)?$'
                 if ! [[ $devnum =~ $re ]]; then
                    echo "Invalid: You didn't enter a number";
