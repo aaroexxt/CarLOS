@@ -287,38 +287,47 @@ printSerial()
     fi
 }
 
-array=(`ls /dev/tty.usbserial*`) || array=() && echo "Error accessing /dev/tty.usbserial"
-len=${#array[*]}
 device=""
 foundDevice="false" #pointer to store if device is found
 
-if [[ $len > 0 ]]; then
-    printSerial
-else
-    echo "Scan of /dev/tty.usbserial results in no devices found";
-    array=(`ls /dev/tty.usbmodem*`) || array=() && echo "Error accessing /dev/tty.usbmodem"
+command_name="serialport-list";
+if ! command_loc="$(type -p "$command_name")" || [[ -z $command_loc ]]; then
+    # Backup hard directory scan in case serial-port list doesn't exist from nodejs port library
+    array=(`ls /dev/tty.usbserial*`) || array=() && echo "Error accessing /dev/tty.usbserial"
     len=${#array[*]}
     if [[ $len > 0 ]]; then
         printSerial
     else
-        echo "Scan of /dev/tty.usbmodem results in no devices found";
-        array=(`ls /dev/ttyUSB*`) || array=() && echo "Error accessing /dev/ttyUSB"
+        echo "Scan of /dev/tty.usbserial results in no devices found";
+        array=(`ls /dev/tty.usbmodem*`) || array=() && echo "Error accessing /dev/tty.usbmodem"
         len=${#array[*]}
         if [[ $len > 0 ]]; then
             printSerial
         else
-            echo "Scan of /dev/ttyUSB results in no devices found";
-            array=(`ls /dev/tty.ACM*`) || array=() && echo "Error accessing /dev/ttyACM"
+            echo "Scan of /dev/tty.usbmodem results in no devices found";
+            array=(`ls /dev/ttyUSB*`) || array=() && echo "Error accessing /dev/ttyUSB"
             len=${#array[*]}
             if [[ $len > 0 ]]; then
                 printSerial
             else
-                foundDevice="false"
-                echo "Error: No devices could be found."
+                echo "Scan of /dev/ttyUSB results in no devices found";
+                array=(`ls /dev/tty.ACM*`) || array=() && echo "Error accessing /dev/ttyACM"
+                len=${#array[*]}
+                if [[ $len > 0 ]]; then
+                    printSerial
+                else
+                    foundDevice="false"
+                    echo "Error: No devices could be found."
+                fi
             fi
         fi
     fi
+else
+    device="'`serialport-list -f json`'"; #output serial list
+    foundDevice="JSON";
 fi
+
+
 
 echo "FOUND DEVICE?: $foundDevice, devicename $device"
 
@@ -346,9 +355,9 @@ if [ "$usenodemon" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc serial=$device &
+            DEBUG=$debugval nodemon --verbose $nodeloc listtype=$foundDevice serial=$device &
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc serial=$device &
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc listtype=$foundDevice serial=$device &
         fi
         
     else
@@ -356,9 +365,9 @@ if [ "$usenodemon" = "true" ]; then
         #the 2x start was a little bit annoying
         #DEBUG=$debugval nodemon --inspect --verbose $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --verbose $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --inspect --verbose $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 else
@@ -366,18 +375,18 @@ else
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval node $nodeloc serial=$device&
+            DEBUG=$debugval node $nodeloc listtype=$foundDevice serial=$device &
         else
-            DEBUG=$debugval node --inspect $nodeloc serial=$device&
+            DEBUG=$debugval node --inspect $nodeloc listtype=$foundDevice serial=$device &
         fi
     else
         echo "Starting node server in foreground...";
         #the 2x start was a little bit annoying
         #DEBUG=$debugval node --inspect $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval node $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval node $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval node --inspect $nodeloc serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval node --inspect $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 fi

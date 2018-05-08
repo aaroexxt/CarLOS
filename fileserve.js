@@ -21,17 +21,48 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
-var serialDevice = "";
+var serialDevice = "none";
+var foundJSON = false;
 var arduinoConnected = false;
 process.argv.forEach(function (val, index, array) {
+	function processDeviceJSON(raw) {
+		try {
+			var json = JSON.parse(raw);
+		} catch(e) {
+			console.log("Error parsing JSON. E: "+e+", raw: "+raw);
+		}
+		for (var i=0; i<json.length; i++) {
+			var device = json[i].comName;
+			var manufacturer = json[i].manufacturer || "No manufacturer found";
+			console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
+			if (manufacturer.indexOf("Arduino") > -1 || manufacturer.indexOf("arduino") > -1) {
+				console.log("Arduino found!");
+				serialDevice = device;
+			}
+		}
+	}
 	var ind = val.indexOf("serial=");
+	var ind2 = val.indexOf("listtype=");
 	if (ind > -1) {
 		serialDevice = val.split("=")[1];
-		console.log("Serial device from start script: "+serialDevice);
+		if (foundJSON) {
+			processDeviceJSON(serialDevice);
+		}
+	} else if (ind2 > -1) {
+		var listType = val.split("=")[1];
+		if (listType == "JSON") {
+			console.log("JSON list detected");
+			if (serialDevice == "" || serialDevice == "none") { //process later
+				foundJSON = true;
+			} else {
+				processDeviceJSON(serialDevice);
+			}
+		}
 	}
 });
+console.log("Serial device from start script: "+serialDevice);
 var SerialPort = require('serialport');
-if (serialDevice == "") {
+if (serialDevice == "" || serialDevice == "none") {
 	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
 } else {
 	var arduino = new SerialPort(serialDevice, {
@@ -51,7 +82,7 @@ if (serialDevice == "") {
 	})
 }
 var arduinoCommandSplitChar = ";";
-var arduinoCommandValueChar = ":";
+var arduinoCommandValueChar = "|";
 
 var server = http.createServer(handler); //setup server
 debuginit("~-Server Created Successfully-~")
@@ -177,12 +208,19 @@ function arduinoCommandRecognized(command) {
 	if (command == "AOK") {
 		arduino.write("SOK"); //tell arduino that server is ready
 	} else if (command == "CONN") {
-		console.log("Arduino is connected :)")
+		console.log("Arduino is connected :)");
+	} else if (command == "INFO") {
+		var time = process.uptime();
+		var uptime = utils.formatHHMMSS(time);
+		console.log("uptime: "+uptime);
+		sendArduinoCommand("uptime",uptime);
+		sendArduinoCommand("status","Running");
+		sendArduinoCommand("users",userPool.auth_keys.length);
 	}
 	console.log("Complete command recognized: "+command)
 }
-function sendArduinoCommand(command) {
-	arduino.write(command+arduinoCommandSplitChar);
+function sendArduinoCommand(command,value) {
+	arduino.write(arduinoCommandSplitChar+command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
 }
 
 var stdinput = process.openStdin();
@@ -198,7 +236,7 @@ stdinputListener.addPersistentListener("*",function(d) {
 		console.log("Send arduino mode toggled");
 	} else {
 		if (sendArduinoMode) {
-			sendArduinoCommand(uI);
+			arduino.write(arduinoCommandSplitChar+uI+arduinoCommandSplitChar);
 		} else {
 			console.log("Command not recognized")
 		}
@@ -706,6 +744,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 			console.log("Error removing?: "+err)
 		})
 	}
+	sendArduinoCommand("status","Exiting");
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
@@ -714,6 +753,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
+		sendArduinoCommand("status","Error");
 		for (var i=0; i<sockets.length; i++) {
 			sockets[i].socket.emit("pydata","q"); //quit python
 			sockets[i].socket.emit("disconnect","");

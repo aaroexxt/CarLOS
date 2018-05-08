@@ -332,6 +332,17 @@ function btoa_poly(b) {
     return new Buffer(b).toString('base64');
 };
 
+function formatHHMMSS(seconds){
+  function pad(s){
+    return (s < 10 ? '0' : '') + s;
+  }
+  var hours = Math.floor(seconds / (60*60));
+  var minutes = Math.floor(seconds % (60*60) / 60);
+  var seconds = Math.floor(seconds % 60);
+
+  return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+}
+
 /*module.exports = {
     generateUUID: generateUUID,
     authPool: authPool
@@ -340,5 +351,6 @@ exports.generateUUID = generateUUID;
 exports.authPool = authPool;
 exports.atob = atob_poly;
 exports.btoa = btoa_poly;
+exports.formatHHMMSS = formatHHMMSS;
 exports.socketHandler = socketHandler;
 exports.advancedEventListener = advancedEventListener;
