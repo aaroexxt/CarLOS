@@ -105,6 +105,7 @@ void loop() {
         }
 
         if (millis()-lastCommandTime >= timeBeforeStatScreen && millis()-lastUpdateTime >= minScreenUpdateTime) {
+          lastUpdateTime = 0;
           Serial.print("INFO"); //request new info
           Serial.print(commandSplitChar);
           lcd.clear();
