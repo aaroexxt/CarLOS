@@ -31,7 +31,7 @@ unsigned long lastCommandTime = 0;
 int timeBeforeStatScreen = 10000;
 
 unsigned long lastUpdateTime = 0;
-int minScreenUpdateTime = 5000;
+int minScreenUpdateTime = 1000;
 
 void setup() {
   // Debugging output
@@ -54,7 +54,7 @@ void loop() {
       if (millis()-lastSendTime >= sendConnectInterval) { //output every second
         Serial.print("AOK");
         Serial.print(commandSplitChar);
-        lastSendTime+=1000;
+        lastSendTime+=sendConnectInterval;
         if (lastSendTime > maxTimeBeforeConnect) {
           lcd.clear();
           lcd.setCursor(0,0);
@@ -89,9 +89,8 @@ void loop() {
             lcd.clear();
             lcd.setCursor(0,0);
             lcd.print(svalue);
-            lastCommandTime = 0; //display for 10 seconds
+            lastCommandTime = millis(); //display for 10 seconds
         } else if (scommand == "uptime") {
-             Serial.print("ut;");
              serverUptime = svalue;
              //lastCommandTime = 0;
         } else if (scommand == "status") {
@@ -105,14 +104,14 @@ void loop() {
         }
 
         if (millis()-lastCommandTime >= timeBeforeStatScreen && millis()-lastUpdateTime >= minScreenUpdateTime) {
-          lastUpdateTime = 0;
+          lastUpdateTime += minScreenUpdateTime;
           Serial.print("INFO"); //request new info
           Serial.print(commandSplitChar);
           lcd.clear();
           lcd.setCursor(0,0);
           lcd.print("STATUS: "+serverStatus);
           lcd.setCursor(0,1);
-          lcd.print("uT:"+serverUptime+" U:"+serverUsers);
+          lcd.print("uT:"+serverUptime);//+" U:"+serverUsers);
         }
       }
     }

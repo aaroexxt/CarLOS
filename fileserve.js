@@ -212,7 +212,6 @@ function arduinoCommandRecognized(command) {
 	} else if (command == "INFO") {
 		var time = process.uptime();
 		var uptime = utils.formatHHMMSS(time);
-		console.log("uptime: "+uptime);
 		sendArduinoCommand("uptime",uptime);
 		sendArduinoCommand("status","Running");
 		sendArduinoCommand("users",userPool.auth_keys.length);
