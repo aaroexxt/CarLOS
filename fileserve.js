@@ -37,6 +37,7 @@ process.argv.forEach(function (val, index, array) {
 			console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
 			if (manufacturer.indexOf("Arduino") > -1 || manufacturer.indexOf("arduino") > -1) {
 				console.log("Arduino found!");
+				arduinoConnected = true;
 				serialDevice = device;
 			}
 		}
@@ -47,6 +48,8 @@ process.argv.forEach(function (val, index, array) {
 		serialDevice = val.split("=")[1];
 		if (foundJSON) {
 			processDeviceJSON(serialDevice);
+		} else {
+			arduinoConnected = true;
 		}
 	} else if (ind2 > -1) {
 		var listType = val.split("=")[1];
@@ -62,8 +65,13 @@ process.argv.forEach(function (val, index, array) {
 });
 console.log("Serial device from start script: "+serialDevice);
 var SerialPort = require('serialport');
-if (serialDevice == "" || serialDevice == "none") {
+if (serialDevice == "" || serialDevice == "none" || arduinoConnected == false) {
 	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
+	var arduino = { //make a fake arduino class so that server doesnt fail on write
+		write: function(t) {
+			console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
+		}
+	}
 } else {
 	var arduino = new SerialPort(serialDevice, {
 		baudRate: 9600,

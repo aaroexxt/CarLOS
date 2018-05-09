@@ -345,8 +345,8 @@ cd $cdloc;
 if ( "$openpage" = "true"); then
     echo "";
     echo "Opening new browser window and navigating to directory...";
-    echo "Full file path: 'https://localhost:$port/$dir'";
-    open http://localhost:$port/$dir/index.html;
+    echo "Full file path: 'https://localhost:$port/COS.html'";
+    open http://localhost:$port/COS.html;
 fi
 echo "Navigated to directory cdloc...";
 echo "If it breaks, try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime";
