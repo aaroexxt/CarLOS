@@ -179,7 +179,7 @@ fs.readFile(__dirname+"/commands.json", function(err,data){
 			var percent = speechNetTargetError/net.error;
 			var chars = Math.round(windowSize.width*percent);
 			var str = "";
-			for (var i=0; i<chars-5; i++) {
+			for (var i=0; i<chars-6; i++) {
 				str+="#";
 			}
 			str+="> ";

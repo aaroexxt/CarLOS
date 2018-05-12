@@ -40,6 +40,8 @@ sudo npm install -g nodemon;
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;
 sudo pip3 uninstall opencv-python;
+sudo pip3 install tensorflow;
+echo "If tensorflow module not found error occurs, delete the python and python3 folders in /usr/local/Cellar and reinstall python and python3 with 'brew install python python3'";
 sudo python3 -m pip install opencv-contrib-python==3.3.0.9; #why do you not work unless i do this???
 sudo python3 -m pip install pyaudio;
 #if this doesn't work, https://stackoverflow.com/questions/44363066/error-cannot-find-module-lib-utils-unsupported-js-while-using-ionic
