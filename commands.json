@@ -111,5 +111,10 @@
     {"class":"search", "sentence":"Search for x"},
     {"class":"search", "sentence":"Search on the internet for x"},
     {"class":"search", "sentence":"Find x on the internet"},
-    {"class":"search", "sentence":"Give me information about x"}
+    {"class":"search", "sentence":"Give me information about x"},
+
+    {"class":"error", "sentence":"I'm sorry, I didn't quite catch that. Try again."},
+    {"class":"error", "sentence":"catch that. Try again."},
+    {"class":"error", "sentence":"I'm sorry. Try again."},
+    {"class":"error", "sentence":"didn't quite catch that"}
 ]

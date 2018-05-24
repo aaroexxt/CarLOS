@@ -329,7 +329,7 @@ fi
 
 
 
-echo "FOUND DEVICE?: $foundDevice, devicename $device"
+echo "FOUND DEVICE?: find type: $foundDevice, devicename $device"
 
 echo "";
 echo "Starting node server with file...";

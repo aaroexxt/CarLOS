@@ -74,7 +74,23 @@ var speechParser = {
     evaluateCommands: function(command) {
         var commandOperator = ":";
         var commandGroup = ["user","random","action","pause","time","calendar",""];
-
+        /*
+        IDEAS:
+        Dumb and smart matching:
+        I.e. user input: 'text mom that I love her'
+        Step 1) Run thru neuralnet: classifies as category 'text'
+        Step 2) Match command to dumb 'filters', filter examples:
+            1: 'text *user* *text*'
+            2: 'tell *user* *text*'
+            3: 'text *user* that *text*'
+            Using regex matching like annyand?
+        Step 3) If matched to 'dumb' list, then evaluate and respond accordingly, if not:
+            -Since you know that it is in the category 'text', ask the user:
+                1: Who would you like me to text?
+                2: What would you like me to tell them?
+            And send
+        Yay!
+        */
     },
     clearQueue: function() {
         speechParser.queue = [];
