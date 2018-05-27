@@ -116,5 +116,10 @@
     {"class":"error", "sentence":"I'm sorry, I didn't quite catch that. Try again."},
     {"class":"error", "sentence":"catch that. Try again."},
     {"class":"error", "sentence":"I'm sorry. Try again."},
-    {"class":"error", "sentence":"didn't quite catch that"}
+    {"class":"error", "sentence":"didn't quite catch that"},
+
+    {"class":"test", "sentence":"test"},
+    {"class":"test", "sentence":"test me please"},
+    {"class":"test", "sentence":"testing testing 123"},
+    {"class":"test", "sentence":"testme"}
 ]

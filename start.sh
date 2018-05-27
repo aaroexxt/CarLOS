@@ -390,6 +390,5 @@ else
         fi
     fi
 fi
-
 #trap : 0;
 #exit 0; #removed because this closes the terminal

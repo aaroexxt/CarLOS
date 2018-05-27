@@ -72,6 +72,7 @@
 			var socket = io();
 			//GLOBAL VARIABLES
 			var globals = {
+				disconnected: false,
 				authkey: "waiting",
 				openCVQueue: [],
 				loginVideo: ID("loginvideo"),
@@ -442,6 +443,12 @@
 			socket.on('connect', function (data) {
 				ID('connectnode').innerHTML = "Are you connected to node backend: Yes";
 				console.log("Connected to node.js backend");
+				if (globals.disconnected) {
+					console.log("Reloading in 5000ms due to reconnection");
+					setTimeout(function(){
+						window.location.reload();
+					},5000);
+				}
 				login.readySteps.nodeConnected = true;
 			});
 
@@ -475,6 +482,7 @@
 
 			socket.on('disconnect', function (data) {
 				ID('connectnode').innerHTML = "Are you connected to node backend: No";
+				globals.disconnected = true;
 				console.log("nodejs disconnect");
 				login.readySteps.nodeConnected = false;
 			});
@@ -623,7 +631,7 @@
 					data.response = "I'm sorry, I didn't quite catch that. Try again.";
 				}
 				var skittLT = document.getElementById("skitt-listening-text");
-				Speech.speak(data.response, function(){
+				globals.voice.speaker(data.response, function(){
 					setTimeout(function(){
 						if (typeof skittLT == "undefined" || skittLT == null) {
 							console.error("Couldn't locate SKitt text on speech");

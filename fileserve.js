@@ -1,6 +1,7 @@
 var port = 80;
 var cwd = __dirname;
 //console.clear();
+console.log('\033c')
 console.log("");
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
@@ -112,7 +113,7 @@ var speechNetReady = false;
 
 var userPool = new utils.authPool();
 
-var denyFileNames = ["pass.json","rpibackend.py","fileserve.js","nodeutils.js","training.py","live.py","commands.json"];
+var denyFileNames = ["pass.json","rpibackend.py","fileserve.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"];
 var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
@@ -124,8 +125,7 @@ var pyimgnum = 0;
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
 var approval = {faces: "", passes: "", maxVideoAttempts: "", maxPasscodeAttempts: ""};
-console.log("dirname '"+__dirname+"'");
-fs.readFile(__dirname+"/pass.json", function(err,data){
+fs.readFile(cwd+"/pass.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading pass file");
 		throw "[FATAL] Error reading pass file";
@@ -140,8 +140,7 @@ fs.readFile(__dirname+"/pass.json", function(err,data){
 	}
 });
 
-console.log("dirname '"+__dirname+"'");
-fs.readFile(__dirname+"/responses.json", function(err,data){
+fs.readFile(cwd+"/responses.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading responses file");
 		throw "[FATAL] Error reading responses file";
@@ -158,7 +157,33 @@ fs.readFile(__dirname+"/responses.json", function(err,data){
 	}
 });
 
-fs.readFile(__dirname+"/commands.json", function(err,data){
+fs.readFile(cwd+"/commandGroup.json", function(err,data){
+	if (err) {
+		console.error("[FATAL] Error reading commandGroup file");
+		throw "[FATAL] Error reading commandGroup file";
+	} else {
+		var lines = JSON.parse(data); //read data and set approval object
+		var foundCommandGroup = false;
+		var commands = [];
+		for (var i=0; i<lines.length; i++) {
+			if (lines[i].type == "commandGroup") {
+				speechParser.algorithm.commandGroup = lines[i].commandGroup;
+				foundCommandGroup = true;
+			} else if (lines[i].type == "command") {
+				commands.push([lines[i].command,lines[i].response,lines[i].arguments]);
+			}
+		}
+		if (!foundCommandGroup) {
+			throw "[FATAL] No commandGroup found in commandGroup file.";
+		} else if (commands.length != speechParser.algorithm.commandGroup.length) {
+			throw "[FATAL] CommandGroup length does not match command length. Are there commands missing from the commandGroup file? (command length: "+commands.length+", cg length: "+speechParser.algorithm.commandGroup.length;
+		} else {
+			speechParser.algorithm.commandFunctions = commands;
+		}
+	}
+});
+
+fs.readFile(cwd+"/commands.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading commands file");
 		throw "[FATAL] Error reading commands file";
@@ -564,12 +589,12 @@ io.on('connection', function (socket) { //on connection
 										}
 										socketHandler.socketEmitToKey(key,"POST",{action: "speechMatchingResult", classification: finalClassifications, likelyResponse: likelyResponse, transcript: data.speech, classifiedTranscript: classifiedSpeech, response: response});
 									} else {
-										var classification = neuralMatcher.algorithm.classify(speechClassifierNet, data.speech);
+										var classification = neuralMatcher.algorithm.classify(speechClassifierNet, data.speech); //classify speech
 										console.log("Speech classification: "+JSON.stringify(classification));
 										var response;
 										if (classification.constructor == Array && classification.length > 0) {
 											speechParser.algorithm.addRNGClass(classification[0][0]); //generate rng class from classification
-											response = speechParser.algorithm.dumpAndClearQueue();
+											response = speechParser.algorithm.dumpAndClearQueue(); //dump queue to response (if backed up w/multiple calls)
 										} else {
 											console.warn("Classification length is 0, response is nothing")
 											response = "";
