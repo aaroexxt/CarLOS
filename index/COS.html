@@ -14,21 +14,22 @@
 	<body>
 		<div id="main" class="mapWrapper" style="display: none;">
 			<ul class="menutop">
-				<li><h1>Welcome to CarOS</h1></li>
+				<li>Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
-				<li><h1>App</h1></li>
+				<li>App</li>
 				<li class="menubreaker">|</li>
-				<li><h1>App2</h1></li>
+				<li>App2</li>
 				<li class="menubreaker">|</li>
-				<li><h1>App3</h1></li>
+				<li>App3</li>
 				<li class="menubreaker">|</li>
-				<li><h1>App4</h1></li>
+				<li>App4</li>
 				<li class="menubreaker">|</li>
-				<li><h1>App5</h1></li>
+				<li>App5</li>
 				<li class="menubreaker">|&nbsp;&nbsp;&nbsp;</li>
-				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 32px;">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
+				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue';">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
 				<li class="menubreaker">&nbsp;</li>
-				<li class="menuitemnoanim"><img src="images/wifi0.png" width="50" height="25" id="wifilevel"></img></li>
+				<li class="menuitemnoanim"><img src="images/wifi0.png" width="75" height="25" style="padding-top: 5px; padding-bottom: 3px;" id="wifilevel"></img></li>
+				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">1 MB/S</p></li>
 			</ul>
 			<div id="mainMap" class="fullScreenMap"></div>
 			<ul class="menubottom">
@@ -239,6 +240,69 @@
 					},
 					defaultInstructions: "What can I help you with?",
 					defaultTextDelay: 1000
+				},
+				wifiIndicator: function(id) {
+					var wifiIndicator = document.getElementById(id);
+					var position = 0;
+					var direction = 1;
+					var seek = setInterval(function(){
+						wifiIndicator.src = "images/wifiL"+position+".png";
+						position+= direction;
+						if (position > 3 || position < 1) {
+							direction*=-1;
+						}
+					},500);
+					var wifiPromise = globals.getWifiSpeed();
+					wifiPromise.then(function(speed) {
+						clearInterval(seek);
+						if (speed > 20) {
+							wifiIndicator.src = "images/wifi5.png";
+						} else if (speed > 10) {
+							wifiIndicator.src = "images/wifi4.png";
+						} else if (speed > 5) {
+							wifiIndicator.src = "images/wifi3.png";
+						} else if (speed > 2) {
+							wifiIndicator.src = "images/wifi2.png";
+						} else {
+							wifiIndicator.src = "images/wifi1.png";
+						}
+					}, function(err) {
+						clearInterval(seek);
+						wifiIndicator.src = "images/wifiE.png";
+					})
+				},
+				getWifiSpeed: function() {
+					var wifiPromise = new Promise(function(resolve, reject) {
+						var imageAddr = "https://aaronbecker.tech/5mb.jpg?n="+Math.random();
+						var startTime, endTime;
+						var downloadSize = 5245329;
+						var download = new Image();
+						console.log("started download")
+						download.onload = function () {
+						    endTime = (new Date()).getTime();
+						    var duration = (endTime - startTime) / 1000; //Math.round()
+						    var bitsLoaded = downloadSize * 8;
+						    var speedBps = (bitsLoaded / duration).toFixed(2);
+						    var speedKbps = (speedBps / 1024).toFixed(2);
+						    var speedMbps = (speedKbps / 1024).toFixed(2);
+						    globals.speed.bps = speedBps;
+						    globals.speed.kbps = speedKbps;
+						    globals.speed.mbps = speedMbps;
+						    resolve(speedMbps);
+						}
+						download.onerror = function() {
+							console.error("Error getting image from aaronbecker.tech");
+							reject();
+						}
+						startTime = (new Date()).getTime();
+						download.src = imageAddr;
+					});
+					return wifiPromise;
+				},
+				speed: {
+					bps: 0,
+					kbps: 0,
+					mbps: 0
 				}
 			}
 
@@ -450,7 +514,10 @@
 					}
 				})
 			}, 25000);
-			setTimeout(function(){login.approvedLogin()},2000);
+			setTimeout(function(){
+				login.approvedLogin();
+				globals.wifiIndicator("wifilevel");
+			},2000);
 
 
 			//SET UP SOCKET LISTENERS

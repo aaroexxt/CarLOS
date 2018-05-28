@@ -226,7 +226,10 @@ div.img img {
     top: 0 !important;
     width: 100%;
     padding: 0;
-
+    -webkit-user-select: none; /* Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
     overflow: hidden;
     font-weight: 200;
     font-family: 'Source Sans Pro';
@@ -243,7 +246,10 @@ div.img img {
     bottom: 0 !important;
     width: 100%;
     padding: 0;
-
+    -webkit-user-select: none; /* Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
     overflow: hidden;
     font-weight: 200;
     font-family: 'Source Sans Pro';
@@ -271,15 +277,27 @@ div.img img {
 .menubreaker {
     display: inline-block;
     font-family: 'Source Sans Pro';
-    font-size: 32px;
     vertical-align: middle;
     line-height: normal;
-    transform: scale(0.5, 1.15);
-    margin-bottom: 15px;
     font-weight: 100;
     background: none !important;
     padding-left: 10px;
     padding-right: 10px;
+}
+.menubreaker.menubottom {
+    font-size: 32px;
+    transform: scale(0.5, 1.15);
+    margin-bottom: 15px;
+}
+.menubreaker.menutop {
+    font-size: 10px;
+    transform: scale(0.5, 1.15);
+    margin-bottom: 5px;
+}
+.menutop p, .menutop span, .menubottom p, .menubottom span {
+    margin: 0 -20px 0 -20px;
+    display: inline-block;
+    transform: scale(1.5,0.75);
 }
 .menulink {
     font-size: 1.538em;

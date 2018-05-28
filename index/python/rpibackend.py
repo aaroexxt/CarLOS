@@ -20,6 +20,7 @@ debugMode = "false"
 print ("init backend")
 print ("opencv version "+cv2.__version__)
 
+global pyimgbasepath
 pyimgbasepath = "/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/out/"
 pyimgnum = 0
 
@@ -57,6 +58,7 @@ def sockcallback(*data):
 
 def cwdcallback(*data):
     global cwd
+    global pyimgbasepath
     cwd = str(data)[2:len(str(data))-3]
     print("CWD Recieved: "+cwd)
     pyimgbasepath = cwd+"/index/tmpimgs/out/";

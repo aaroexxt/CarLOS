@@ -118,7 +118,7 @@ var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = true; //enables clean error handling. Only turn off during development
+var catchErrors = false; //enables clean error handling. Only turn off during development
 
 var sockets = [];
 var pyimgnum = 0;
@@ -433,28 +433,32 @@ io.on('connection', function (socket) { //on connection
 								})
 								//console.log("pathout "+pathout);
 								fs.readFile(pathout, function(err, buf) {
-									var approved = false;
-									for (var i=0; i<labels.length; i++) {
-										for (var j=0; j<approval.faces.length; j++) {
-											console.log("label "+labels[i]+", face "+approval.faces[j])
-											if (labels[i] === approval.faces[j]) {
-												approved = true;
+									if (buf) {
+										var approved = false;
+										for (var i=0; i<labels.length; i++) {
+											for (var j=0; j<approval.faces.length; j++) {
+												console.log("label "+labels[i]+", face "+approval.faces[j])
+												if (labels[i] === approval.faces[j]) {
+													approved = true;
+												}
 											}
 										}
-									}
-									if (approved) {
-										pykeyObject.properties.approved = true;
-										console.log("modified key "+pykey+" with approved attrib")
+										if (approved) {
+											pykeyObject.properties.approved = true;
+											console.log("modified key "+pykey+" with approved attrib")
+										} else {
+											pykeyObject.properties.videoAttemptNumber += 1;
+											vidAttempt += 1;
+											console.log("modified key "+pykey+" with attempt attrib")
+										}
+										socketHandler.socketEmitToKey(pykey, "POST", {action: 'login-opencvdata', queue: innum, buffer: buf.toString('base64'), confidences: conf, labels: labels, rects: rects, approved: approved, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+										pykeyObject.properties.allowOpenCV = true; //reallow sending opencv because processing is completed
+										fs.unlink(pathout, function(err) {
+											console.log("Error removing sent img?: "+err);
+										})
 									} else {
-										pykeyObject.properties.videoAttemptNumber += 1;
-										vidAttempt += 1;
-										console.log("modified key "+pykey+" with attempt attrib")
+										console.error("Buffer was undefined when attempting to read from pathout returned from python.")
 									}
-									socketHandler.socketEmitToKey(pykey, "POST", {action: 'login-opencvdata', queue: innum, buffer: buf.toString('base64'), confidences: conf, labels: labels, rects: rects, approved: approved, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-									pykeyObject.properties.allowOpenCV = true; //reallow sending opencv because processing is completed
-									fs.unlink(pathout, function(err) {
-										console.log("Error removing sent img?: "+err);
-									})
 								})
 							}
 						}
