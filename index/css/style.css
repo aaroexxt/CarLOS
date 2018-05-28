@@ -217,43 +217,58 @@ div.img img {
     display: none;
     line-height: 1.538em;
 }
-.menu {
+.menutop {
     z-index: 1000;
     text-align:center;
     position: fixed;
     list-style-type: none;
     margin: auto;
-    width: 98%;
+    top: 0 !important;
+    width: 100%;
     padding: 0;
+
     overflow: hidden;
     font-weight: 200;
-    /*font-family: 'Source Sans Pro';*/
+    font-family: 'Source Sans Pro';
 
-/* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
-background: #aebcbf; /* Old browsers */
-background: -moz-linear-gradient(left, #aebcbf 0%, #0a0e0a 0%, #bebebe 0%, #ebebeb 50%, #bebebe 100%); /* FF3.6-15 */
-background: -webkit-linear-gradient(left, #aebcbf 0%,#0a0e0a 0%,#bebebe 0%,#ebebeb 50%,#bebebe 100%); /* Chrome10-25,Safari5.1-6 */
-background: linear-gradient(to right, #aebcbf 0%,#0a0e0a 0%,#bebebe 0%,#ebebeb 50%,#bebebe 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#aebcbf', endColorstr='#bebebe',GradientType=1 ); /* IE6-9 */
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
+    background: #bebebe; /* Old browsers */
+}
+.menubottom {
+    z-index: 1000;
+    text-align:center;
+    position: fixed;
+    list-style-type: none;
+    margin: auto;
+    bottom: 0 !important;
+    width: 100%;
+    padding: 0;
 
+    overflow: hidden;
+    font-weight: 200;
+    font-family: 'Source Sans Pro';
 
-    /*background: #d9d9d9;*/
-/*    background: -webkit-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Safari 5.1 to 6.0 */
-/*    background: -o-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Opera 11.1 to 12.0 */
-/*    background: -moz-linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* For Firefox 3.6 to 15 */
-/*    background: linear-gradient(#f2f2f2, #a6a6a6, #f2f2f2);*/ /* Standard syntax */
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
+    background: #232121; /* Old browsers */
 }
 @media screen and (max-width: 500px) {
 /* applies only if the screen is narrower than 500px */
-  .menu {
+  .menutop, .menubottom {
     position: static;
   }
 }
-.menu li {
+.menutop li, .menubottom li {
     display: inline-block;
     transition: 0.4s;
 }
 .menuitemnoanim {
+    display: inline-block;
+    font-family: 'Source Sans Pro';
+    vertical-align: middle;
+    transform: scale(0.5, 1.15);
+    background: none !important;
+}
+.menubreaker {
     display: inline-block;
     font-family: 'Source Sans Pro';
     font-size: 32px;
@@ -262,6 +277,9 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#aebcbf', end
     transform: scale(0.5, 1.15);
     margin-bottom: 15px;
     font-weight: 100;
+    background: none !important;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 .menulink {
     font-size: 1.538em;
@@ -272,7 +290,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#aebcbf', end
     transition: 0.3s;
     display:inline-block;
 }
-.menu li:hover {
+.menutop li:hover, .menubottom li:hover {
     background: #666666;
 }
 .menulink:hover {

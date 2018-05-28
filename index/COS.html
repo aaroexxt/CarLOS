@@ -13,12 +13,29 @@
 	</head>
 	<body>
 		<div id="main" class="mapWrapper" style="display: none;">
-			<ul class="menu">
+			<ul class="menutop">
+				<li><h1>Welcome to CarOS</h1></li>
+				<li class="menubreaker">|</li>
+				<li><h1>App</h1></li>
+				<li class="menubreaker">|</li>
+				<li><h1>App2</h1></li>
+				<li class="menubreaker">|</li>
+				<li><h1>App3</h1></li>
+				<li class="menubreaker">|</li>
+				<li><h1>App4</h1></li>
+				<li class="menubreaker">|</li>
+				<li><h1>App5</h1></li>
+				<li class="menubreaker">|&nbsp;&nbsp;&nbsp;</li>
+				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 32px;">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
+				<li class="menubreaker">&nbsp;</li>
+				<li class="menuitemnoanim"><img src="images/wifi0.png" width="50" height="25" id="wifilevel"></img></li>
+			</ul>
+			<div id="mainMap" class="fullScreenMap"></div>
+			<ul class="menubottom">
 				<li><h1>Welcome to CarOS V1!</h1></li>
 				<li class="menuitemnoanim">|</li>
 				<li><input id="pygame"></input></li>
 			</ul>
-			<div id="mainMap" class="fullScreenMap"></div>
 		</div>
 		<div class="inforight" id="inforight">
 			<pre id="connectpy">Are you connected to python backend: No</pre>

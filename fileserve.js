@@ -118,7 +118,7 @@ var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = false; //enables clean error handling. Only turn off during development
+var catchErrors = true; //enables clean error handling. Only turn off during development
 
 var sockets = [];
 var pyimgnum = 0;
