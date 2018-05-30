@@ -83,6 +83,7 @@ var speechParser = {
         console.log("rawcommand="+raw);
         var split = raw.split(speechParser.commandOperator);
         if (split.length == 1) {
+            console.log("Split length 1, returning raw")
             return raw;
         } else {
             var finalcommand = "";
@@ -90,7 +91,7 @@ var speechParser = {
                 var splitSp = split[i].split(" "); //split by spaces to find arguments
                 var args = [];
                 var command = splitSp[0]; //command should be first
-                console.log("command for evaluate: "+command)
+                console.log("command for evaluation: "+command)
                 if (command == " " || command == "") {
                     split[i] = " ";
                 } else {
@@ -99,7 +100,7 @@ var speechParser = {
                     for (var j=0; j<speechParser.commandFunctions.length; j++) {
                         if (speechParser.commandFunctions[j][0] == command) {
                             functionIndex = j;
-                            console.log("found command in commandFunctions");
+                            //console.log("found command in commandFunctions");
                         }
                     }
                     if (commandIndex > -1 && functionIndex > -1) {
@@ -110,7 +111,7 @@ var speechParser = {
                             }
                         }
                         var resp;
-                        console.log("function: "+speechParser.commandFunctions[functionIndex][1]+", arguments: "+speechParser.commandFunctions[functionIndex][2]+", function: "+JSON.stringify(speechParser.commandFunctions[functionIndex]))
+                        //console.log("function: "+speechParser.commandFunctions[functionIndex][1]+", arguments: "+speechParser.commandFunctions[functionIndex][2]+", function: "+JSON.stringify(speechParser.commandFunctions[functionIndex]))
                         if (speechParser.commandFunctions[functionIndex][2]) { //arguments
                             resp = new Function(speechParser.commandFunctions[functionIndex][1]).apply(null,args);
                         } else {
@@ -124,7 +125,7 @@ var speechParser = {
                             split[i] = resp;
                         }
                         
-                        console.log("resp from fn: "+resp)
+                        //console.log("resp from fn: "+resp)
                     } else if (split[i].substring(0,1) == " "){ //if not found, it's not a command, so fix (backup incase the response is list: 1,2,3)
                         split[i] = ":"+split[i];
                         console.log("command doesn't exist, findex = "+functionIndex+", commandIndex = "+commandIndex)
@@ -132,7 +133,7 @@ var speechParser = {
                 }
             }
         }
-        console.log(JSON.stringify(split))
+        console.log("finalcommand: "+JSON.stringify(split))
         return split.join("");
         /*
         IDEAS:

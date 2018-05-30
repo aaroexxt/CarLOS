@@ -295,7 +295,8 @@ div.img img {
     margin-bottom: 5px;
 }
 .menutop p, .menutop span, .menubottom p, .menubottom span {
-    margin: 0 -20px 0 -20px;
+    margin-right: -100px;
+    margin-left: -50px;
     display: inline-block;
     transform: scale(1.5,0.75);
 }

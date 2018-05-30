@@ -50,7 +50,8 @@
 
     {"class":"text", "sentence":"Got it. :action text:"},
 
-    {"class":"time", "sentence":"The time is :time:"},
+    {"class":"time", "sentence":"The time is :time:."},
+    {"class":"time", "sentence":"It is currently :time:."},
 
     {"class":"calendar", "sentence":"Today, you have :calendar:"},
 

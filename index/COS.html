@@ -16,11 +16,11 @@
 			<ul class="menutop">
 				<li>Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
-				<li>App</li>
+				<li><img src="images/music.png" width="50" height="50" style=""></img></li>
 				<li class="menubreaker">|</li>
 				<li>App2</li>
 				<li class="menubreaker">|</li>
-				<li>App3</li>
+				<li><img src="images/house.png" width="50" height="50" style=""></img></li>
 				<li class="menubreaker">|</li>
 				<li>App4</li>
 				<li class="menubreaker">|</li>
@@ -29,7 +29,7 @@
 				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue';">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
 				<li class="menubreaker">&nbsp;</li>
 				<li class="menuitemnoanim"><img src="images/wifi0.png" width="75" height="25" style="padding-top: 5px; padding-bottom: 3px;" id="wifilevel"></img></li>
-				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">1 MB/S</p></li>
+				<li class="menuitemnoanim"><p id="wifispeed" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">1 MB/S</p></li>
 			</ul>
 			<div id="mainMap" class="fullScreenMap"></div>
 			<ul class="menubottom">
@@ -241,7 +241,7 @@
 					defaultInstructions: "What can I help you with?",
 					defaultTextDelay: 1000
 				},
-				wifiIndicator: function(id) {
+				initWifiIndicator: function(id) {
 					var wifiIndicator = document.getElementById(id);
 					var position = 0;
 					var direction = 1;
@@ -255,13 +255,13 @@
 					var wifiPromise = globals.getWifiSpeed();
 					wifiPromise.then(function(speed) {
 						clearInterval(seek);
-						if (speed > 20) {
+						if (speed > 10) {
 							wifiIndicator.src = "images/wifi5.png";
-						} else if (speed > 10) {
-							wifiIndicator.src = "images/wifi4.png";
 						} else if (speed > 5) {
-							wifiIndicator.src = "images/wifi3.png";
+							wifiIndicator.src = "images/wifi4.png";
 						} else if (speed > 2) {
+							wifiIndicator.src = "images/wifi3.png";
+						} else if (speed > 1) {
 							wifiIndicator.src = "images/wifi2.png";
 						} else {
 							wifiIndicator.src = "images/wifi1.png";
@@ -270,32 +270,38 @@
 						clearInterval(seek);
 						wifiIndicator.src = "images/wifiE.png";
 					})
+					setTimeout(function(){
+						globals.initWifiIndicator(id);
+					}, globals.wifiUpdateTime);
 				},
+				wifiUpdateTime: 320000, //update every 20 mins (1200000)
+				delayWifiTime: 7000,
 				getWifiSpeed: function() {
 					var wifiPromise = new Promise(function(resolve, reject) {
-						var imageAddr = "https://aaronbecker.tech/5mb.jpg?n="+Math.random();
+						var imageAddr = "https://aaronbecker.tech/5mb.jpg";
 						var startTime, endTime;
 						var downloadSize = 5245329;
 						var download = new Image();
 						console.log("started download")
 						download.onload = function () {
-						    endTime = (new Date()).getTime();
-						    var duration = (endTime - startTime) / 1000; //Math.round()
-						    var bitsLoaded = downloadSize * 8;
-						    var speedBps = (bitsLoaded / duration).toFixed(2);
-						    var speedKbps = (speedBps / 1024).toFixed(2);
-						    var speedMbps = (speedKbps / 1024).toFixed(2);
-						    globals.speed.bps = speedBps;
-						    globals.speed.kbps = speedKbps;
-						    globals.speed.mbps = speedMbps;
-						    resolve(speedMbps);
+							endTime = (new Date()).getTime();
+							var duration = (endTime - startTime) / 1000; //Math.round()
+							var bitsLoaded = downloadSize * 8;
+							var speedBps = (bitsLoaded / duration).toFixed(2);
+							var speedKbps = (speedBps / 1024).toFixed(2);
+							var speedMbps = (speedKbps / 1024).toFixed(2);
+							globals.speed.bps = speedBps;
+							globals.speed.kbps = speedKbps;
+							globals.speed.mbps = speedMbps;
+							resolve(speedMbps);
 						}
 						download.onerror = function() {
 							console.error("Error getting image from aaronbecker.tech");
 							reject();
 						}
 						startTime = (new Date()).getTime();
-						download.src = imageAddr;
+						var cacheBuster = "?nnn=" + startTime;
+						download.src = imageAddr + cacheBuster;
 					});
 					return wifiPromise;
 				},
@@ -303,7 +309,30 @@
 					bps: 0,
 					kbps: 0,
 					mbps: 0
-				}
+				},
+				initSpeedIndicator: function(id) {
+					var speedIndicator = document.getElementById(id);
+					speedIndicator.innerHTML = globals.speed.mbps+" MB/s";
+					setTimeout(function(){
+						globals.initSpeedIndicator(id);
+					},globals.speedIndicatorUpdateTime);
+				},
+				speedIndicatorUpdateTime: 1000,
+				initTimeIndicator: function(id) {
+					var timeIndicator = document.getElementById(id);
+					var d = new Date();
+					var o = {
+						hour: 'numeric',
+						minute: 'numeric',
+						hour12: true
+					}; 
+					var ts = d.toLocaleString('en-US', o);
+					timeIndicator.innerHTML = ts;
+					setTimeout(function(){
+						globals.initTimeIndicator(id);
+					},globals.timeIndicatorUpdateTime)
+				},
+				timeIndicatorUpdateTime: 1000
 			}
 
 /*voices:
@@ -495,29 +524,36 @@
 						globals.map.steeringWheelMarker.setPosition(new google.maps.LatLng(lat, lng));
 						globals.map.fitMapToMarkers(globals.map.markers, globals.map.mapReference);
 					});
+				}, initialize: function() {
+					setInterval(function(){ //validate key listener
+						socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
+						socketListener.addListener("validatekey",function (data){
+							console.log("Authkey valid?: "+data.valid);
+							if (data.valid == "false" && globals.authkey != "") {
+								console.error("Authkey invalid");
+								/*if (confirm("Authkey has expired. Reload page?")) {
+									window.location.reload();
+								}*/
+								window.location.reload();
+							} else if (data.valid == "false") {
+								console.log("Still waiting on python for valid authkey, not prompting user");
+								//alert("Python is not initialized, waiting for authkey from server...")
+							}
+						})
+					}, 25000);
+
+					setTimeout(function(){
+						globals.initWifiIndicator("wifilevel"); //init wifi, time and map
+					}, globals.delayWifiTime);
+					globals.initSpeedIndicator("wifispeed");
+					globals.initTimeIndicator("time");
+					login.initializeMap();
+
+					setTimeout(function(){
+						login.approvedLogin();
+					},2000);
 				}
 			}
-
-			setInterval(function(){ //validate key listener
-				socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
-				socketListener.addListener("validatekey",function (data){
-					console.log("Authkey valid?: "+data.valid);
-					if (data.valid == "false" && globals.authkey != "") {
-						console.error("Authkey invalid");
-						/*if (confirm("Authkey has expired. Reload page?")) {
-							window.location.reload();
-						}*/
-						window.location.reload();
-					} else if (data.valid == "false") {
-						console.log("Still waiting on python for valid authkey, not prompting user");
-						//alert("Python is not initialized, waiting for authkey from server...")
-					}
-				})
-			}, 25000);
-			setTimeout(function(){
-				login.approvedLogin();
-				globals.wifiIndicator("wifilevel");
-			},2000);
 
 
 			//SET UP SOCKET LISTENERS
@@ -608,7 +644,7 @@
 						ID("attemptNumber").innerHTML = "Login attempt: "+attempt+" of "+totalAttempts;
 					}
 	  			} else {
-	  				console.log("ignoring because idonthavequeue")
+	  				console.log("ignoring because client doesn't have queue")
 	  			}
 			});
 
@@ -623,11 +659,11 @@
 				}
 			})
 
-			navigator.getUserMedia  = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-			navigator.getUserMedia({video: true}, function(localMediaStream) {
+			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+			navigator.mediaDevices.getUserMedia({video: true}).then(function(localMediaStream) {
 				globals.loginVideoStream = localMediaStream;
 				globals.loginVideo.src = window.URL.createObjectURL(localMediaStream);
-				console.log(localMediaStream,window.URL.createObjectURL(localMediaStream))
+				console.log(localMediaStream,globals.loginVideo.src)
 				// Note: onloadedmetadata doesn't fire in Chrome when using it with getUserMedia.
 				// See crbug.com/110938.
 				globals.loginVideo.onloadedmetadata = function(e) {
@@ -640,8 +676,8 @@
 						login.readySteps.videoLoad = true;
 					},300); //give some time for camera to adjust
 				};
-			}, function(){
-				console.log("error getting getusermedia")
+			}).catch(function(e){
+				console.error("Error getting usermedia for login video, e="+JSON.stringify(e))
 			});
 
 			if (typeof annyang !== "undefined") {
@@ -733,6 +769,6 @@
 
 		</script>
 		<!--Google maps script-->
-		<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArwv2IQ00_3Z8_VQUwB1C9cJr0cujUnLk&callback=login.initializeMap"></script>
+		<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyArwv2IQ00_3Z8_VQUwB1C9cJr0cujUnLk&callback=login.initialize"></script>
 	</body>
 </html>

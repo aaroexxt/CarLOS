@@ -237,14 +237,17 @@ while(running):
                         label = ["RecognizerError"];
                         print("Face recognizer error :(")
                     print(str(label))
-                    print("Face prediction: "+subjects[label[0]])
+                    print("Face prediction: "+subjects[int(label[0])])
                     print("Confidence: "+str(label[1])+"%")
-                    labeltxt = subjects[label[0]]
+                    labeltxt = subjects[int(label[0])]
                     cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     cv2.putText(image, labeltxt, (x1, y1-5), cv2.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 0), 2)
-                    ex_labels+=(","+labeltxt)
-                    ex_rects+=",["+str(x1)+","+str(y1)+","+str(x2)+","+str(y2)+"]"
-                    ex_confidences+=","+(str(label[1]))
+                    if (int(label[1]) > 45):
+                        ex_labels+=(","+labeltxt)
+                        ex_rects+=",["+str(x1)+","+str(y1)+","+str(x2)+","+str(y2)+"]"
+                        ex_confidences+=","+(str(label[1]))
+                    else:
+                        print("Confidence "+str(label[1])+" is too low")
                     i+=1
                 #trim beginning comma
                 ex_labels = ex_labels[1:]
