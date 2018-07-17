@@ -4,6 +4,18 @@ var globals = {
     authkey: "waiting",
     openCVQueue: [],
     loginVideo: ID("loginvideo"),
+    loginVideoSnapshot: function() {
+        var canvas = ID("loginCanvas");
+        var ctx = canvas.getContext('2d');
+        canvas.height = globals.loginVideo.videoHeight;
+        canvas.width = globals.loginVideo.videoWidth;
+        ctx.drawImage(globals.loginVideo, 0, 0, canvas.width, canvas.height);
+        var daturl = canvas.toDataURL('image/png');
+        /*var raw = datatoraw(daturl);
+        var blob = raw.blob;
+        var rawdata = raw.rawarr;*/
+        socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
+    },
     loginVideoStream: undefined,
     fadeInOutDelay: 200,
     map: {
@@ -242,22 +254,7 @@ var globals = {
             globals.initTimeIndicator(id);
         },globals.timeIndicatorUpdateTime)
     },
-    timeIndicatorUpdateTime: 1000,
-    loginVideo: {
-        snapshot: function() {
-            var canvas = ID("loginCanvas");
-            var ctx = canvas.getContext('2d');
-            canvas.height = globals.loginVideo.videoHeight;
-            canvas.width = globals.loginVideo.videoWidth;
-            ctx.drawImage(globals.loginVideo, 0, 0);
-            var daturl = canvas.toDataURL('image/png');
-            /*var raw = datatoraw(daturl);
-            var blob = raw.blob;
-            var rawdata = raw.rawarr;*/
-            socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
-
-        }
-    }
+    timeIndicatorUpdateTime: 1000
 }
 
 /*voices:
@@ -270,7 +267,7 @@ google us english
 
 //LOGIN SETUP SCRIPTS
 var login = {
-    snapshot: globals.loginVideo.snapshot,
+    snapshot: globals.loginVideoSnapshot,
     passcode: function(psc) {
         console.log("psc submit "+psc);
         socket.emit("GET",{action: "login-passcodeready", authkey: globals.authkey, passcode: psc.trim()});
@@ -306,7 +303,7 @@ var login = {
         },globals.fadeInOutDelay);
     },
     pageReady: function(){
-        globals.loginVideo.snapshot();
+        globals.loginVideoSnapshot();
         ID("loading").style.display = "none";
         ID("login").style.display = "block";
         ID("loginvideo").style.display = "block";

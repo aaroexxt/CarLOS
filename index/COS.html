@@ -199,7 +199,8 @@
 			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 			navigator.mediaDevices.getUserMedia({video: true}).then(function(localMediaStream) {
 				globals.loginVideoStream = localMediaStream;
-				globals.loginVideo.src = window.URL.createObjectURL(localMediaStream);
+				globals.loginVideo = ID("loginvideo");
+				globals.loginVideo.srcObject = localMediaStream;
 				// Note: onloadedmetadata doesn't fire in Chrome when using it with getUserMedia.
 				// See crbug.com/110938.
 				globals.loginVideo.onloadedmetadata = function(e) {
@@ -212,7 +213,7 @@
 						login.readySteps.videoLoad = true;
 					},500); //give some time for camera to adjust
 				};
-				console.log(localMediaStream,globals.loginVideo.src)
+				console.log("lms: ",localMediaStream)
 			}).catch(function(e){
 				console.error("Error getting usermedia for login video, e="+JSON.stringify(e))
 			});
