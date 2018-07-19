@@ -10,26 +10,30 @@
 		<script src="js/annyang.js"></script>
 		<script src="js/globals.js"></script>
 		<script src="js/speechkitt.min.js"></script>
+		<script src="js/jquery-3.3.1.min.js"></script>
+		<script src="js/bootbox.min.js"></script>
+		<script src="js/bootstrap.min.js"></script>
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
 	</head>
 	<body>
 		<div id="main" class="mapWrapper" style="display: none;">
-			<ul class="menutop">
+			<ul class="menutop" style="transform: translateX(-12px)">
 				<li>Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/music.png" width="25" height="25" style=""></img></li>
+				<li><img src="images/music.png" width="25" height="25" class="circle"></img></li>
 				<li class="menubreaker">|</li>
 				<li>App2</li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/wifi0.png" width="25" height="25" style=""></img></li>
+				<li><img src="images/a.png" width="40" height="40"></img></li>
 				<li class="menubreaker">|</li>
 				<li>App4</li>
 				<li class="menubreaker">|</li>
 				<li>App5</li>
 				<li class="menubreaker">|&nbsp;&nbsp;&nbsp;</li>
 				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue';">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
-				<li class="menubreaker">&nbsp;</li>
-				<li class="menuitemnoanim"><img src="images/wifi0.png" width="75" height="25" style="padding-top: 5px; padding-bottom: 3px;" id="wifilevel"></img></li>
+				<li class="menubreaker">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>
+				<li class="menuitemnoanim"><img src="images/wifi0.png" width="75" height="30" style="padding-top: 5px; padding-bottom: 3px;" id="wifilevel"></img></li>
 				<li class="menuitemnoanim"><p id="wifispeed" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">1 MB/S</p></li>
 			</ul>
 			<div id="mainMap" class="fullScreenMap"></div>
@@ -90,6 +94,17 @@
 			</center>
 		</div>
 		<script>
+		function displayADialog() {
+			var dialog = bootbox.dialog({
+				message: "<center>Aaron's Car Comp</center><br/><img src='images/a.png' width='40' height='40'></img>",
+				backdrop: false,
+				closeButton: false
+			})
+			setTimeout(function(){
+				dialog.modal('hide');
+			},1000)
+		}
+		setTimeout(function(){login.approvedLogin()},1500);
 			var socket = io();
 
 			//SET UP SOCKET LISTENERS

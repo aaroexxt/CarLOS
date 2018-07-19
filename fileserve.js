@@ -108,7 +108,7 @@ var neuralMatcher = require('./speechMatcher.js'); //include the speech matching
 neuralMatcher.algorithm.stemmer = neuralMatcher.stemmer;
 var brain = require("brain.js");
 var speechClassifierNet = new brain.NeuralNetwork(); //make the net
-var speechNetTargetError = 0.05;//0.00001; //<- for release
+var speechNetTargetError = 0.005;//0.00001; //<- for release
 var speechNetReady = false;
 
 var userPool = new utils.authPool();
