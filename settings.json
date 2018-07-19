@@ -1,0 +1,12 @@
+{
+    "information": {
+        "frontendVersion": 1,
+        "backendVersion": 1
+    },
+    "settings": {
+        "faces": ["QWFyb24="],
+        "passes": ["cGFzc2NvZGU=","MTIzNDU="],
+        "maxVideoAttempts": 7,
+        "maxPasscodeAttempts": 10
+    }
+}

@@ -4,6 +4,10 @@ var globals = {
     authkey: "waiting",
     openCVQueue: [],
     loginVideo: ID("loginvideo"),
+    runtimeInformation: {
+        frontendVersion: "? (Should Not Happen)",
+        backendVersion: "? (Should Not Happen)"
+    },
     loginVideoSnapshot: function() {
         var canvas = ID("loginCanvas");
         var ctx = canvas.getContext('2d');
@@ -314,7 +318,8 @@ var login = {
         nodeConnected: false,
         pythonConnected: false,
         validAuthkey: false,
-        internetConnected: false
+        internetConnected: false,
+        runtimeInformationProvided: false
     },
     loadedOnce: false,
     readyUpdater: setInterval(function(){

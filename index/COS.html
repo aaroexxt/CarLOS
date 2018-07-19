@@ -15,6 +15,7 @@
 		<script src="js/bootstrap.min.js"></script>
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
+		<meta charset="UTF-8">
 	</head>
 	<body>
 		<div id="main" class="mapWrapper" style="display: none;">
@@ -96,14 +97,45 @@
 		<script>
 		function displayADialog() {
 			var dialog = bootbox.dialog({
-				message: "<center>Aaron's Car Comp</center><br/><img src='images/a.png' width='40' height='40'></img>",
+				message: `
+					<hr class="asep">
+					<img class="asep" src="images/a.png">
+					<center>
+						<h2>Information</h2>
+						<p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`<br>Backend Version: `+globals.runtimeInformation.backendVersion+`
+						</p>
+						<br>
+						<h4>Frontend Design and Code © Aaron Becker, 2018.</h4>
+						<h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
+
+
+					</center>
+					
+
+
+					`,
 				backdrop: false,
-				closeButton: false
+				closeButton: false,
+				onEscape: true,
+				size: "large",
+				className: "center",
+				buttons: {
+					cancel: {
+						label: "Close Window",
+						className: "btncenter",
+						callback: function() {
+							this.modal('hide');
+						}
+					}
+				}
 			})
-			setTimeout(function(){
+			/*setTimeout(function(){
 				dialog.modal('hide');
-			},1000)
+			},100000)*/
 		}
+		setTimeout(function(){
+			displayADialog()
+		},700);
 		setTimeout(function(){login.approvedLogin()},1500);
 			var socket = io();
 
@@ -128,11 +160,18 @@
 				console.log("Python script connected!");
 				login.readySteps.pythonConnected = true;
 				console.log("Authkey: "+data.authkey);
+				console.log("Runtime Info: "+JSON.stringify(data.runtimeInformation));
 				if (typeof data.authkey == "undefined" || data.authkey == "undefined") {
 					console.log("Authkey undefined, not changing");
 				} else {
 					globals.authkey = data.authkey;
 					login.readySteps.validAuthkey = true;
+				}
+				if (typeof data.runtimeInformation == "undefined" || data.runtimeInformation == "undefined") {
+					console.error("RuntimeInformation recieved from server is undefined, what happened?");
+				} else {
+					globals.runtimeInformation = data.runtimeInformation;
+					login.readySteps.runtimeInformationProvided = true;
 				}
 				ID("pygame").onkeyup = function() {
 					console.log("keyup elem");

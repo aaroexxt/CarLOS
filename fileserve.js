@@ -124,17 +124,20 @@ var sockets = [];
 var pyimgnum = 0;
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
-var approval = {faces: "", passes: "", maxVideoAttempts: "", maxPasscodeAttempts: ""};
-fs.readFile(cwd+"/pass.json", function(err,data){
+var runtimeSettings = {faces: "", passes: "", maxVideoAttempts: "", maxPasscodeAttempts: ""}; //holds settings like maximum passcode tries
+var runtimeInformation = {}; //holds information like version
+fs.readFile(cwd+"/settings.json", function(err,data){
 	if (err) {
-		console.error("[FATAL] Error reading pass file");
-		throw "[FATAL] Error reading pass file";
+		console.error("[FATAL] Error reading info/settings file");
+		throw "[FATAL] Error reading info/settings file";
 	} else {
-		approval = JSON.parse(data); //read data and set approval object
-		var keys = Object.keys(approval);
+		jsondat = JSON.parse(data);
+		runtimeSettings = jsondat.settings; //read data and set approval object
+		runtimeInformation = jsondat.information;
+		var keys = Object.keys(runtimeSettings);
 		for (var i=0; i<keys.length; i++) {
-			for (var j=0; j<approval[keys[i]].length; j++) {
-				approval[keys[i]][j] = utils.atob(approval[keys[i]][j]);
+			for (var j=0; j<runtimeSettings[keys[i]].length; j++) {
+				runtimeSettings[keys[i]][j] = utils.atob(runtimeSettings[keys[i]][j]); //undo atob encryption
 			}
 		}
 	}
@@ -339,7 +342,7 @@ io.on('connection', function (socket) { //on connection
 							console.error("keyObject videoAttemptNumber undefined, erroring");
 							socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientVideoAttemptPropertyUndefined"});
 						} else {
-							if ((validKey || securityOff) && keyObject.properties.videoAttemptNumber < approval.maxVideoAttempts) {
+							if ((validKey || securityOff) && keyObject.properties.videoAttemptNumber < runtimeSettings.maxVideoAttempts) {
 								if (keyObject.properties.allowOpenCV) {
 									console.log("recv imgdata");
 									var raw = data.raw;
@@ -406,7 +409,7 @@ io.on('connection', function (socket) { //on connection
 							var conf = dat.confidences.split(",");
 							var labels = dat.labels.split(",");
 							var rects = dat.rects.split(",[");
-							var maxVidAttempts = approval.maxVideoAttempts;
+							var maxVidAttempts = runtimeSettings.maxVideoAttempts;
 							var vidAttempt = -1;
 							var pykeyObject = userPool.findKey(pykey);
 							if (pykeyObject == null) {
@@ -436,9 +439,9 @@ io.on('connection', function (socket) { //on connection
 									if (buf) {
 										var approved = false;
 										for (var i=0; i<labels.length; i++) {
-											for (var j=0; j<approval.faces.length; j++) {
-												console.log("label "+labels[i]+", face "+approval.faces[j])
-												if (labels[i] === approval.faces[j]) {
+											for (var j=0; j<runtimeSettings.faces.length; j++) {
+												console.log("label "+labels[i]+", face "+runtimeSettings.faces[j])
+												if (labels[i] === runtimeSettings.faces[j]) {
 													approved = true;
 												}
 											}
@@ -469,8 +472,8 @@ io.on('connection', function (socket) { //on connection
 					if (validKey || securityOff) {
 						console.log("Authkey "+data.authkey+" approved");
 						var passok = false;
-						for (var i=0; i<approval.passes.length; i++) {
-							if (approval.passes[i] == data.passcode) {
+						for (var i=0; i<runtimeSettings.passes.length; i++) {
+							if (runtimeSettings.passes[i] == data.passcode) {
 								console.log("Pass "+data.passcode+" approved");
 								passok = true;
 							} else {
@@ -665,7 +668,10 @@ function initweb(data,socket,socketHandler,track) {
 		track.authkey = myauth;
 		//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
 		//console.log("emitting to id: "+socket.id)
-		socketHandler.socketEmitToID(socket.id,'webdata',{authkey: myauth.key});
+		socketHandler.socketEmitToID(socket.id,'webdata',{
+			authkey: myauth.key,
+			runtimeInformation: runtimeInformation
+		});
 	});
 }
 
