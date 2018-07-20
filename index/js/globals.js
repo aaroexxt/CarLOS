@@ -19,15 +19,27 @@ var globals = {
                         <br>Python Backend Connected: `+globals.runtimeInformation.pythonConnected+`
                         <br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
                         <br>Heartbeat Timeout (s): `+(globals.runtimeInformation.heartbeatMS/1000)+`
-                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); globals.MainPopup.menuOnScreen = false; setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
                         </p>
+                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); globals.MainPopup.menuOnScreen = false; setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
                         <br>
+                        <h3>Car Stats</h3>
+                    </center>
+                    <img src="images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
+                    <div style="float: left; margin-left: 1%;">
+                        <p style="font-size: 18px">
+                            Car Odometer:
+                            <br>
+                            Server Uptime:
+                        </p>
+                    </div>
+                    <br>
+                    <br>
+                    <br>
+                    <br>
+                    <center>
                         <h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
                         <h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
-
-
                     </center>
-                    
 
 
                     `,
@@ -78,7 +90,8 @@ var globals = {
         frontendVersion: "? (Should Not Happen)",
         backendVersion: "? (Should Not Happen)",
         nodeConnected: "? (Should Not Happen)",
-        pythonConnected: "? (Should Not Happen)"
+        pythonConnected: "? (Should Not Happen)",
+        arduinoConnected: "? (Should Not Happen)"
     },
     runtimeInfoUpdateTimeout: null,
     loginVideoSnapshot: function() {
@@ -355,6 +368,10 @@ var login = {
         ID("login").className += " fadeout";
         globals.loginVideoStream.getTracks()[0].stop();
         ID("main").className += " fadein";
+        var loaders = document.getElementsByClassName("loader");
+        for (var i=0; i<loaders.length; i++) {
+            loaders[i].style.display = "none";
+        }
         // Render KITT's interface
         SpeechKITT.render();
         setTimeout(function(){
@@ -382,6 +399,10 @@ var login = {
     pageReady: function(){
         globals.loginVideoSnapshot();
         ID("loading").style.display = "none";
+        var loaders = document.getElementsByClassName("loader");
+        for (var i=0; i<loaders.length; i++) {
+            loaders[i].style.display = "none";
+        }
         ID("login").style.display = "block";
         ID("loginvideo").style.display = "block";
     },
@@ -535,7 +556,10 @@ var login = {
         globals.initSpeedIndicator("wifispeed");
         globals.initTimeIndicator("time");
         login.initializeMap();
-        globals.updateRuntimeInformation();
+        setTimeout(function(){
+            globals.updateRuntimeInformation();
+            globals.MainPopup.displayMain();
+        },2000);
 
         /*setTimeout(function(){
             login.approvedLogin();

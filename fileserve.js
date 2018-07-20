@@ -140,6 +140,18 @@ var sockets = [];
 var pyimgnum = 0;
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
+var statusUpdateInterval = setInterval(function(){
+	var time = process.uptime();
+	var uptime = utils.formatHHMMSS(time); //rts.uptime
+	runtimeInformation.uptime = uptime;
+	runtimeInformation.users = userPool.auth_keys.length //rts.users
+	if (runtimeInformation.status.toLowerCase() != "running") {
+		console.log("Sending rti because");
+		socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+	}
+},1000);
+runtimeInformation.status = "Running";
+
 fs.readFile(cwd+"/settings.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading info/settings file");
@@ -263,11 +275,9 @@ function arduinoCommandRecognized(command) {
 	} else if (command == "CONN") {
 		console.log("Arduino is connected :)");
 	} else if (command == "INFO") {
-		var time = process.uptime();
-		var uptime = utils.formatHHMMSS(time);
-		sendArduinoCommand("uptime",uptime);
-		sendArduinoCommand("status","Running");
-		sendArduinoCommand("users",userPool.auth_keys.length);
+		sendArduinoCommand("uptime",runtimeInformation.uptime);
+		sendArduinoCommand("status",runtimeInformation.status);
+		sendArduinoCommand("users",runtimeInformation.users);
 	}
 	console.log("Complete command recognized: "+command)
 }
@@ -812,6 +822,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 		})
 	}
 	sendArduinoCommand("status","Exiting");
+	runtimeInformation.status = "Exiting";
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
@@ -821,6 +832,7 @@ if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
 		sendArduinoCommand("status","Error");
+		runtimeInformation.status = "Error";
 		for (var i=0; i<sockets.length; i++) {
 			sockets[i].socket.emit("pydata","q"); //quit python
 			sockets[i].socket.emit("disconnect","");
