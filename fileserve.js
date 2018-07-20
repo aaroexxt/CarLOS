@@ -31,6 +31,7 @@ var runtimeSettings = {
 var runtimeInformation = {
 	frontendVersion: "?",
 	backendVersion: "?",
+	heartbeatMS: "?",
 	nodeConnected: true,
 	pythonConnected: false,
 	arduinoConnected: false //set here and not in settings.json so it is not overridden
@@ -690,10 +691,12 @@ function initweb(data,socket,socketHandler,track) {
 		track.authkey = myauth;
 		//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
 		//console.log("emitting to id: "+socket.id)
-		socketHandler.socketEmitToID(socket.id,'webdata',{
+		socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
 			authkey: myauth.key,
 			runtimeInformation: runtimeInformation
 		});
+
+		runtimeInformation.pythonConnected = true;
 	});
 }
 

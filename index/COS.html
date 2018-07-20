@@ -26,7 +26,7 @@
 				<li class="menubreaker">|</li>
 				<li>App2</li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/a.png" width="40" height="40"></img></li>
+				<li><img src="images/a.png" width="40" height="40" onclick="globals.MainPopup.displayMain();"></img></li>
 				<li class="menubreaker">|</li>
 				<li>App4</li>
 				<li class="menubreaker">|</li>
@@ -98,69 +98,6 @@
 			var socketListener = new utils.socketListener(socket,"POST");
 			console.log("Sent ready socket"); //proper grammar lol
 
-			function updateRuntimeInformation() {
-				console.log("requesting runtime info")
-				socket.emit("GET", {"action": "requestRuntimeInformation"});
-				socketListener.addListener("runtimeInformation", function(data) {
-					console.log("RuntimeInfo: ",data.information);
-					var keys = Object.keys(data.information); //only override keys from jsondat
-					for (var i=0; i<keys.length; i++) {
-						globals.runtimeInformation[keys[i]] = data.information[keys[i]];
-					}
-					globals.MainPopup.modal("hide");
-					setTimeout(function(){
-						globals.MainPopup.modal("show");
-					},500);
-				})
-			}
-			function displayADialog() {
-				globals.MainPopup = bootbox.dialog({
-					message: `
-						<hr class="asep">
-						<img class="asep" src="images/a.png">
-						<center>
-							<h2>Information</h2>
-							<p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`
-							<br>Backend Version: `+globals.runtimeInformation.backendVersion+`
-							<br>Node.JS Server Connected: `+globals.runtimeInformation.nodeConnected+`
-							<br>Python Backend Connected: `+globals.runtimeInformation.pythonConnected+`
-							<br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
-							<br>
-							<button onclick="updateRuntimeInformation()">Update Information</button>
-							</p>
-							<br>
-							<h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
-							<h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
-
-
-						</center>
-						
-
-
-						`,
-					backdrop: false,
-					closeButton: false,
-					onEscape: true,
-					size: "large",
-					className: "center",
-					buttons: {
-						cancel: {
-							label: "Close Window",
-							className: "btncenter",
-							callback: function() {
-								this.modal('hide');
-							}
-						}
-					}
-				})
-			}
-			/*setTimeout(function(){
-				dialog.modal('hide');
-			},100000)*/
-		setTimeout(function(){
-			displayADialog();
-		},1500);
-
 			socket.on('connect', function (data) {
 				console.log("Connected to node.js backend");
 				if (globals.disconnected) {
@@ -190,7 +127,7 @@
 				} else {
 					var keys = Object.keys(data.runtimeInformation);
 					for (var i=0; i<keys.length; i++) {
-						console.log("glob rti",globals.runtimeInformation,"dat rti",data.runtimeInformation)
+						//console.log("glob rti",globals.runtimeInformation,"dat rti",data.runtimeInformation)
 						globals.runtimeInformation[keys[i]] = data.runtimeInformation[keys[i]];
 					}
 					login.readySteps.runtimeInformationProvided = true;

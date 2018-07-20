@@ -4,13 +4,83 @@ var globals = {
     authkey: "waiting",
     openCVQueue: [],
     loginVideo: ID("loginvideo"),
-    MainPopup: {},
+    MainPopup: {
+        dialogObject: null,
+        displayMain: function(){
+            globals.MainPopup.dialogObject = bootbox.dialog({
+                message: `
+                    <hr class="asep">
+                    <img class="asep" src="images/a.png">
+                    <center>
+                        <h2>Information</h2>
+                        <p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`
+                        <br>Backend Version: `+globals.runtimeInformation.backendVersion+`
+                        <br>Node.JS Server Connected: `+globals.runtimeInformation.nodeConnected+`
+                        <br>Python Backend Connected: `+globals.runtimeInformation.pythonConnected+`
+                        <br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
+                        <br>Heartbeat Timeout (s): `+(globals.runtimeInformation.heartbeatMS/1000)+`
+                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); globals.MainPopup.menuOnScreen = false; setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
+                        </p>
+                        <br>
+                        <h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
+                        <h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
+
+
+                    </center>
+                    
+
+
+                    `,
+                backdrop: false,
+                closeButton: false,
+                onEscape: true,
+                size: "large",
+                className: "center",
+                buttons: {
+                    cancel: {
+                        label: "Close Window",
+                        className: "btncenter",
+                        callback: function() {
+                            globals.MainPopup.dialogObject.modal('hide');
+                        }
+                    }
+                }
+            })
+        }
+    },
+    updateRuntimeInformation: function() {
+        console.log("requesting runtime info")
+        socket.emit("GET", {"action": "requestRuntimeInformation"});
+        socketListener.addListener("runtimeInformation", function(data) {
+            console.log("RuntimeInfo: ",data.information);
+            var keys = Object.keys(data.information); //only override keys from jsondat
+            for (var i=0; i<keys.length; i++) {
+                globals.runtimeInformation[keys[i]] = data.information[keys[i]];
+            }
+            
+        });
+        try {
+            clearTimeout(globals.runtimeInfoUpdateTimeout);
+        } catch(e) {
+            console.error("Error clearing global runtime info update timeout")
+        }
+        if (typeof globals.runtimeInformation.heartbeatMS == "undefined") {
+            console.warn("HeartbeatMS not defined in globals; not setting timeout");
+        } else {
+            console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
+            globals.runtimeInfoUpdateTimeout = setTimeout(function(){
+                console.log("[HB] Heartbeat request runtimeinfo");
+                globals.updateRuntimeInformation();
+            },globals.runtimeInformation.heartbeatMS);
+        }
+    },
     runtimeInformation: {
         frontendVersion: "? (Should Not Happen)",
         backendVersion: "? (Should Not Happen)",
         nodeConnected: "? (Should Not Happen)",
         pythonConnected: "? (Should Not Happen)"
     },
+    runtimeInfoUpdateTimeout: null,
     loginVideoSnapshot: function() {
         var canvas = ID("loginCanvas");
         var ctx = canvas.getContext('2d');
@@ -465,6 +535,7 @@ var login = {
         globals.initSpeedIndicator("wifispeed");
         globals.initTimeIndicator("time");
         login.initializeMap();
+        globals.updateRuntimeInformation();
 
         /*setTimeout(function(){
             login.approvedLogin();

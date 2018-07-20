@@ -3,3 +3,4 @@ todo
 M: use cubic or quintic function to describe zoom for map (linear is bad)
 M: implement smart/nonsmart command matching
 m: implement said commands so that commands aren't said twice
+M: console of active users

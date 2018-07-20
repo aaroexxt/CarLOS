@@ -1,7 +1,8 @@
 {
     "information": {
         "frontendVersion": 1,
-        "backendVersion": 1
+        "backendVersion": 1,
+        "heartbeatMS": 60000
     },
     "settings": {
         "faces": ["QWFyb24="],
