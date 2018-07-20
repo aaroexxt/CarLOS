@@ -4,9 +4,12 @@ var globals = {
     authkey: "waiting",
     openCVQueue: [],
     loginVideo: ID("loginvideo"),
+    MainPopup: {},
     runtimeInformation: {
         frontendVersion: "? (Should Not Happen)",
-        backendVersion: "? (Should Not Happen)"
+        backendVersion: "? (Should Not Happen)",
+        nodeConnected: "? (Should Not Happen)",
+        pythonConnected: "? (Should Not Happen)"
     },
     loginVideoSnapshot: function() {
         var canvas = ID("loginCanvas");

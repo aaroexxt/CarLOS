@@ -44,11 +44,6 @@
 				<li><input id="pygame"></input></li>
 			</ul>
 		</div>
-		<div class="inforight" id="inforight">
-			<pre id="connectpy">Are you connected to python backend: No</pre>
-			<pre id="connectnode">Are you connected to node backend: No</pre>
-			<pre id="info">Info: </pre>
-		</div>
 		<div id="loading">
 			<center>
 				<h1>Connected to server.</h1>
@@ -95,47 +90,6 @@
 			</center>
 		</div>
 		<script>
-		function displayADialog() {
-			var dialog = bootbox.dialog({
-				message: `
-					<hr class="asep">
-					<img class="asep" src="images/a.png">
-					<center>
-						<h2>Information</h2>
-						<p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`<br>Backend Version: `+globals.runtimeInformation.backendVersion+`
-						</p>
-						<br>
-						<h4>Frontend Design and Code © Aaron Becker, 2018.</h4>
-						<h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
-
-
-					</center>
-					
-
-
-					`,
-				backdrop: false,
-				closeButton: false,
-				onEscape: true,
-				size: "large",
-				className: "center",
-				buttons: {
-					cancel: {
-						label: "Close Window",
-						className: "btncenter",
-						callback: function() {
-							this.modal('hide');
-						}
-					}
-				}
-			})
-			/*setTimeout(function(){
-				dialog.modal('hide');
-			},100000)*/
-		}
-		setTimeout(function(){
-			displayADialog()
-		},700);
 		setTimeout(function(){login.approvedLogin()},1500);
 			var socket = io();
 
@@ -144,8 +98,70 @@
 			var socketListener = new utils.socketListener(socket,"POST");
 			console.log("Sent ready socket"); //proper grammar lol
 
+			function updateRuntimeInformation() {
+				console.log("requesting runtime info")
+				socket.emit("GET", {"action": "requestRuntimeInformation"});
+				socketListener.addListener("runtimeInformation", function(data) {
+					console.log("RuntimeInfo: ",data.information);
+					var keys = Object.keys(data.information); //only override keys from jsondat
+					for (var i=0; i<keys.length; i++) {
+						globals.runtimeInformation[keys[i]] = data.information[keys[i]];
+					}
+					globals.MainPopup.modal("hide");
+					setTimeout(function(){
+						globals.MainPopup.modal("show");
+					},500);
+				})
+			}
+			function displayADialog() {
+				globals.MainPopup = bootbox.dialog({
+					message: `
+						<hr class="asep">
+						<img class="asep" src="images/a.png">
+						<center>
+							<h2>Information</h2>
+							<p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`
+							<br>Backend Version: `+globals.runtimeInformation.backendVersion+`
+							<br>Node.JS Server Connected: `+globals.runtimeInformation.nodeConnected+`
+							<br>Python Backend Connected: `+globals.runtimeInformation.pythonConnected+`
+							<br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
+							<br>
+							<button onclick="updateRuntimeInformation()">Update Information</button>
+							</p>
+							<br>
+							<h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
+							<h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
+
+
+						</center>
+						
+
+
+						`,
+					backdrop: false,
+					closeButton: false,
+					onEscape: true,
+					size: "large",
+					className: "center",
+					buttons: {
+						cancel: {
+							label: "Close Window",
+							className: "btncenter",
+							callback: function() {
+								this.modal('hide');
+							}
+						}
+					}
+				})
+			}
+			/*setTimeout(function(){
+				dialog.modal('hide');
+			},100000)*/
+		setTimeout(function(){
+			displayADialog();
+		},1500);
+
 			socket.on('connect', function (data) {
-				ID('connectnode').innerHTML = "Are you connected to node backend: Yes";
 				console.log("Connected to node.js backend");
 				if (globals.disconnected) {
 					console.log("Reloading in 5000ms due to reconnection");
@@ -154,11 +170,13 @@
 					},5000);
 				}
 				login.readySteps.nodeConnected = true;
+				globals.runtimeInformation.nodeConnected = true;
 			});
 
 			socket.on('webdata', function (data) {
 				console.log("Python script connected!");
 				login.readySteps.pythonConnected = true;
+				globals.runtimeInformation.pythonConnected = true;
 				console.log("Authkey: "+data.authkey);
 				console.log("Runtime Info: "+JSON.stringify(data.runtimeInformation));
 				if (typeof data.authkey == "undefined" || data.authkey == "undefined") {
@@ -170,14 +188,17 @@
 				if (typeof data.runtimeInformation == "undefined" || data.runtimeInformation == "undefined") {
 					console.error("RuntimeInformation recieved from server is undefined, what happened?");
 				} else {
-					globals.runtimeInformation = data.runtimeInformation;
+					var keys = Object.keys(data.runtimeInformation);
+					for (var i=0; i<keys.length; i++) {
+						console.log("glob rti",globals.runtimeInformation,"dat rti",data.runtimeInformation)
+						globals.runtimeInformation[keys[i]] = data.runtimeInformation[keys[i]];
+					}
 					login.readySteps.runtimeInformationProvided = true;
 				}
 				ID("pygame").onkeyup = function() {
 					console.log("keyup elem");
 					socket.emit('GET', {action: "pydata", authkey: globals.authkey, data: ID("pygame").value})
 				}
-				ID('connectpy').innerHTML = "Are you connected to python backend: Yes";
 			});
 
 			socket.on('webready', function (data) {
@@ -186,16 +207,16 @@
 			});
 
 			socket.on('pydisconnect', function (data) {
-				ID('connectpy').innerHTML = "Are you connected to python backend: No";
 				console.log("Python disconnect");
 				login.readySteps.pythonConnected = false;
+				globals.runtimeInformation.pythonConnected = false;
 			});
 
 			socket.on('disconnect', function (data) {
-				ID('connectnode').innerHTML = "Are you connected to node backend: No";
 				globals.disconnected = true;
 				console.log("nodejs disconnect");
 				login.readySteps.nodeConnected = false;
+				globals.runtimeInformation.nodeConnected = false;
 			});
 
 			socketListener.addPersistentListener("login-opencvqueue", function(data) {
@@ -241,7 +262,7 @@
 
 			socketListener.addPersistentListener("processingError", function (data) {
 				console.error("Error from nodejs: '"+data.error+"'");
-				ID("info").innerHTML = "Info: Processing Error '"+data.error+"'";
+				bootbox.alert("Server Error: "+data.error);
 			});
 
 			socketListener.addPersistentListener("login-passcodeapproval", function(data) {

@@ -22,9 +22,23 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
+var runtimeSettings = {
+	faces: "",
+	passes: "",
+	maxVideoAttempts: "",
+	maxPasscodeAttempts: ""
+}; //holds settings like maximum passcode tries
+var runtimeInformation = {
+	frontendVersion: "?",
+	backendVersion: "?",
+	nodeConnected: true,
+	pythonConnected: false,
+	arduinoConnected: false //set here and not in settings.json so it is not overridden
+
+}; //holds information like version
+
 var serialDevice = "none";
 var foundJSON = false;
-var arduinoConnected = false;
 process.argv.forEach(function (val, index, array) {
 	function processDeviceJSON(raw) {
 		try {
@@ -38,7 +52,7 @@ process.argv.forEach(function (val, index, array) {
 			console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
 			if (manufacturer.indexOf("Arduino") > -1 || manufacturer.indexOf("arduino") > -1) {
 				console.log("Arduino found!");
-				arduinoConnected = true;
+				runtimeInformation.arduinoConnected = true;
 				serialDevice = device;
 			}
 		}
@@ -50,7 +64,7 @@ process.argv.forEach(function (val, index, array) {
 		if (foundJSON) {
 			processDeviceJSON(serialDevice);
 		} else {
-			arduinoConnected = true;
+			runtimeInformation.arduinoConnected = true;
 		}
 	} else if (ind2 > -1) {
 		var listType = val.split("=")[1];
@@ -66,7 +80,7 @@ process.argv.forEach(function (val, index, array) {
 });
 console.log("Serial device from start script: "+serialDevice);
 var SerialPort = require('serialport');
-if (serialDevice == "" || serialDevice == "none" || arduinoConnected == false) {
+if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
 	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
 	var arduino = { //make a fake arduino class so that server doesnt fail on write
 		write: function(t) {
@@ -81,9 +95,10 @@ if (serialDevice == "" || serialDevice == "none" || arduinoConnected == false) {
 	arduino.open(function (err) {
 		if (err) {
 			console.error("Error opening serial port to arduino at "+serialDevice+".");
-			arduinoConnected = false;
+			runtimeInformation.arduinoConnected = false;
 		} else {
-			arduinoConnected = true;
+			console.log("Arduino connected successfully")
+			runtimeInformation.arduinoConnected = true;
 			arduino.on('readable', function(data) {
 				handleArduinoData(arduino.read());
 			})
@@ -124,8 +139,6 @@ var sockets = [];
 var pyimgnum = 0;
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
-var runtimeSettings = {faces: "", passes: "", maxVideoAttempts: "", maxPasscodeAttempts: ""}; //holds settings like maximum passcode tries
-var runtimeInformation = {}; //holds information like version
 fs.readFile(cwd+"/settings.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading info/settings file");
@@ -133,12 +146,15 @@ fs.readFile(cwd+"/settings.json", function(err,data){
 	} else {
 		jsondat = JSON.parse(data);
 		runtimeSettings = jsondat.settings; //read data and set approval object
-		runtimeInformation = jsondat.information;
 		var keys = Object.keys(runtimeSettings);
 		for (var i=0; i<keys.length; i++) {
 			for (var j=0; j<runtimeSettings[keys[i]].length; j++) {
 				runtimeSettings[keys[i]][j] = utils.atob(runtimeSettings[keys[i]][j]); //undo atob encryption
 			}
+		}
+		var keys = Object.keys(jsondat.information); //only override keys from jsondat
+		for (var i=0; i<keys.length; i++) {
+			runtimeInformation[keys[i]] = jsondat.information[keys[i]];
 		}
 	}
 });
@@ -295,10 +311,12 @@ io.on('connection', function (socket) { //on connection
 		initpython(data,socket,socketHandler,track);
 		track.status = "connected";
 		track.type = "python";
+		runtimeInformation.pythonConnected = true;
 		socket.on('disconnect', function (data) { //we know that it is the python socket, setup listener to emit pydisconnect
 			console.log("PYDISCONNECT")
 			sockets[socketid].status = "disconnected";
 			allemit('pydisconnect',{});
+			runtimeInformation.pythonConnected = false;
 		})
 	});
 
@@ -331,7 +349,11 @@ io.on('connection', function (socket) { //on connection
 					}
 					break;
 				case "readback":
-					console.log("reading back data: "+JSON.stringify(data));
+					console.log("Reading back data: "+JSON.stringify(data));
+				break;
+				case "requestRuntimeInformation":
+					console.log("Runtime information requested");
+					socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
 				break;
 				/*OPENCV HANDLERS*/
 				//yes I know I can use single line comments
