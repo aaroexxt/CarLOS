@@ -27,11 +27,18 @@ var globals = {
                     <img src="images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
                     <div style="float: left; margin-left: 1%;">
                         <p style="font-size: 18px">
-                            Car Odometer:
+                            Car Odometer: `+"a"+`
                             <br>
-                            Server Uptime:
+                            Server Status: `+globals.runtimeInformation.status+`
+                            <br>
+                            Server Uptime: `+globals.runtimeInformation.uptime+`
+                            <br>
+                            Users Connected to Server: `+globals.runtimeInformation.users+`
+                            <br>
                         </p>
                     </div>
+                    <br>
+                    <br>
                     <br>
                     <br>
                     <br>

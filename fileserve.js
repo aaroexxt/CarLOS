@@ -146,7 +146,7 @@ var statusUpdateInterval = setInterval(function(){
 	runtimeInformation.uptime = uptime;
 	runtimeInformation.users = userPool.auth_keys.length //rts.users
 	if (runtimeInformation.status.toLowerCase() != "running") {
-		console.log("Sending rti because");
+		console.log("Sending runtimeinfo because of status change");
 		socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
 	}
 },1000);
