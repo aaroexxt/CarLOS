@@ -2,7 +2,10 @@
     "information": {
         "frontendVersion": 1,
         "backendVersion": 1,
-        "heartbeatMS": 60000
+        "heartbeatMS": 60000,
+        "odometer": 0,
+        "outsideTemp": "?",
+        "insideTemp": "?"
     },
     "settings": {
         "faces": ["QWFyb24="],

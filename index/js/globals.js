@@ -20,14 +20,14 @@ var globals = {
                         <br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
                         <br>Heartbeat Timeout (s): `+(globals.runtimeInformation.heartbeatMS/1000)+`
                         </p>
-                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); globals.MainPopup.menuOnScreen = false; setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
+                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
                         <br>
                         <h3>Car Stats</h3>
                     </center>
                     <img src="images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
                     <div style="float: left; margin-left: 1%;">
                         <p style="font-size: 18px">
-                            Car Odometer: `+"a"+`
+                            Car Odometer: `+globals.runtimeInformation.odometer+`mi
                             <br>
                             Server Status: `+globals.runtimeInformation.status+`
                             <br>
@@ -67,40 +67,50 @@ var globals = {
             })
         }
     },
+    menu: {
+        states: {
+            music: false,
+            browser: false,
+            stats: false,
+            map: false
+        },
+        changeState: function(newState) {
+            var keys = Object.keys(globals.menu.states);
+            if (keys.indexOf(newState) > -1) {
+                for (var i=0; i<keys.length; i++) {
+                    globals.menu.states[keys[i]] = false;
+                    var uppercaseKey = (keys[i].substring(0,1).toUpperCase()+keys[i].substring(1,keys[i].length));
+                    //console.log("resetting "+uppercaseKey+" elem and button");
+                    ID("menuButton"+uppercaseKey).className = "circle"; //reset button className
+                    ID("main"+uppercaseKey).style.display = "none"; //reset element display
+                }
+                globals.menu.states[newState] = true;
+                var uppercaseState = (newState.substring(0,1).toUpperCase()+newState.substring(1,newState.length));
+                ID("menuButton"+uppercaseState).className += " selected";
+                ID("main"+uppercaseState).style.display = "block";
+                console.log("Menu newState: '"+newState+"'");
+            } else {
+                console.error("NewState for menu switch is invalid");
+            }
+        }
+    },
     updateRuntimeInformation: function() {
         console.log("requesting runtime info")
         socket.emit("GET", {"action": "requestRuntimeInformation"});
-        socketListener.addListener("runtimeInformation", function(data) {
-            console.log("RuntimeInfo: ",data.information);
-            var keys = Object.keys(data.information); //only override keys from jsondat
-            for (var i=0; i<keys.length; i++) {
-                globals.runtimeInformation[keys[i]] = data.information[keys[i]];
-            }
-            
-        });
-        try {
-            clearTimeout(globals.runtimeInfoUpdateTimeout);
-        } catch(e) {
-            console.error("Error clearing global runtime info update timeout")
-        }
-        if (typeof globals.runtimeInformation.heartbeatMS == "undefined") {
-            console.warn("HeartbeatMS not defined in globals; not setting timeout");
-        } else {
-            console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
-            globals.runtimeInfoUpdateTimeout = setTimeout(function(){
-                console.log("[HB] Heartbeat request runtimeinfo");
-                globals.updateRuntimeInformation();
-            },globals.runtimeInformation.heartbeatMS);
-        }
     },
     runtimeInformation: {
         frontendVersion: "? (Should Not Happen)",
         backendVersion: "? (Should Not Happen)",
         nodeConnected: "? (Should Not Happen)",
         pythonConnected: "? (Should Not Happen)",
-        arduinoConnected: "? (Should Not Happen)"
+        arduinoConnected: "? (Should Not Happen)",
+        uptime: "? (Should Not Happen)",
+        status: "NotConnected",
+        users: "? (Should Not Happen)",
+        odometer: "? (Should Not Happen)"
     },
     runtimeInfoUpdateTimeout: null,
+    defaultApp: "map",
     loginVideoSnapshot: function() {
         var canvas = ID("loginCanvas");
         var ctx = canvas.getContext('2d');
@@ -373,7 +383,12 @@ var login = {
     passcodeTracker: " ",
     approvedLogin: function(){
         ID("login").className += " fadeout";
-        globals.loginVideoStream.getTracks()[0].stop();
+        ID("loading").style.display = "none";
+        try {
+            globals.loginVideoStream.getTracks()[0].stop();
+        } catch(e) {
+            console.log("Error stopping login video stream; was it started?");
+        }
         ID("main").className += " fadein";
         var loaders = document.getElementsByClassName("loader");
         for (var i=0; i<loaders.length; i++) {
@@ -454,11 +469,20 @@ var login = {
                 loadMessages.appendChild(br);
                 loadMessages.appendChild(br2);
             }
+
+            var progressBar = document.createElement("progress");
+            progressBar.setAttribute("id","loadBar");
+            progressBar.setAttribute("class","loadBar");
+            progressBar.setAttribute("value","0");
+
+            loadMessages.appendChild(progressBar);
         } else {
             var ready = true;
+            var stepsReady = keys.length;
             for (var i=0; i<keys.length; i++) {
                 if (!login.readySteps[keys[i]]) {
                     ready = false;
+                    stepsReady--;
                 }
                 if (login.previousReadySteps[keys[i]] !== login.readySteps[keys[i]]) {
                     var img = ID("loadImg"+keys[i]);
@@ -469,6 +493,7 @@ var login = {
                     }
                 }
             }
+            ID("loadBar").value = (stepsReady/keys.length);
             login.previousReadySteps = JSON.parse(JSON.stringify(login.readySteps));
             if (ready) {
                 login.pageReady();
@@ -484,7 +509,7 @@ var login = {
         ID("login-passcodeField").innerHTML = login.passcodeTracker;
     },
     initializeMap: function(){
-        login.readySteps.internetConnected = true;
+        ID("mainMap").innerHTML = "";
         globals.map.mapReference = new google.maps.Map(ID('mainMap'), { //setup map
             zoom: globals.map.defaultZoom,
             center: globals.map.locations.burlingame,
@@ -492,6 +517,7 @@ var login = {
             styles: (globals.map.grayScaleEnabled)?[{featureType:"landscape",stylers:[{saturation:-100},{lightness:65},{visibility:"on"}]},{featureType:"poi",stylers:[{saturation:-100},{lightness:51},{visibility:"simplified"}]},{featureType:"road.highway",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"road.arterial",stylers:[{saturation:-100},{lightness:30},{visibility:"on"}]},{featureType:"road.local",stylers:[{saturation:-100},{lightness:40},{visibility:"on"}]},{featureType:"transit",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"administrative.province",stylers:[{visibility:"off"}]/**/},{featureType:"administrative.locality",stylers:[{visibility:"off"}]},{featureType:"administrative.neighborhood",stylers:[{visibility:"on"}]/**/},{featureType:"water",elementType:"labels",stylers:[{visibility:"on"},{lightness:-25},{saturation:-100}]},{featureType:"water",elementType:"geometry",stylers:[{hue:"#ffff00"},{lightness:-25},{saturation:-97}]}]:[],
             mapTypeId: 'hybrid'
         });
+        login.readySteps.internetConnected = true; //if it errors it will error b4 this so that internet won't be set
 
         globals.map.createMarker({ //create burlingame marker
             position: globals.map.locations.burlingame,
@@ -539,6 +565,42 @@ var login = {
             globals.map.steeringWheelMarker.setPosition(new google.maps.LatLng(lat, lng));
             globals.map.fitMapToMarkers(globals.map.markers, globals.map.mapReference);
         });
+    }, initializeStats: function() {
+        var ctx = ID("carStats");
+        var scatterChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Average PWR',
+                        data: [
+                            {
+                                x: 0,
+                                y: 0
+                            },
+                            {
+                                x: 10,
+                                y: 10
+                            }
+                        ],
+                        backgroundColor : "rgba(0,220,0,0.22)"
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    xAxes: [{
+                        type: 'linear',
+                        position: 'bottom',
+                        labelString: 'X Axis'
+                    }],
+                    yAxes: [{
+                        type: 'linear',
+                        labelString: 'Y Axis'
+                    }]
+                }
+            }
+        });
     }, initialize: function() {
         setInterval(function(){ //validate key listener
             socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
@@ -562,11 +624,39 @@ var login = {
         }, globals.delayWifiTime);
         globals.initSpeedIndicator("wifispeed");
         globals.initTimeIndicator("time");
-        login.initializeMap();
         setTimeout(function(){
             globals.updateRuntimeInformation();
-            globals.MainPopup.displayMain();
+            //globals.MainPopup.displayMain();
+            globals.menu.changeState(globals.defaultApp);
+            login.approvedLogin();
         },2000);
+        if (typeof Speech !== "undefined") {
+            if (Speech.isSupported) {
+                var voices = Speech.listVoices();
+                if (typeof Speech.setVoice("Google UK English Male") == "undefined") {
+                    console.warn("Defaulting to first system voice.");
+                    if (typeof Speech.setVoice(voices[0].name) == "undefined") {
+                        console.warn("Failed to set speech voice, waiting for voices load...");
+                        Speech.voicesLoaded = function() {
+                            alert("Voices loaded")
+                            var voices = Speech.listVoices();
+                            if (typeof Speech.setVoice("Google UK English Male") == "undefined") {
+                                console.warn("Defaulting to first system voice.");
+                                if (typeof Speech.setVoice(voices[0].name) == "undefined") {
+                                    console.warn("Failed to set speech voice.");
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                console.error("Client is not capable of speech synthesis.")
+            }
+        } else {
+            console.error("Speech not defined; annyang is active however")
+        }
+        login.initializeStats();
+        login.initializeMap();
 
         /*setTimeout(function(){
             login.approvedLogin();

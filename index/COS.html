@@ -13,33 +13,55 @@
 		<script src="js/jquery-3.3.1.min.js"></script>
 		<script src="js/bootbox.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
+		<script src="js/Chart.js"></script>
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
 		<meta charset="UTF-8">
 	</head>
 	<body>
 		<div id="main" class="mapWrapper" style="display: none;">
-			<ul class="menutop" style="transform: translateX(-12px)">
-				<li>Welcome to CarOS</li>
+			<ul class="menutop" style="transform: translateX(-6px)">
+				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px;" id="extTemp">EXT: ?°F</li>
+				<!--<li class="menuitemnoanim"><p id="intTemp" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">INT: ?°F</p></li>-->
+				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; font-weight: 300">Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/music.png" width="35" height="35" class="circle"></img></li>
+				<li><img src="images/music.png" width="35" height="35" id="menuButtonMusic" onclick="globals.menu.changeState('music');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/browser.png" width="35" height="35" class="circle"></img></li>
+				<li><img src="images/browser.png" width="35" height="35" id="menuButtonBrowser" onclick="globals.menu.changeState('browser');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/a.png" width="40" height="40" onclick="globals.MainPopup.displayMain();"></img></li>
+				<li><img src="images/a.png" width="40" height="40" onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){setTimeout(function(){globals.MainPopup.displayMain()},50);});"></img></li>
 				<li class="menubreaker">|</li>
-				<li>App4</li>
+				<li><img src="images/stats.png" width="35" height="35" id="menuButtonStats" onclick="globals.menu.changeState('stats');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li>App5</li>
+				<li><img src="images/map.png" width="35" height="35" id="menuButtonMap" onclick="globals.menu.changeState('map');" class="circle"></img></li>
 				<li class="menubreaker">|&nbsp;&nbsp;&nbsp;</li>
 				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue';">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
-				<li class="menubreaker">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>
-				<li class="menuitemnoanim"><img src="images/wifi0.png" width="75" height="30" style="padding-top: 5px; padding-bottom: 3px;" id="wifilevel"></img></li>
-				<li class="menuitemnoanim"><p id="wifispeed" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">1 MB/S</p></li>
+				<li class="menuitemnoanim" id="wifispeed" style="font-size: 14px; transform: none !important; font-family: 'Helvetica Neue'; float: right; margin-right: 1%; margin-top: 20px;">1 MB/S</li>
+				<li class="menuitemnoanim" style="transform: none !important; font-family: 'Helvetica Neue'; float: right; margin-right: 1%; margin-top: 17px;">
+					<img src="images/wifi0.png" width="40" height="27" id="wifilevel"></img>
+				</li>
 			</ul>
-			<div id="mainMap" class="fullScreenMap"></div>
-			<div id="mainMusic" class="fullScreenMusic">
-
+			<div id="mainMap" class="fullScreenMap" style="display: none">
+				<br>
+				<br>
+				<br>
+				<h1>Loading...</h1>
+			</div>
+			<div id="mainMusic" class="fullScreen" style="display: none">
+				<center>
+					<h2 style="text-decoration: underline;">Music</h2>
+				</center>
+			</div>
+			<div id="mainBrowser" class="fullScreen" style="display: none">
+				<iframe src="https://www.google.com" width="100%" height="10%">
+					<p>This browser doesn't support IFrames. Umm... what browser are you using? I'm curious submit a comment on my website aaronbecker.tech at the bottom haha
+				</iframe>
+			</div>
+			<div id="mainStats" class="fullScreen" style="display: none">
+				<center>
+					<h2 style="text-decoration: underline;">Car Usage Statistics</h2>
+				</center>
+					<canvas id="carStats" width="100%" height="100%"></canvas>
 			</div>
 		</div>
 		<div id="loading">
@@ -88,7 +110,6 @@
 			</center>
 		</div>
 		<script>
-		setTimeout(function(){login.approvedLogin()},1500);
 			var socket = io();
 
 			//SET UP SOCKET LISTENERS
@@ -130,10 +151,6 @@
 					}
 					login.readySteps.runtimeInformationProvided = true;
 				}
-				ID("pygame").onkeyup = function() {
-					console.log("keyup elem");
-					socket.emit('GET', {action: "pydata", authkey: globals.authkey, data: ID("pygame").value})
-				}
 			});
 
 			socket.on('webready', function (data) {
@@ -152,6 +169,38 @@
 				console.log("nodejs disconnect");
 				login.readySteps.nodeConnected = false;
 				globals.runtimeInformation.nodeConnected = false;
+			});
+
+			socketListener.addPersistentListener("runtimeInformation", function(data) {
+			    console.log("RuntimeInfo: ",data.information);
+			    var keys = Object.keys(data.information); //only override keys from jsondat
+			    for (var i=0; i<keys.length; i++) {
+			        globals.runtimeInformation[keys[i]] = data.information[keys[i]];
+			    }
+			    try {
+				    clearTimeout(globals.runtimeInfoUpdateTimeout);
+				} catch(e) {
+				    console.error("Error clearing global runtime info update timeout")
+				}
+				if (typeof globals.runtimeInformation.heartbeatMS == "undefined") {
+				    console.warn("HeartbeatMS not defined in globals; not setting timeout");
+				} else {
+				    console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
+				    globals.runtimeInfoUpdateTimeout = setTimeout(function(){
+				        console.log("[HB] Heartbeat request runtimeinfo");
+				        globals.updateRuntimeInformation();
+				    },globals.runtimeInformation.heartbeatMS);
+				}
+				if (typeof globals.runtimeInformation.outsideTemp == "undefined") {
+					console.warn("OutsideTemp not defined in globals; not setting dashboard extTemp");
+				} else {
+					ID("extTemp").innerHTML = "EXT: "+globals.runtimeInformation.outsideTemp+"°F";
+				}
+				if (typeof globals.runtimeInformation.insideTemp == "undefined") {
+					console.warn("InsideTemp not defined in globals; not setting dashboard intTemp");
+				} else {
+					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
+				}
 			});
 
 			socketListener.addPersistentListener("login-opencvqueue", function(data) {
@@ -265,31 +314,6 @@
 				} else {
 					console.error("SpeechKITT not defined; annyang is active however");
 				}
-				if (typeof Speech !== "undefined") {
-					if (Speech.isSupported) {
-						var voices = Speech.listVoices();
-						if (typeof Speech.setVoice("Google UK English Male") == "undefined") {
-							console.warn("Defaulting to first system voice.");
-							if (typeof Speech.setVoice(voices[0].name) == "undefined") {
-								console.warn("Failed to set speech voice, waiting for voices load...");
-								Speech.voicesLoaded = function() {
-									alert("Voices loaded")
-									var voices = Speech.listVoices();
-									if (typeof Speech.setVoice("Google UK English Male") == "undefined") {
-										console.warn("Defaulting to first system voice.");
-										if (typeof Speech.setVoice(voices[0].name) == "undefined") {
-											console.warn("Failed to set speech voice.");
-										}
-									}
-								}
-							}
-						}
-					} else {
-						console.error("Client is not capable of speech synthesis.")
-					}
-				} else {
-					console.error("Speech not defined; annyang is active however")
-				}
 			} else {
 				console.error("Annyang is not defined; was it included in the source code?");
 			}
@@ -315,6 +339,8 @@
 					skittLT.innerHTML = data.response;
 				}
 			});
+
+			login.initialize() //init because im on a plane
 
 		</script>
 		<!--Google maps script-->

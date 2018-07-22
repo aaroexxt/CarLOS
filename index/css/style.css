@@ -271,7 +271,7 @@ div.img img {
     display: inline-block;
     font-family: 'Source Sans Pro';
     vertical-align: middle;
-    transform: scale(0.5, 1.15);
+    transform: scale(0.5, 1.15) !important;
     background: none !important;
 }
 .menubreaker {
@@ -280,6 +280,7 @@ div.img img {
     vertical-align: middle;
     line-height: normal;
     font-weight: 100;
+    transform: none !important;
     background: none !important;
     padding-left: 10px;
     padding-right: 10px;
@@ -310,7 +311,7 @@ div.img img {
     display:inline-block;
 }
 .menutop li:hover, .menubottom li:hover {
-    background: #666666;
+    transform: scale(1.1);
 }
 .menulink:hover {
     color: #cccccc;
@@ -413,9 +414,21 @@ img.asep {
   color: #666;
   text-align: center;
 }
+.circle.selected {
+    background-color: #666;
+}
 .fullScreenMap {
     min-height: 100%;
     position: inherit !important;
+}
+.fullScreen {
+    min-height: 100%;
+    min-width: 100%;
+    transform: translateY(32px)
+}
+.loadBar {
+    width: 200px;
+    height: 20px;
 }
 .mapWrapper img, .mapWrapper h1, .mapWrapper p, .mapWrapper span, {
     position: fixed;

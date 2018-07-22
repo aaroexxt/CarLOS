@@ -134,7 +134,7 @@ var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = false; //enables clean error handling. Only turn off during development
+var catchErrors = true; //enables clean error handling. Only turn off during development
 
 var sockets = [];
 var pyimgnum = 0;
@@ -147,7 +147,7 @@ var statusUpdateInterval = setInterval(function(){
 	runtimeInformation.users = userPool.auth_keys.length //rts.users
 	if (runtimeInformation.status.toLowerCase() != "running") {
 		console.log("Sending runtimeinfo because of status change");
-		socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+		allemit('POST', {"action": "runtimeInformation", "information":runtimeInformation})
 	}
 },1000);
 runtimeInformation.status = "Running";
@@ -262,24 +262,56 @@ function handleArduinoData(data) {
 	var sdata = String(data).split("");
 	for (var i=0; i<sdata.length; i++) {
 		if (sdata[i] == arduinoCommandSplitChar) {
-			arduinoCommandRecognized(arduinoCommandBuffer);
+			var split = arduinoCommandBuffer.split(arduinoCommandValueChar);
+			if (split.length == 1) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", no value in command")
+				arduinoCommandRecognized(arduinoCommandBuffer,null);
+			} else if (split.length == 2) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", single value found")
+				arduinoCommandRecognized(split[0],split[1]);
+			} else if (split.length > 2) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", multiple values found")
+				var values = [];
+				for (var i=1; i<split.length; i++) {
+					values.push(split[i]);
+				}
+				arduinoCommandRecognized(split[0],values);
+			}
 			arduinoCommandBuffer = "";
 		} else {
 			arduinoCommandBuffer+=sdata[i];
 		}
 	}
 }
-function arduinoCommandRecognized(command) {
-	if (command == "AOK") {
-		arduino.write("SOK"); //tell arduino that server is ready
-	} else if (command == "CONN") {
-		console.log("Arduino is connected :)");
-	} else if (command == "INFO") {
-		sendArduinoCommand("uptime",runtimeInformation.uptime);
-		sendArduinoCommand("status",runtimeInformation.status);
-		sendArduinoCommand("users",runtimeInformation.users);
+function arduinoCommandRecognized(command,value) {
+	switch(command) {
+		case "AOK": //arduino tells server that it is ok
+			arduino.write("SOK"); //tell arduino that server is ready
+			break;
+		case "CONN": //arduino tells server that it is connected
+			console.log("Arduino is connected :)");
+			break;
+		case "INFO": //arduino requested server information
+			console.log("Arduino has requested information, sending");
+			sendArduinoCommand("uptime",runtimeInformation.uptime);
+			sendArduinoCommand("status",runtimeInformation.status);
+			sendArduinoCommand("users",runtimeInformation.users);
+			break;
+		case "OTEMP": //arduino reports outside temperature
+			console.log("Outside arduino temp report "+value);
+			runtimeInformation.outsideTemp = Number(value);
+			break;
+		case "ITEMP": //arduino reports inside temperature
+			console.log("Inside arduino temp report "+value);
+			runtimeInformation.insideTemp = Number(value);
+			break;
+		case "CARCOMM": //yee it's a car command! work on this later ;)
+			break;
+		default:
+			console.error("Command "+command+" not recognized as valid arduino command");
+			break;
 	}
-	console.log("Complete command recognized: "+command)
+	console.log("Complete command recognized: "+command+", value(s): "+JSON.stringify(value));
 }
 function sendArduinoCommand(command,value) {
 	arduino.write(arduinoCommandSplitChar+command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
@@ -805,10 +837,14 @@ function handler(req, res) {
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
 	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
+	runtimeInformation.status = "Exiting";
+	sendArduinoCommand("status","Exiting");
 	for (var i=0; i<sockets.length; i++) {
 		sockets[i].socket.emit("pydata","q"); //quit python
+		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 		sockets[i].socket.emit("disconnect","");
 	}
+	console.log("Unlinking OpenCV image files...");
 	for (var i=pyimgnum; i>=0; i--) {
 		var path = pyimgbasepath+"in/image"+i+".png";
 		console.log("Removing image file (in): "+path);
@@ -821,8 +857,6 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 			console.log("Error removing?: "+err)
 		})
 	}
-	sendArduinoCommand("status","Exiting");
-	runtimeInformation.status = "Exiting";
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
@@ -835,8 +869,10 @@ if (catchErrors) {
 		runtimeInformation.status = "Error";
 		for (var i=0; i<sockets.length; i++) {
 			sockets[i].socket.emit("pydata","q"); //quit python
+			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 			sockets[i].socket.emit("disconnect","");
 		}
+		console.log("Unlinking OpenCV image files...");
 		for (var i=pyimgnum; i>=0; i--) {
 			var path = pyimgbasepath+"in/image"+i+".png";
 			console.log("Removing image file (in): "+path);

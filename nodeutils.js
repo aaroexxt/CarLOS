@@ -55,7 +55,7 @@ function authPool(authTimeout) { //class to represent authkeys
         for (var i=0; i<_this.auth_keys.length; i++) {
             if (_this.auth_keys[i].key == key) {
                 return _this.auth_keys[i];
-                console.log("found authkey")
+                //console.log("found authkey")
             }
         }
         return null;
@@ -151,11 +151,16 @@ var socketHandler = function(uPool,sPool){ //socket functions
                 id = sanitized[0];
                 name = sanitized[1];
                 data = sanitized[2];
+                var found = false;
                 for (var i=0; i<this.sPool.length; i++) {
                     if (this.sPool[i].id == id) {
                         this.sPool[i].socket.emit(name, data);
-                        console.log("Found SOCKETID and sending now");
+                        found = true;
+                        //console.log("Found SOCKETID and sending now");
                     }
+                }
+                if (!found) {
+                    console.error("[UTILS] SocketID "+id+" not found");
                 }
             } else {
                 console.error("[UTILS] Data passed into emitToID is invalid")

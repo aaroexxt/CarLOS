@@ -71,6 +71,14 @@ void loop() {
         lcd.clear();
         lcd.setCursor(0,0);
         lcd.print("Connected");
+        Serial.print("OTEMP"); //MAKE THIS ACTUALLY READ TEMP, outside temp
+        Serial.print(commandValueChar);
+        Serial.print("60");
+        Serial.print(commandSplitChar);
+        Serial.print("ITEMP"); //MAKE THIS ACTUALLY READ TEMP, inside temp
+        Serial.print(commandValueChar);
+        Serial.print("75");
+        Serial.print(commandSplitChar);
       }
     } else {
       char *p, *i, *command, *value;
