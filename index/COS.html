@@ -53,9 +53,15 @@
 				</center>
 			</div>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
-				<iframe src="https://www.google.com" width="100%" height="10%">
-					<p>This browser doesn't support IFrames. Umm... what browser are you using? I'm curious submit a comment on my website aaronbecker.tech at the bottom haha
-				</iframe>
+				<gcse:search class="fullScreen" id="gcses"></gcse:search>
+				<script>
+					(function() {
+					  var cx = '004200655191535526828:9bdqifawysu'; // Insert your own Custom Search engine ID here
+					  var gcse = document.createElement('script'); gcse.setAttribute("id", "gcsescpt"); gcse.type = 'text/javascript'; gcse.async = true;
+					  gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
+					  var s = document.getElementById("gcses"); s.parentNode.insertBefore(gcse, s);
+					})();
+				</script>
 			</div>
 			<div id="mainStats" class="fullScreen" style="display: none">
 				<center>
