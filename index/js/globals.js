@@ -127,67 +127,27 @@ var globals = {
         cliId: '3425f0db5f4339b4edbef6afeeb23264',
         defaultUsername: "bexterdubs", //username to take tracks from
         maxLikedTracks: 0, //user amount of liked tracks
-        maxTracksInRequest: 40,
-            var requestConstraint = 1;
-            var uid = 0;
-            var likedTracks = [];
-            var trackList = [];
-            var soundPlayer = {
+        maxTracksInRequest: 200,
+        tracksPerRequest: 200,
+        requestConstraint: 1, //max tracks in request (limits)
+        uid: 0, //user id (determined by defaultUsername)
+        likedTracks: [],
+        trackList: [],
+        soundManager: {
+            playerObject: {
                 pause: function(){}
-            };
-
-            SC.initialize({
-                client_id: cliId, //uid: 176787227 176787227
-                //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
-            });
-
-            SC.resolve("https://soundcloud.com/"+username+"/").then(function(data){ //get uid from username
-                console.log("uid"+data.id);
-                maxLikedTracks = data.public_favorites_count;
-                uid = data.id;
-                likedTracks = [];
-                trackList = [];
-                var offsettracks = 0;
-                var requiredRequestTimes = Math.ceil(maxLikedTracks/maxTracksInRequest);
-                if (requiredRequestTimes > requestConstraint) {
-                    requiredRequestTimes = requestConstraint;
-                }
-                console.log("requiredRequestTimes "+requiredRequestTimes)
-                for (var j=0; j<requiredRequestTimes; j++) {
-                    SC.get("/users/"+uid+"/favorites.json",{client_id: cliId, offset: maxTracksInRequest*j}).then(function(tracks){ //get favorite tracks
-                      for (var i=0; i<tracks.length; i++) {
-                        likedTracks.push({ //extract track info
-                            title: tracks[i].title,
-                            id: tracks[i].id,
-                            author: tracks[i].user.username,
-                            duration: tracks[i].duration,
-                            playing: false,
-                            artwork: {
-                                artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
-                                waveformUrl: tracks[i].waveform_url
-                            }
-                        });
-                        trackList.push(tracks[i].title);
-                      }
-                      updateTrackList(likedTracks);
-                    })
-                }
-            }).catch(function(e) {
-                alert(JSON.stringify(e))
-            });
-
-            function playTrack(trackId) {
+            },
+            playTrack: function(trackId) {
                 SC.stream('/tracks/' + trackId).then(function(player) {
-                    soundPlayer.pause(); //pause previous
-                    soundPlayer = player;
-                    player.play();
+                    globals.music.soundManager.playerObject.pause(); //pause previous
+                    globals.music.soundManager.playerObject = player;
+                    globals.music.soundManager.playerObject.play();
                 }).catch(function(){
-                    console.log("Error playing track with id ("+trackId+"): "+arguments);
+                    console.error("Error playing track with id ("+trackId+"): "+arguments);
                 });
-                setPlayerVolume(10);
-            }
-
-            function setPlayerVolume(vol) {
+                globals.music.soundManager.setPlayerVolume(10);
+            },
+            setPlayerVolume: function(vol) {
                 if (vol < 0) {
                     vol = 0;
                 }
@@ -199,22 +159,76 @@ var globals = {
                 } else {
                     soundPlayer.setVolume(vol); //assume it is 0-1 scale
                 }
-            }
-
-            function getPercent() {
+            },
+            getPercent: function() {
                 return Math.round((soundPlayer.currentTime()/soundPlayer.getDuration())*100);
             }
+        },
 
-            function updateTrackList(tracklist) {
+        init: function(username) { //init w/username
+            if (typeof username == "undefined") {
+                username = globals.music.defaultUsername;
+            }
+            SC.initialize({
+                client_id: globals.music.cliId, //uid: 176787227 176787227
+                //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
+            });
+
+            SC.resolve("https://soundcloud.com/"+username+"/").then(function(data){ //get uid from username
+                console.log("Initializing soundcloud with username: "+username+" which corresponds to uid: "+data.id);
+                globals.music.maxLikedTracks = data.public_favorites_count;
+                globals.music.uid = data.id;
+                globals.music.likedTracks = [];
+                globals.music.trackList = [];
+                var offsettracks = 0;
+                if (globals.music.tracksPerRequest > globals.music.maxTracksInRequest) {
+                    globals.music.tracksPerRequest = globals.music.maxTracksInRequest;
+                }
+                var requiredRequestTimes = Math.ceil(globals.music.maxLikedTracks/globals.music.tracksPerRequest);
+                if (globals.music.requiredRequestTimes > globals.music.requestConstraint) {
+                    requiredRequestTimes = globals.music.requestConstraint;
+                }
+                console.log("Making "+requiredRequestTimes+" requests for trackdata");
+                for (var j=0; j<requiredRequestTimes; j++) {
+                    SC.get("/users/"+globals.music.uid+"/favorites.json",{client_id: globals.music.cliId, offset: globals.music.tracksPerRequest*j, limit: globals.music.tracksPerRequest}).then(function(tracks){ //get favorite tracks
+                      for (var i=0; i<tracks.length; i++) {
+                        globals.music.likedTracks.push({ //extract track info
+                            title: tracks[i].title,
+                            id: tracks[i].id,
+                            author: tracks[i].user.username,
+                            duration: tracks[i].duration,
+                            playing: false,
+                            artwork: {
+                                artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
+                                waveformUrl: tracks[i].waveform_url
+                            }
+                        });
+                        globals.music.trackList.push(tracks[i].title);
+                      }
+                    })
+                }
+                console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud")
+                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
+            }).catch(function(e) {
+                console.error("error getting soundcloud tracks: "+JSON.stringify(e));
+            });
+
+        },
+
+        musicUI: {
+            updateTrackList: function(tracklist) {
                 ID("trackList").innerHTML = "";
                 for (var i=0; i<tracklist.length; i++) {
                     var p = document.createElement("p");
                     var txt = document.createTextNode(tracklist[i].title);
-                    p.setAttribute("onclick","console.log('playing id: "+tracklist[i].id+"'); playTrack("+tracklist[i].id+");")
+                    p.setAttribute("onclick","console.log('playing id: "+tracklist[i].id+"'); globals.music.soundManager.playTrack("+tracklist[i].id+");")
                     p.appendChild(txt);
                     ID("trackList").appendChild(p);
                 }
             }
+        }
+    },
+            
     loginVideoStream: undefined,
     fadeInOutDelay: 200,
     map: {
@@ -728,6 +742,7 @@ var login = {
             login.approvedLogin();
         },2000);
         setTimeout(function(){
+            globals.music.init(globals.music.defaultUsername);
             login.initializeStats();
             login.initializeMap();
         },1000);
