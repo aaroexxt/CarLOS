@@ -25,7 +25,7 @@ var utils = {
                         }
                         _this.listeners[i][1](data); //run function
                     } catch(e) {
-                        console.error("[UTILS] Error running function in listenerRecieve, e: "+e);
+                        console.error("[UTILS] Error running function in listenerRecieve, e: "+e+", listener name: '"+_this.listeners[i][0]+"'");
                     }
                 }
             }

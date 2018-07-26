@@ -314,7 +314,7 @@ function arduinoCommandRecognized(command,value) {
 	console.log("Complete command recognized: "+command+", value(s): "+JSON.stringify(value));
 }
 function sendArduinoCommand(command,value) {
-	arduino.write(arduinoCommandSplitChar+command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
+	arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
 }
 
 var stdinput = process.openStdin();
@@ -330,7 +330,7 @@ stdinputListener.addPersistentListener("*",function(d) {
 		console.log("Send arduino mode toggled");
 	} else {
 		if (sendArduinoMode) {
-			arduino.write(arduinoCommandSplitChar+uI+arduinoCommandSplitChar);
+			arduino.write(uI+arduinoCommandSplitChar);
 		} else {
 			console.log("Command not recognized")
 		}

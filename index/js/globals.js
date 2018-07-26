@@ -123,6 +123,98 @@ var globals = {
         var rawdata = raw.rawarr;*/
         socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
     },
+    music: {
+        cliId: '3425f0db5f4339b4edbef6afeeb23264',
+        defaultUsername: "bexterdubs", //username to take tracks from
+        maxLikedTracks: 0, //user amount of liked tracks
+        maxTracksInRequest: 40,
+            var requestConstraint = 1;
+            var uid = 0;
+            var likedTracks = [];
+            var trackList = [];
+            var soundPlayer = {
+                pause: function(){}
+            };
+
+            SC.initialize({
+                client_id: cliId, //uid: 176787227 176787227
+                //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
+            });
+
+            SC.resolve("https://soundcloud.com/"+username+"/").then(function(data){ //get uid from username
+                console.log("uid"+data.id);
+                maxLikedTracks = data.public_favorites_count;
+                uid = data.id;
+                likedTracks = [];
+                trackList = [];
+                var offsettracks = 0;
+                var requiredRequestTimes = Math.ceil(maxLikedTracks/maxTracksInRequest);
+                if (requiredRequestTimes > requestConstraint) {
+                    requiredRequestTimes = requestConstraint;
+                }
+                console.log("requiredRequestTimes "+requiredRequestTimes)
+                for (var j=0; j<requiredRequestTimes; j++) {
+                    SC.get("/users/"+uid+"/favorites.json",{client_id: cliId, offset: maxTracksInRequest*j}).then(function(tracks){ //get favorite tracks
+                      for (var i=0; i<tracks.length; i++) {
+                        likedTracks.push({ //extract track info
+                            title: tracks[i].title,
+                            id: tracks[i].id,
+                            author: tracks[i].user.username,
+                            duration: tracks[i].duration,
+                            playing: false,
+                            artwork: {
+                                artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
+                                waveformUrl: tracks[i].waveform_url
+                            }
+                        });
+                        trackList.push(tracks[i].title);
+                      }
+                      updateTrackList(likedTracks);
+                    })
+                }
+            }).catch(function(e) {
+                alert(JSON.stringify(e))
+            });
+
+            function playTrack(trackId) {
+                SC.stream('/tracks/' + trackId).then(function(player) {
+                    soundPlayer.pause(); //pause previous
+                    soundPlayer = player;
+                    player.play();
+                }).catch(function(){
+                    console.log("Error playing track with id ("+trackId+"): "+arguments);
+                });
+                setPlayerVolume(10);
+            }
+
+            function setPlayerVolume(vol) {
+                if (vol < 0) {
+                    vol = 0;
+                }
+                if (vol > 100) {
+                    vol = 100;
+                }
+                if (vol > 1) {
+                    soundPlayer.setVolume(vol/100); //assume it is 1-100 scale
+                } else {
+                    soundPlayer.setVolume(vol); //assume it is 0-1 scale
+                }
+            }
+
+            function getPercent() {
+                return Math.round((soundPlayer.currentTime()/soundPlayer.getDuration())*100);
+            }
+
+            function updateTrackList(tracklist) {
+                ID("trackList").innerHTML = "";
+                for (var i=0; i<tracklist.length; i++) {
+                    var p = document.createElement("p");
+                    var txt = document.createTextNode(tracklist[i].title);
+                    p.setAttribute("onclick","console.log('playing id: "+tracklist[i].id+"'); playTrack("+tracklist[i].id+");")
+                    p.appendChild(txt);
+                    ID("trackList").appendChild(p);
+                }
+            }
     loginVideoStream: undefined,
     fadeInOutDelay: 200,
     map: {
@@ -184,7 +276,7 @@ var globals = {
         setupClientWatch: function(callback) {
             if (navigator.geolocation) {
                 if (globals.map.watchID != null) {
-                    navigator.geolocation.clearWatch(watchID);
+                    navigator.geolocation.clearWatch(globals.map.watchID);
                     globals.map.watchID = null;
                 }
                 globals.map.watchID = navigator.geolocation.watchPosition(function(position) {
@@ -442,7 +534,6 @@ var login = {
         var loadMessages = ID("loadMessages");
         var keys = Object.keys(login.readySteps);
         if (login.loadedOnce == false) {
-            login.loadedOnce = true;
             login.previousReadySteps = JSON.parse(JSON.stringify(login.readySteps));
             loadMessages.innerHTML = "<h2 style='text-decoration: underline'>Loading Scripts</h2>";
             for (var i=0; i<keys.length; i++) {
@@ -476,6 +567,8 @@ var login = {
             progressBar.setAttribute("value","0");
 
             loadMessages.appendChild(progressBar);
+
+            login.loadedOnce = true; //only set if successful
         } else {
             var ready = true;
             var stepsReady = keys.length;
@@ -486,10 +579,14 @@ var login = {
                 }
                 if (login.previousReadySteps[keys[i]] !== login.readySteps[keys[i]]) {
                     var img = ID("loadImg"+keys[i]);
-                    if (login.readySteps[keys[i]]) { //dynamically add check or noncheck
-                        img.setAttribute("src",login.imageCheckPath);
-                    } else {
-                        img.setAttribute("src",login.imageNoCheckPath);
+                    try {
+                        if (login.readySteps[keys[i]]) { //dynamically add check or noncheck
+                            img.setAttribute("src",login.imageCheckPath);
+                        } else {
+                            img.setAttribute("src",login.imageNoCheckPath);
+                        }
+                    } catch(e) {
+                        console.error("Error setting attrib for key "+keys[i])
                     }
                 }
             }
@@ -630,6 +727,10 @@ var login = {
             globals.menu.changeState(globals.defaultApp);
             login.approvedLogin();
         },2000);
+        setTimeout(function(){
+            login.initializeStats();
+            login.initializeMap();
+        },1000);
         if (typeof Speech !== "undefined") {
             if (Speech.isSupported) {
                 var voices = Speech.listVoices();
@@ -655,8 +756,6 @@ var login = {
         } else {
             console.error("Speech not defined; annyang is active however")
         }
-        login.initializeStats();
-        login.initializeMap();
 
         /*setTimeout(function(){
             login.approvedLogin();

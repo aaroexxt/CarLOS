@@ -27,6 +27,10 @@ unsigned long maxTimeBeforeConnect = 300000; //max time before connect is 5 minu
 
 String serverUptime, serverStatus, serverUsers = "";
 
+String oldStatus, oldUsers, oldUptime = "";
+
+boolean firstDisp = true;
+
 unsigned long lastCommandTime = 0;
 int timeBeforeStatScreen = 10000;
 
@@ -51,6 +55,7 @@ void loop() {
     String input = Serial.readString();
     input.trim();
     if (connected == false) {
+      input.toLowerCase();
       if (millis()-lastSendTime >= sendConnectInterval) { //output every second
         Serial.print("AOK");
         Serial.print(commandSplitChar);
@@ -64,7 +69,7 @@ void loop() {
           running = false;
         }
       }
-      if (input == "SOK") {
+      if (input.indexOf("sok")>-1) {
         Serial.print("CONN");
         Serial.print(commandSplitChar);
         connected = true;
@@ -81,74 +86,92 @@ void loop() {
         Serial.print(commandSplitChar);
       }
     } else {
-      char *p, *i, *command, *value;
-      char charBuf[input.length() + 1];
-      input.toCharArray(charBuf, input.length());
-      if (charBuf[0] == ';') { //validate that it is a command
-        command = strtok_r(charBuf,commandValueChar,&i);
-        String scommand = String(command);
-        scommand = scommand.substring(1);
-        
-        //  Second strtok iteration
-        value = strtok_r(NULL,commandValueChar,&i);
-        String svalue = String(value);
+      processCommand: //setup label
+      if (input.indexOf(commandSplitChar)>-1) { //validate that it is a command
+         //int stind = input.indexOf(commandSplitChar);
+         int endind = input.indexOf(commandSplitChar);
+         int valind = input.indexOf(commandValueChar);
 
-        if (scommand == "lcd") {
+         String command = "";
+         String value = "";
+
+         if (valind == -1) {
+          command = input.substring(0,endind);
+         } else {
+          command = input.substring(0,valind);
+          value = input.substring(valind+1,endind);
+         }
+
+         command.toLowerCase(); //conv command to lowercase
+
+        //Serial.println("comm "+command+", val "+value);
+
+        if (command == "lcd") {
             lcd.clear();
             lcd.setCursor(0,0);
-            lcd.print(svalue);
-            lastCommandTime = millis(); //display for 10 seconds
-        } else if (scommand == "uptime") {
-             serverUptime = svalue;
+            lcd.print(value);
+            lastCommandTime = millis()+(timeBeforeStatScreen-3000); //display for 3 seconds
+        } else if (command == "uptime") {
+             serverUptime = value;
              //lastCommandTime = 0;
-        } else if (scommand == "status") {
-             serverStatus = svalue;
+        } else if (command == "status") {
+             serverStatus = value;
              //lastCommandTime = 0;
-        } else if (scommand == "users") {
-             serverUsers = svalue;
+        } else if (command == "users") {
+             serverUsers = value;
              //lastCommandTime = 0;
         } else {
-          Serial.print("UNC: "+scommand+";");
+          Serial.print("UNC|"+command+";");
         }
-
-        if (millis()-lastCommandTime >= timeBeforeStatScreen && millis()-lastUpdateTime >= minScreenUpdateTime) {
+        input = input.substring(endind+1);
+        //Serial.println("input cont: "+input);
+        if (input != "") { //more commands
+          goto processCommand;
+        }
+      }
+      //upd screen
+      if (millis()-lastCommandTime >= timeBeforeStatScreen && millis()-lastUpdateTime >= minScreenUpdateTime) {
           lastUpdateTime += minScreenUpdateTime;
           Serial.print("INFO"); //request new info
           Serial.print(commandSplitChar);
-          lcd.clear();
-          lcd.setCursor(0,0);
-          lcd.print("STATUS: "+serverStatus);
-          lcd.setCursor(0,1);
-          lcd.print("uT:"+serverUptime);//+" U:"+serverUsers);
+          if (oldStatus != serverStatus || oldUptime != serverUptime || firstDisp) {
+            if (firstDisp) {
+              lcd.clear();
+              firstDisp = false;
+            }
+            if (oldStatus != serverStatus || firstDisp) {
+              lcd.setCursor(0,0);
+              lcd.print("Status: "+serverStatus+"     ");
+            }
+            if (oldUptime != serverUptime || firstDisp) {
+              lcd.setCursor(0,1);
+              lcd.print("uT: "+serverUptime+"     ");//+" U:"+serverUsers);
+            }
+            oldStatus = serverStatus;
+            oldUsers = serverUsers;
+            oldUptime = serverUptime;
+          }
         }
-      }
     }
   }
 
   uint8_t buttons = lcd.readButtons();
 
   if (buttons) {
-    lcd.clear();
-    lcd.setCursor(0,0);
     if (buttons & BUTTON_UP) {
-      lcd.print("UP ");
-      lcd.setBacklight(RED);
+      Serial.print("BTN|UP;");
     }
     if (buttons & BUTTON_DOWN) {
-      lcd.print("DOWN ");
-      lcd.setBacklight(YELLOW);
+      Serial.print("BTN|DOWN;");
     }
     if (buttons & BUTTON_LEFT) {
-      lcd.print("LEFT ");
-      lcd.setBacklight(GREEN);
+      Serial.print("BTN|LEFT;");
     }
     if (buttons & BUTTON_RIGHT) {
-      lcd.print("RIGHT ");
-      lcd.setBacklight(TEAL);
+      Serial.print("BTN|RIGHT;");
     }
     if (buttons & BUTTON_SELECT) {
-      lcd.print("SELECT ");
-      lcd.setBacklight(VIOLET);
+      Serial.print("BTN|SELECT;");
     }
   }
 }

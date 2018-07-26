@@ -13,7 +13,9 @@
 		<script src="js/jquery-3.3.1.min.js"></script>
 		<script src="js/bootbox.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
-		<script src="js/Chart.js"></script>
+		<script src="js/Chart.min.js"></script>
+		<!--<script src="js/soundcloudSDK-3.3.0.js"></script>-->
+		<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
 		<meta charset="UTF-8">
@@ -22,7 +24,7 @@
 		<div id="main" class="mapWrapper" style="display: none;">
 			<ul class="menutop" style="transform: translateX(-6px)">
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px;" id="extTemp">EXT: ?°F</li>
-				<!--<li class="menuitemnoanim"><p id="intTemp" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue'; padding-left: 0px; padding-right: 0px;">INT: ?°F</p></li>-->
+				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px;" id="intTemp">INT: ?°F</li>
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; font-weight: 300">Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
 				<li><img src="images/music.png" width="35" height="35" id="menuButtonMusic" onclick="globals.menu.changeState('music');" class="circle"></img></li>
@@ -50,16 +52,21 @@
 			<div id="mainMusic" class="fullScreen" style="display: none">
 				<center>
 					<h2 style="text-decoration: underline;">Music</h2>
+					<br>
 				</center>
+				<div id="trackList" style="width: 100%; height: 200px; overflow: scroll;">
+				</div>
 			</div>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
-				<gcse:search class="fullScreen" id="gcses"></gcse:search>
+				<gcse:search class="fullScreen" id="gcsescpt"></gcse:search>
 				<script>
 					(function() {
 					  var cx = '004200655191535526828:9bdqifawysu'; // Insert your own Custom Search engine ID here
-					  var gcse = document.createElement('script'); gcse.setAttribute("id", "gcsescpt"); gcse.type = 'text/javascript'; gcse.async = true;
+					  var gcse = document.createElement('script');
+					  gcse.type = 'text/javascript';
+					  gcse.async = true;
 					  gcse.src = 'https://cse.google.com/cse.js?cx=' + cx;
-					  var s = document.getElementById("gcses"); s.parentNode.insertBefore(gcse, s);
+					  var s = document.getElementById("gcsescpt"); s.parentNode.insertBefore(gcse, s);
 					})();
 				</script>
 			</div>
