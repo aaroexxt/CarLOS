@@ -62,19 +62,20 @@
 				</div>
 				<ul class="menubottom">
 					<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="images/soundcloudAttribution.png"></img></li>
-					<li class="controlButton">Vol -</li>
+					<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.music.musicUI.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
+					<li class="controlButton" onclick="globals.music.soundManager.volDown();">Vol -</li>
 					<li class="menubreaker">|</li>
-					<li class="controlButton">◅◅◅</li>
+					<li class="controlButton" onclick="globals.music.soundManager.backTrack(1);">◅◅◅</li>
 					<li class="menubreaker">|</li>
-					<li class="controlButton playPause">▶❚❚</li><!--▷-->
+					<li class="controlButton playPause" onclick="globals.music.soundManager.playPauseTrack();">▶❚❚</li><!--▷-->
 					<li class="menubreaker">|</li>
-					<li class="controlButton">▻▻▻</li>
+					<li class="controlButton" onclick="globals.music.soundManager.forwardTrack(1);">▻▻▻</li>
 					<li class="menubreaker">|</li>
-					<li class="controlButton">Vol +</li>
+					<li class="controlButton" onclick="globals.music.soundManager.volUp();">Vol +</li>
 				</ul>
 			</div>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
-				<gcse:search class="fullScreen" id="gcsescpt"></gcse:search>
+				<gcse:search class="fullScreen" id="gcsescpt">Loading browser...</gcse:search>
 				<script>
 					(function() {
 					  var cx = '004200655191535526828:9bdqifawysu'; // Insert your own Custom Search engine ID here
@@ -142,6 +143,7 @@
 			var socket = io();
 
 			var reloadPage = false;
+			login.initialize() //init because im on a plane
 
 			//SET UP SOCKET LISTENERS
 			socket.emit('initweb', { data: 'ready' });
@@ -370,8 +372,6 @@
 					skittLT.innerHTML = data.response;
 				}
 			});
-
-			//login.initialize() //init because im on a plane
 
 		</script>
 		<!--Google maps script-->

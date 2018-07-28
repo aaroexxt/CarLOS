@@ -5,7 +5,7 @@ body {
     display: block;
     padding: 0.385em;
     font-size: 13px;
-    font-family: "SF Pro Display", "SF Pro Icons", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: "Helvetica Neue", "SF Pro Display", "SF Pro Icons", "Helvetica", "Arial", sans-serif !important;
     overflow-y: hidden;
     overflow-x: hidden;
 }
@@ -441,11 +441,13 @@ img.asep {
     background: rgba(200, 200, 200, 0.8);
     display: inline-block;
     cursor: pointer;
+    font-family: 'Helvetica Neue';
     transition: 0.1 !important;
 }
 .controlButton.playPause {
     width: 75px;
     background: rgba(150, 150, 150, 0.8);
+    font-size: 18px;
 }
 .controlButton:hover {
     background: rgba(200, 200, 200, 1);

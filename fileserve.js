@@ -43,9 +43,10 @@ var foundJSON = false;
 process.argv.forEach(function (val, index, array) {
 	function processDeviceJSON(raw) {
 		try {
-			var json = JSON.parse(raw);
+			var json = JSON.parse(raw.trim());
 		} catch(e) {
 			console.log("Error parsing JSON. E: "+e+", raw: "+raw);
+			var json = "";
 		}
 		for (var i=0; i<json.length; i++) {
 			var device = json[i].comName;
@@ -140,7 +141,7 @@ var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = true; //enables clean error handling. Only turn off during development
+var catchErrors = false; //enables clean error handling. Only turn off during development
 
 var sockets = [];
 var pyimgnum = 0;
@@ -400,9 +401,78 @@ io.on('connection', function (socket) { //on connection
 				case "readback":
 					console.log("Reading back data: "+JSON.stringify(data));
 				break;
-				case "requestRuntimeInformation":
+				case "requestRuntimeInformation": //valid key not required
 					console.log("Runtime information requested");
 					socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+				break;
+				case "retreiveSoundcloudCache": //retreive cache from client
+					if (validKey || securityOff) {
+						var cf = runtimeSettings.soundcloudCacheFile;
+						console.log("Retreiving soundcloudCache from '"+cf+"'");
+						fs.readFile(cwd+"/"+cf, function(err, data) {
+							if (err) {
+								console.warn("No soundcloud cache file found");
+								socketHandler.socketEmitToWeb('POST', {"action": "returnSoundcloudCache", hasCache: false});
+							} else {
+								try {
+									var scCache = JSON.parse(data);
+									if (scCache.expiryTime && scCache.cache) {
+										var d = new Date().getTime();
+										if (d-scCache.expiryTime < runtimeSettings.soundcloudCacheExpiryTime) { //is cache ok?
+											console.log("Valid soundcloud cache file found; sending to client");
+											socketHandler.socketEmitToWeb('POST', {"action": "returnSoundcloudCache", hasCache: true, cache: scCache, cacheLength: scCache.length});
+										} else { //aww it's expired
+											console.warn("Soundcloud cache is expired; deleting");
+											fs.unlink(cwd+"/"+cf,function(err) {
+												if (err != null) {
+													console.error("Error unlinking expired soundcloud cache");
+												}
+											});
+											socketHandler.socketEmitToWeb('POST', {"action": "returnSoundcloudCache", hasCache: false, error: "cachExpired"});
+										}
+									} else {
+										console.warn("Soundcloud track cache is invalid (missing expiryTime and cache tags)");
+										socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "errorParsingSoundCloudCache"});
+									}
+								} catch(e) {
+									console.warn("Soundcloud track cache is invalid (couldn't parse JSON)");
+									socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "errorParsingSoundCloudCache"});
+								}
+							}
+						});
+					} else {
+						socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "clientInvalidKey"});
+					}
+				break;
+				case "clientHasSoundcloudCache": //recieving sc cache from client
+					if (validKey || securityOff) {
+						if (data.cacheLength > 0) {
+							try {
+								try {
+									var scCache = JSON.parse(data.cache);
+								} catch(e) {
+									var scCache = data.cache;
+								}
+								var expiry = new Date().getTime()+runtimeSettings.soundcloudCacheExpiryTime;
+								var writeableCache = {
+									expiryTime: expiry,
+									cache: scCache
+								}
+								var toWrite = JSON.stringify(writeableCache);
+								fs.writeFile(cwd+"/"+runtimeSettings.soundcloudCacheFile, toWrite, function(err) {
+									if (err != null) {
+										console.error("Error writing SC Cache file "+err);
+									}
+								})
+							} catch(e) {
+								socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "errorParsingSoundCloudCache"});
+							}
+						} else {
+							socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "soundCloudCacheLengthInvalid"});
+						}
+					} else {
+						socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "clientInvalidKey"});
+					}
 				break;
 				/*OPENCV HANDLERS*/
 				//yes I know I can use single line comments

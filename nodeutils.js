@@ -4,7 +4,7 @@ var sanitizeData = false;
 function authPool(authTimeout) { //class to represent authkeys
     if (typeof authTimeout == "undefined") {
         console.error("[NODE_UTILS] AuthTimeout not passed into creation of authPool, defaulting");
-        authTimeout = 3600;
+        authTimeout = 3600000; //1hr?
     }
     this.auth_keys = [];
     this.authTimeout = authTimeout;
@@ -20,12 +20,13 @@ function authPool(authTimeout) { //class to represent authkeys
             this.timestamp = ts;
             this.lastaccessed = ts+1;
             if (_this.auth_keys.length > 1000) { //set hardcoded limit for authkey max to prevent DDOS attacks or other similar attacks
-                console.error("[NODE_UTILS] AuthkeyDB overflow, resetting (SHOULD NOT HAPPEN)")
+                console.error("[NODE_UTILS] AuthkeyDB overflow, resetting (SHOULD NOT HAPPEN)");
                 _this.auth_keys = [];
             }
             _this.auth_keys.push(this); //need the _this refrence because "this" changes to refrence key not authPool
         }
         this.is_valid = function(){
+            this.update(); //update
             if (this.lastaccessed-this.timestamp < _this.authTimeout) {
                 return true;
             } else {

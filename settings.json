@@ -11,6 +11,8 @@
         "faces": ["QWFyb24="],
         "passes": ["cGFzc2NvZGU=","MTIzNDU="],
         "maxVideoAttempts": 7,
-        "maxPasscodeAttempts": 10
+        "maxPasscodeAttempts": 10,
+        "soundcloudCacheFile": "soundcloudCache.json",
+        "soundcloudCacheExpiryTime": 3600000
     }
 }

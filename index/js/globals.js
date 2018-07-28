@@ -132,12 +132,21 @@ var globals = {
         noArtworkUrl: "images/noAlbumArt.png",
         delayBetweenTracklistRequests: 100,
         requestConstraint: 1, //max tracks in request (limits)
+        defaultVolume: 50,
+        trackUpdateInterval: 0, //track updater that gets percent of track
+        nextTrackShuffle: false,
+        volStep: 10, //volstep
         uid: 0, //user id (determined by defaultUsername)
         firstPlay: true,
+        tracksFromCache: false,
         likedTracks: [],
         trackList: [],
         soundManager: {
+            playingTrack: false,
+            currentVolume: null, //double ref yay
+            currentPlayingTrack: {},
             playerObject: {
+                play: function(){},
                 pause: function(){},
                 setVolume: function(){}
             },
@@ -147,15 +156,17 @@ var globals = {
                 ID("music_waveformArt").src = track.artwork.waveformUrl;
                 ID("music_trackTitle").innerHTML = track.title;
                 ID("music_trackAuthor").innerHTML = "By: "+track.author;
+                globals.music.soundManager.currentPlayingTrack = track;
                 return;
                 SC.stream('/tracks/' + track.id).then(function(player) {
                     globals.music.soundManager.playerObject.pause(); //pause previous
                     globals.music.soundManager.playerObject = player;
                     globals.music.soundManager.playerObject.play();
+                    globals.music.soundManager.playingTrack = true;
                     ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
                     ID("music_waveformArt").src = track.artwork.waveformUrl;
                     if (globals.music.firstPlay) {
-                        globals.music.soundManager.setPlayerVolume(10);
+                        globals.music.soundManager.setPlayerVolume(globals.music.soundmanager.currentVolume);
                         globals.music.firstPlay = false;
                     }
                 }).catch(function(){
@@ -163,6 +174,9 @@ var globals = {
                 });
             },
             setPlayerVolume: function(vol) {
+                if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
+                    globals.music.soundManager.currentVolume = globals.music.defaultVolume;
+                }
                 if (vol < 0) {
                     vol = 0;
                 }
@@ -177,6 +191,55 @@ var globals = {
             },
             getPercent: function() {
                 return Math.round((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration())*100);
+            },
+            trackManager: function() {
+                clearInterval(globals.music.trackUpdateInterval);
+                globals.music.trackUpdateInterval = setInterval(function() {
+                    var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 99.9);
+                    if (isDone) {
+                        globals.music.soundManager.forwardTrack;
+                    }
+                },200)
+            },
+            playPauseTrack: function() {
+                if (globals.music.soundManager.playingTrack) {
+                    globals.music.soundManager.playerObject.pause();
+                } else {
+                    globals.music.soundManager.playerObject.play();
+                }
+            },
+            volUp: function() {
+                globals.music.soundManager.currentVolume+=globals.music.volStep;
+                globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+            },
+            volDown: function() {
+                globals.music.soundManager.currentVolume-=globals.music.volStep;
+                globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+            },
+            backTrack: function() { //always goes back 1
+                var ind = globals.music.soundManager.currentPlayingTrack.index-1;
+                if (ind < 0) {
+                    ind = globals.music.likedTracks.length-1; //go to last track
+                }
+                globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
+            },
+            forwardTrack: function() { //can go forward one or shuffle to get to next track
+                if (globals.music.nextTrackShuffle) {
+                    var ind = Math.round(Math.random()*globals.music.likedTracks.length);
+                    if (ind == globals.music.soundManager.currentPlayingTrack.index) { //is track so add one
+                        ind++;
+                        if (ind > globals.music.likedTracks.length) { //lol very random chance that it wrapped over
+                            ind = 0;
+                        }
+                    }
+                    globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
+                } else {
+                    var ind = globals.music.soundManager.currentPlayingTrack.index+1;
+                    if (ind > globals.music.likedTracks.length) {
+                        ind = 0; //go to first track
+                    }
+                    globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
+                }
             }
         },
 
@@ -218,6 +281,7 @@ var globals = {
                             for (var i=0; i<tracks.length; i++) {
                                 globals.music.likedTracks.push({ //extract track info
                                     title: tracks[i].title,
+                                    index: i,
                                     id: tracks[i].id,
                                     author: tracks[i].user.username,
                                     duration: tracks[i].duration,
@@ -232,7 +296,9 @@ var globals = {
                             
                             if (globals.music.trackList.length == tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
                                 console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud");
-                                ID("music_trackTitle").innerHTML = "Select a track"
+                                ID("music_trackTitle").innerHTML = "Select a track";
+                                globals.music.tracksFromCache = false;
+                                socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
                                 globals.music.musicUI.updateTrackList(globals.music.likedTracks);
                             }
                         });
@@ -240,6 +306,40 @@ var globals = {
                 }
             }).catch(function(e) {
                 console.error("error getting soundcloud tracks: "+JSON.stringify(e));
+                if (e.status == 0 || e.message.indexOf("HTTP Error: 0") > -1) {
+                    console.log("Getting tracks from cache")
+                    socket.emit("GET",{action: "retreiveSoundcloudCache", authkey: globals.authkey});
+                    ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
+                    socketListener.addListener("returnSoundcloudCache", function(data) {
+                        if (data.hasCache) {
+                            var cachelen = data.cacheLength;
+                            var cache = data.cache.cache;
+                            var cacheExpiry = data.cache.expiryTime;
+                            console.log("Cache expires at dT: "+cacheExpiry);
+
+                            if (typeof cache == "undefined" || cachelen == 0) {
+                                console.error("TrackCache is undefined or has no tracks");
+                                ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
+                            } else {
+                                globals.music.tracksFromCache = true;
+                                ID("music_trackTitle").innerHTML = "Loaded tracks from cache. Select a track.";
+                                globals.music.likedTracks = [];
+                                globals.music.trackList = [];
+                                for (var i=0; i<cache.length; i++) {
+                                    globals.music.likedTracks.push(cache[i]);
+                                    globals.music.trackList.push(cache[i].title);
+                                }
+                                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
+                            }
+                        } else {
+                            console.warn("TrackCache has no tracks; no music playing possible");
+                            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
+                        }
+                    });
+                } else {
+                    console.log("Error is potential username invalidity, log for user");
+                    ID("music_trackTitle").innerHTML = "An error other than an internet disconnected error occurred (code "+e.status+") occurred. Message: "+e.message;
+                }
             });
 
         },
@@ -256,12 +356,20 @@ var globals = {
                     p.appendChild(txt);
                     tklElem.appendChild(p);
                 }
+            },
+            changeSoundcloudUser: function() {
+                bootbox.prompt("New soundcloud user? (Enter nothing if you don't want to change users)",function(user) {
+                    if (user != "" && typeof user != "undefined" && user != null) {
+                        console.log("Changing soundcloud user to: "+user);
+                        globals.music.init(user); //reinit
+                    }
+                });
             }
         }
     },
             
     loginVideoStream: undefined,
-    fadeInOutDelay: 350,
+    fadeInOutDelay: 500,
     map: {
         mapReference: "uninit",
         defaultZoom: 15,

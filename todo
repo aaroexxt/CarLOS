@@ -10,7 +10,10 @@ odometer
 music waveform dynamic movement when music plays
 caching of soundcloud pages for low internet access
 config nodemon to not restart when i modify globals.js
-also ability to switch soundcloud users
+geographic tracking
+advanced panel of "A" menu which allows you to refresh soundcloud cache
+shuffle/notshuffle button
+
 
 and ofc...
 a actual routing/geofinder algorithm
@@ -18,3 +21,12 @@ someday lol
 
 and also ofc...
 macchina code (when it arrives it is still "processing" as of 7/27/2018)
+
+also dynamic hiding/showing of music menu
+
+
+
+
+DONE stuff:
+
+also ability to switch soundcloud users DONE
