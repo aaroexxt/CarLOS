@@ -7,3 +7,13 @@ M: console of active users
 
 CHARTJS STATS PAGE LIKE IN TESLA
 odometer
+music waveform dynamic movement when music plays
+caching of soundcloud pages for low internet access
+config nodemon to not restart when i modify globals.js
+
+and ofc...
+a actual routing/geofinder algorithm
+someday lol
+
+and also ofc...
+macchina code (when it arrives it is still "processing" as of 7/27/2018)

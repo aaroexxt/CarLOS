@@ -14,8 +14,8 @@
 		<script src="js/bootbox.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
 		<script src="js/Chart.min.js"></script>
-		<!--<script src="js/soundcloudSDK-3.3.0.js"></script>-->
-		<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>
+		<script src="js/soundcloudSDK-3.3.0.js"></script>
+		<!--<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>-->
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
 		<meta charset="UTF-8">
@@ -24,7 +24,7 @@
 		<div id="main" class="mapWrapper" style="display: none;">
 			<ul class="menutop" style="transform: translateX(-6px)">
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px;" id="extTemp">EXT: ?°F</li>
-				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px;" id="intTemp">INT: ?°F</li>
+				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px; display: none;" id="intTemp">INT: ?°F</li>
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; font-weight: 300">Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
 				<li><img src="images/music.png" width="35" height="35" id="menuButtonMusic" onclick="globals.menu.changeState('music');" class="circle"></img></li>
@@ -50,12 +50,28 @@
 				<h1>Loading...</h1>
 			</div>
 			<div id="mainMusic" class="fullScreen" style="display: none">
-				<center>
-					<h2 style="text-decoration: underline;">Music</h2>
-					<br>
-				</center>
-				<div id="trackList" style="width: 100%; height: 200px; overflow: scroll;">
+				<img width="300px" height="300px" style="float: left; margin-left: 1%; margin-top: 1%; border: 2px groove grey;" id="music_trackArt"></img> <!--always 500px by 500px-->
+				<div style="float: left; margin-left: 1%; margin-top: 1%; width: 74%; font-family: 'Helvetica Neue';">
+					<center>
+						<h1 id="music_trackTitle" class="shadow">Tracks loading...</h1>
+						<h3 id="music_trackAuthor" style="margin-left: 10%;"></h3>
+					</center>
 				</div>
+				<img width="74%" height="10%" style="float: left; position: absolute; margin-left: 1%" id="music_waveformArt"></img> <!--always 1800px by 280px-->
+				<div id="music_trackList" style="width: 99%; margin-left: 1%; height: 30%; overflow: scroll; overflow-x: hidden;">
+				</div>
+				<ul class="menubottom">
+					<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="images/soundcloudAttribution.png"></img></li>
+					<li class="controlButton">Vol -</li>
+					<li class="menubreaker">|</li>
+					<li class="controlButton">◅◅◅</li>
+					<li class="menubreaker">|</li>
+					<li class="controlButton playPause">▶❚❚</li><!--▷-->
+					<li class="menubreaker">|</li>
+					<li class="controlButton">▻▻▻</li>
+					<li class="menubreaker">|</li>
+					<li class="controlButton">Vol +</li>
+				</ul>
 			</div>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
 				<gcse:search class="fullScreen" id="gcsescpt"></gcse:search>
@@ -125,6 +141,8 @@
 		<script>
 			var socket = io();
 
+			var reloadPage = false;
+
 			//SET UP SOCKET LISTENERS
 			socket.emit('initweb', { data: 'ready' });
 			var socketListener = new utils.socketListener(socket,"POST");
@@ -132,7 +150,7 @@
 
 			socket.on('connect', function (data) {
 				console.log("Connected to node.js backend");
-				if (globals.disconnected) {
+				if (globals.disconnected && reloadPage) {
 					console.log("Reloading in 5000ms due to reconnection");
 					setTimeout(function(){
 						window.location.reload();

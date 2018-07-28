@@ -110,7 +110,7 @@ var globals = {
         odometer: "? (Should Not Happen)"
     },
     runtimeInfoUpdateTimeout: null,
-    defaultApp: "map",
+    defaultApp: "music",
     loginVideoSnapshot: function() {
         var canvas = ID("loginCanvas");
         var ctx = canvas.getContext('2d');
@@ -128,24 +128,39 @@ var globals = {
         defaultUsername: "bexterdubs", //username to take tracks from
         maxLikedTracks: 0, //user amount of liked tracks
         maxTracksInRequest: 200,
-        tracksPerRequest: 200,
+        tracksPerRequest: 40,
+        noArtworkUrl: "images/noAlbumArt.png",
+        delayBetweenTracklistRequests: 100,
         requestConstraint: 1, //max tracks in request (limits)
         uid: 0, //user id (determined by defaultUsername)
+        firstPlay: true,
         likedTracks: [],
         trackList: [],
         soundManager: {
             playerObject: {
-                pause: function(){}
+                pause: function(){},
+                setVolume: function(){}
             },
-            playTrack: function(trackId) {
-                SC.stream('/tracks/' + trackId).then(function(player) {
+            playTrack: function(track) {
+                console.log("playing id: "+track.id); 
+                ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
+                ID("music_waveformArt").src = track.artwork.waveformUrl;
+                ID("music_trackTitle").innerHTML = track.title;
+                ID("music_trackAuthor").innerHTML = "By: "+track.author;
+                return;
+                SC.stream('/tracks/' + track.id).then(function(player) {
                     globals.music.soundManager.playerObject.pause(); //pause previous
                     globals.music.soundManager.playerObject = player;
                     globals.music.soundManager.playerObject.play();
+                    ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
+                    ID("music_waveformArt").src = track.artwork.waveformUrl;
+                    if (globals.music.firstPlay) {
+                        globals.music.soundManager.setPlayerVolume(10);
+                        globals.music.firstPlay = false;
+                    }
                 }).catch(function(){
                     console.error("Error playing track with id ("+trackId+"): "+arguments);
                 });
-                globals.music.soundManager.setPlayerVolume(10);
             },
             setPlayerVolume: function(vol) {
                 if (vol < 0) {
@@ -155,13 +170,13 @@ var globals = {
                     vol = 100;
                 }
                 if (vol > 1) {
-                    soundPlayer.setVolume(vol/100); //assume it is 1-100 scale
+                    globals.music.soundManager.playerObject.setVolume(vol/100); //assume it is 1-100 scale
                 } else {
-                    soundPlayer.setVolume(vol); //assume it is 0-1 scale
+                    globals.music.soundManager.playerObject.setVolume.setVolume(vol); //assume it is 0-1 scale
                 }
             },
             getPercent: function() {
-                return Math.round((soundPlayer.currentTime()/soundPlayer.getDuration())*100);
+                return Math.round((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration())*100);
             }
         },
 
@@ -185,30 +200,44 @@ var globals = {
                     globals.music.tracksPerRequest = globals.music.maxTracksInRequest;
                 }
                 var requiredRequestTimes = Math.ceil(globals.music.maxLikedTracks/globals.music.tracksPerRequest);
-                if (globals.music.requiredRequestTimes > globals.music.requestConstraint) {
+                if (requiredRequestTimes > globals.music.requestConstraint) {
                     requiredRequestTimes = globals.music.requestConstraint;
                 }
-                console.log("Making "+requiredRequestTimes+" requests for trackdata");
+                var tracksToLoad = (globals.music.maxLikedTracks/globals.music.tracksPerRequest); //evaluate
+                if (tracksToLoad > globals.music.requestConstraint) {
+                    while (tracksToLoad>globals.music.requestConstraint) {
+                        tracksToLoad-=1;
+                    }
+                }
+                tracksToLoad*=globals.music.tracksPerRequest;
+                tracksToLoad = Math.round(tracksToLoad);
+                console.log("Making "+requiredRequestTimes+" requests for trackdata; results in "+tracksToLoad+"tracks being loaded");
                 for (var j=0; j<requiredRequestTimes; j++) {
-                    SC.get("/users/"+globals.music.uid+"/favorites.json",{client_id: globals.music.cliId, offset: globals.music.tracksPerRequest*j, limit: globals.music.tracksPerRequest}).then(function(tracks){ //get favorite tracks
-                      for (var i=0; i<tracks.length; i++) {
-                        globals.music.likedTracks.push({ //extract track info
-                            title: tracks[i].title,
-                            id: tracks[i].id,
-                            author: tracks[i].user.username,
-                            duration: tracks[i].duration,
-                            playing: false,
-                            artwork: {
-                                artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
-                                waveformUrl: tracks[i].waveform_url
+                    setTimeout(function(){
+                        SC.get("/users/"+globals.music.uid+"/favorites.json",{client_id: globals.music.cliId, offset: globals.music.tracksPerRequest*j, limit: globals.music.tracksPerRequest}).then(function(tracks){ //get favorite tracks
+                            for (var i=0; i<tracks.length; i++) {
+                                globals.music.likedTracks.push({ //extract track info
+                                    title: tracks[i].title,
+                                    id: tracks[i].id,
+                                    author: tracks[i].user.username,
+                                    duration: tracks[i].duration,
+                                    playing: false,
+                                    artwork: {
+                                        artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
+                                        waveformUrl: tracks[i].waveform_url
+                                    }
+                                });
+                                globals.music.trackList.push(tracks[i].title);
+                            }
+                            
+                            if (globals.music.trackList.length == tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
+                                console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud");
+                                ID("music_trackTitle").innerHTML = "Select a track"
+                                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
                             }
                         });
-                        globals.music.trackList.push(tracks[i].title);
-                      }
-                    })
+                    },globals.music.delayBetweenTracklistRequests*j);
                 }
-                console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud")
-                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
             }).catch(function(e) {
                 console.error("error getting soundcloud tracks: "+JSON.stringify(e));
             });
@@ -217,20 +246,22 @@ var globals = {
 
         musicUI: {
             updateTrackList: function(tracklist) {
-                ID("trackList").innerHTML = "";
+                var tklElem = ID("music_trackList");
+                tklElem.innerHTML = "";
                 for (var i=0; i<tracklist.length; i++) {
                     var p = document.createElement("p");
                     var txt = document.createTextNode(tracklist[i].title);
-                    p.setAttribute("onclick","console.log('playing id: "+tracklist[i].id+"'); globals.music.soundManager.playTrack("+tracklist[i].id+");")
+                    p.setAttribute("onclick","globals.music.soundManager.playTrack("+JSON.stringify(tracklist[i])+");");
+                    p.setAttribute("tabindex","0");
                     p.appendChild(txt);
-                    ID("trackList").appendChild(p);
+                    tklElem.appendChild(p);
                 }
             }
         }
     },
             
     loginVideoStream: undefined,
-    fadeInOutDelay: 200,
+    fadeInOutDelay: 350,
     map: {
         mapReference: "uninit",
         defaultZoom: 15,
@@ -504,6 +535,7 @@ var login = {
         SpeechKITT.render();
         setTimeout(function(){
             ID("login").style.display = "none";
+            ID("login-video").style.display = "none";
         },globals.fadeInOutDelay);
     },
     transitionPasscode: function(){
@@ -722,7 +754,9 @@ var login = {
                     /*if (confirm("Authkey has expired. Reload page?")) {
                         window.location.reload();
                     }*/
-                    window.location.reload();
+                    if (reloadPage) {
+                        window.location.reload();
+                    }
                 } else if (data.valid == "false") {
                     console.log("Still waiting on python for valid authkey, not prompting user");
                     //alert("Python is not initialized, waiting for authkey from server...")

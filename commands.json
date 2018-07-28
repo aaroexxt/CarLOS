@@ -101,10 +101,12 @@
     {"class":"tempUp", "sentence":"Turn the temperature up"},
     {"class":"tempUp", "sentence":"It's cold in here"},
     {"class":"tempUp", "sentence":"Make it hotter"},
+    {"class":"tempUp", "sentence":"Turn the inside temperature up"},
 
     {"class":"tempDown", "sentence":"Turn the temperature down"},
     {"class":"tempDown", "sentence":"It's hot in here"},
     {"class":"tempDown", "sentence":"Make it colder"},
+    {"class":"tempDown", "sentence":"Turn the inside temperature down"},
 
     {"class":"temp", "sentence":"Set the temperature to x"},
 

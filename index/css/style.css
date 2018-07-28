@@ -255,7 +255,7 @@ div.img img {
     font-family: 'Source Sans Pro';
 
     /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
-    background: #232121; /* Old browsers */
+    background: rgb(200, 200, 200, 0.2); /* Old browsers */
 }
 @media screen and (max-width: 500px) {
 /* applies only if the screen is narrower than 500px */
@@ -288,7 +288,7 @@ div.img img {
 .menubreaker.menubottom {
     font-size: 32px;
     transform: scale(0.5, 1.15);
-    margin-bottom: 15px;
+    margin-bottom: 30px;
 }
 .menubreaker.menutop {
     font-size: 10px;
@@ -427,6 +427,37 @@ img.asep {
     height: 100%;
     left: 0;
     top: 55px;
+}
+.controlButton {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    padding-left: 5px;
+    padding-right: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    width: 50px;
+    font-size: 15px;
+    text-align: center;
+    background: rgba(200, 200, 200, 0.8);
+    display: inline-block;
+    cursor: pointer;
+    transition: 0.1 !important;
+}
+.controlButton.playPause {
+    width: 75px;
+    background: rgba(150, 150, 150, 0.8);
+}
+.controlButton:hover {
+    background: rgba(200, 200, 200, 1);
+    transform: scale(1.02) !important;
+}
+.controlButton.playPause:hover {
+    background: rgba(100, 100, 100, 1);
+    transform: scale(1.02) !important;
+}
+.shadow {
+  color: #131313;
+  text-shadow: -2px 5px 20px #bebebe;
 }
 .loadBar {
     width: 200px;

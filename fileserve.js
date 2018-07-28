@@ -94,9 +94,15 @@ if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoCo
 		autoOpen: false
 	});
 	arduino.open(function (err) {
-		if (err) {
+		if (err) { //arduino was connected in previous server iteration and was disconnected?
 			console.error("Error opening serial port to arduino at "+serialDevice+".");
 			runtimeInformation.arduinoConnected = false;
+			console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
+			var arduino = { //make a fake arduino class so that server doesnt fail on write
+				write: function(t) {
+					console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
+				}
+			}
 		} else {
 			console.log("Arduino connected successfully")
 			runtimeInformation.arduinoConnected = true;
