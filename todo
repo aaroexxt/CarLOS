@@ -10,6 +10,7 @@ odometer
 music waveform dynamic movement when music plays
 caching of soundcloud pages for low internet access
 config nodemon to not restart when i modify globals.js
+also ability to switch soundcloud users
 
 and ofc...
 a actual routing/geofinder algorithm
