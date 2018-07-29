@@ -8,12 +8,11 @@ M: console of active users
 CHARTJS STATS PAGE LIKE IN TESLA
 odometer
 music waveform dynamic movement when music plays
-caching of soundcloud pages for low internet access
-config nodemon to not restart when i modify globals.js
-geographic tracking
-advanced panel of "A" menu which allows you to refresh soundcloud cache
-shuffle/notshuffle button
 
+config nodemon to not restart when i modify globals.js
+geographic tracking w/upload to ext domain
+advanced panel of "A" menu which allows you to refresh soundcloud cache
+sync settings with settings from "A" menu, use switchery.js for settings
 
 and ofc...
 a actual routing/geofinder algorithm
@@ -22,7 +21,7 @@ someday lol
 and also ofc...
 macchina code (when it arrives it is still "processing" as of 7/27/2018)
 
-also dynamic hiding/showing of music menu
+
 
 
 
@@ -30,3 +29,7 @@ also dynamic hiding/showing of music menu
 DONE stuff:
 
 also ability to switch soundcloud users DONE
+shuffle/notshuffle button DONE
+caching of soundcloud pages for low internet access DONE
+err loading track display DONE
+also dynamic hiding/showing of music menu DONE

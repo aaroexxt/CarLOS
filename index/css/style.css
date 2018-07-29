@@ -457,6 +457,18 @@ img.asep {
     background: rgba(100, 100, 100, 1);
     transform: scale(1.02) !important;
 }
+.controlButton.activeLoopShuffle {
+    background: rgba(255,200,0, 0.8);
+    transform: scale(1.1) !important;
+}
+#skitt-ui {
+    position: fixed !important;
+    top: 0.7% !important;
+    left: 6% !important;
+}
+.songTitle {
+    font-size: 18px;
+}
 .shadow {
   color: #131313;
   text-shadow: -2px 5px 20px #bebebe;

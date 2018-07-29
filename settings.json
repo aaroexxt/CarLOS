@@ -5,7 +5,8 @@
         "heartbeatMS": 60000,
         "odometer": 0,
         "outsideTemp": "?",
-        "insideTemp": "?"
+        "insideTemp": "?",
+        "dynamicMusicMenu": true
     },
     "settings": {
         "faces": ["QWFyb24="],

@@ -50,30 +50,36 @@
 				<h1>Loading...</h1>
 			</div>
 			<div id="mainMusic" class="fullScreen" style="display: none">
-				<img width="300px" height="300px" style="float: left; margin-left: 1%; margin-top: 1%; border: 2px groove grey;" id="music_trackArt"></img> <!--always 500px by 500px-->
+				<img width="23.5%" height="45%px" style="float: left; margin-left: 1%; margin-top: 1%; border: 2px groove grey;" id="music_trackArt"></img> <!--always 500px by 500px-->
 				<div style="float: left; margin-left: 1%; margin-top: 1%; width: 74%; font-family: 'Helvetica Neue';">
 					<center>
 						<h1 id="music_trackTitle" class="shadow">Tracks loading...</h1>
 						<h3 id="music_trackAuthor" style="margin-left: 10%;"></h3>
 					</center>
 				</div>
-				<img width="74%" height="10%" style="float: left; position: absolute; margin-left: 1%" id="music_waveformArt"></img> <!--always 1800px by 280px-->
+				<img width="74%" height="10%" style="float: left; margin-left: 1%" id="music_waveformArt"></img> <!--always 1800px by 280px-->
+				<img width="74%" height="10%" style="float: left; margin-left: 1%" id="music_waveformArtBufferCanvas"></img>
+				<img width="74%" height="10%" style="float: left; margin-left: 1%" id="music_waveformArtCanvas"></img>
 				<div id="music_trackList" style="width: 99%; margin-left: 1%; height: 30%; overflow: scroll; overflow-x: hidden;">
 				</div>
-				<ul class="menubottom">
-					<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="images/soundcloudAttribution.png"></img></li>
-					<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.music.musicUI.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
-					<li class="controlButton" onclick="globals.music.soundManager.volDown();">Vol -</li>
-					<li class="menubreaker">|</li>
-					<li class="controlButton" onclick="globals.music.soundManager.backTrack(1);">◅◅◅</li>
-					<li class="menubreaker">|</li>
-					<li class="controlButton playPause" onclick="globals.music.soundManager.playPauseTrack();">▶❚❚</li><!--▷-->
-					<li class="menubreaker">|</li>
-					<li class="controlButton" onclick="globals.music.soundManager.forwardTrack(1);">▻▻▻</li>
-					<li class="menubreaker">|</li>
-					<li class="controlButton" onclick="globals.music.soundManager.volUp();">Vol +</li>
-				</ul>
 			</div>
+			<ul class="menubottom" id="music_bottomMenu" style="display: none;">
+				<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="images/soundcloudAttribution.png"></img></li>
+				<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.music.musicUI.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
+				<li class="controlButton" onclick="globals.music.nextTrackShuffle = !globals.music.nextTrackShuffle; if (globals.music.nextTrackShuffle) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}"><img src="images/shuffle.png" width="20px" height="20px"></img></li>
+				<li class="menubreaker">|</li>
+				<li class="controlButton" onclick="globals.music.soundManager.volDown();">Vol -</li>
+				<li class="menubreaker">|</li>
+				<li class="controlButton" onclick="globals.music.soundManager.backTrack(1);">◅◅◅</li>
+				<li class="menubreaker">|</li>
+				<li class="controlButton playPause" onclick="globals.music.soundManager.playPauseTrack();">▶❚❚</li><!--▷-->
+				<li class="menubreaker">|</li>
+				<li class="controlButton" onclick="globals.music.soundManager.forwardTrack(1);">▻▻▻</li>
+				<li class="menubreaker">|</li>
+				<li class="controlButton" onclick="globals.music.soundManager.volUp();">Vol +</li>
+				<li class="menubreaker">|</li>
+				<li class="controlButton" onclick="globals.music.nextTrackLoop = !globals.music.nextTrackLoop; if (globals.music.nextTrackLoop) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}"><img src="images/repeat.png" width="20px" height="20x"></img></li>
+			</ul>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
 				<gcse:search class="fullScreen" id="gcsescpt">Loading browser...</gcse:search>
 				<script>

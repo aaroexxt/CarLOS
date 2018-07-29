@@ -403,7 +403,7 @@ io.on('connection', function (socket) { //on connection
 				break;
 				case "requestRuntimeInformation": //valid key not required
 					console.log("Runtime information requested");
-					socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+					socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information": runtimeInformation});
 				break;
 				case "retreiveSoundcloudCache": //retreive cache from client
 					if (validKey || securityOff) {

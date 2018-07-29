@@ -88,6 +88,15 @@ var globals = {
                 var uppercaseState = (newState.substring(0,1).toUpperCase()+newState.substring(1,newState.length));
                 ID("menuButton"+uppercaseState).className += " selected";
                 ID("main"+uppercaseState).style.display = "block";
+                if (globals.menu.states.music) {
+                    ID("music_bottomMenu").style.display = "block";
+                } else if (!globals.runtimeInformation.dynamicMusicMenu) { //no dynamic music menu so hide it
+                    ID("music_bottomMenu").style.display = "none";
+                } else {
+                    if (!globals.music.soundManager.playingTrack) {
+                        ID("music_bottomMenu").style.display = "none";
+                    }
+                }
                 console.log("Menu newState: '"+newState+"'");
             } else {
                 console.error("NewState for menu switch is invalid");
@@ -107,7 +116,8 @@ var globals = {
         uptime: "? (Should Not Happen)",
         status: "NotConnected",
         users: "? (Should Not Happen)",
-        odometer: "? (Should Not Happen)"
+        odometer: "? (Should Not Happen)",
+        dynamicMusicMenu: true
     },
     runtimeInfoUpdateTimeout: null,
     defaultApp: "music",
@@ -135,6 +145,7 @@ var globals = {
         defaultVolume: 50,
         trackUpdateInterval: 0, //track updater that gets percent of track
         nextTrackShuffle: false,
+        nextTrackLoop: false,
         volStep: 10, //volstep
         uid: 0, //user id (determined by defaultUsername)
         firstPlay: true,
@@ -143,21 +154,21 @@ var globals = {
         trackList: [],
         soundManager: {
             playingTrack: false,
-            currentVolume: null, //double ref yay
+            currentVolume: 50,
             currentPlayingTrack: {},
-            playerObject: {
+            playerObject: { //faaaake so that no errors occur
                 play: function(){},
                 pause: function(){},
-                setVolume: function(){}
+                setVolume: function(){},
+                currentTime: function(){
+                    return 0;
+                },
+                getDuration: function(){
+                    return 1;
+                }
             },
             playTrack: function(track) {
                 console.log("playing id: "+track.id); 
-                ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
-                ID("music_waveformArt").src = track.artwork.waveformUrl;
-                ID("music_trackTitle").innerHTML = track.title;
-                ID("music_trackAuthor").innerHTML = "By: "+track.author;
-                globals.music.soundManager.currentPlayingTrack = track;
-                return;
                 SC.stream('/tracks/' + track.id).then(function(player) {
                     globals.music.soundManager.playerObject.pause(); //pause previous
                     globals.music.soundManager.playerObject = player;
@@ -165,12 +176,17 @@ var globals = {
                     globals.music.soundManager.playingTrack = true;
                     ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
                     ID("music_waveformArt").src = track.artwork.waveformUrl;
+                    ID("music_trackTitle").innerHTML = track.title;
+                    ID("music_trackAuthor").innerHTML = "By: "+track.author;
+                    globals.music.soundManager.currentPlayingTrack = track;
                     if (globals.music.firstPlay) {
+                        globals.music.soundmanager.currentVolume = globals.music.defaultVolume;
                         globals.music.soundManager.setPlayerVolume(globals.music.soundmanager.currentVolume);
                         globals.music.firstPlay = false;
                     }
                 }).catch(function(){
-                    console.error("Error playing track with id ("+trackId+"): "+arguments);
+                    console.error("Error playing track with id ("+track.id+"): ",arguments);
+                    ID("music_trackArt").src = "images/errorLoadingTrack.png";
                 });
             },
             setPlayerVolume: function(vol) {
@@ -186,35 +202,47 @@ var globals = {
                 if (vol > 1) {
                     globals.music.soundManager.playerObject.setVolume(vol/100); //assume it is 1-100 scale
                 } else {
-                    globals.music.soundManager.playerObject.setVolume.setVolume(vol); //assume it is 0-1 scale
+                    globals.music.soundManager.playerObject.setVolume(vol); //assume it is 0-1 scale
                 }
             },
             getPercent: function() {
                 return Math.round((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration())*100);
             },
-            trackManager: function() {
+            startTrackManager: function() {
                 clearInterval(globals.music.trackUpdateInterval);
                 globals.music.trackUpdateInterval = setInterval(function() {
-                    var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 99.9);
+                    var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 0.999);
                     if (isDone) {
-                        globals.music.soundManager.forwardTrack;
+                        if (globals.music.nextTrackLoop) { //loop?
+                            globals.music.soundManager.playerObject.seek(0); //loop the track
+                        } else {
+                            globals.music.soundManager.forwardTrack(); //nah just forward
+                        }
                     }
                 },200)
             },
             playPauseTrack: function() {
                 if (globals.music.soundManager.playingTrack) {
                     globals.music.soundManager.playerObject.pause();
+                    globals.music.soundManager.playingTrack = false;
                 } else {
-                    globals.music.soundManager.playerObject.play();
+                    if (playerObject.getDuration != 1) { //no track so don't play
+                        globals.music.soundManager.playerObject.play();
+                        globals.music.soundManager.playingTrack = true;
+                    }
                 }
             },
             volUp: function() {
-                globals.music.soundManager.currentVolume+=globals.music.volStep;
-                globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+                if (globals.music.soundManager.currentVolume+globals.music.volStep <= 100) {
+                    globals.music.soundManager.currentVolume+=globals.music.volStep;
+                    globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+                }
             },
             volDown: function() {
-                globals.music.soundManager.currentVolume-=globals.music.volStep;
-                globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+                if (globals.music.soundManager.currentVolume-globals.music.volStep > 0) {
+                    globals.music.soundManager.currentVolume-=globals.music.volStep;
+                    globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+                }
             },
             backTrack: function() { //always goes back 1
                 var ind = globals.music.soundManager.currentPlayingTrack.index-1;
@@ -240,6 +268,33 @@ var globals = {
                     }
                     globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
                 }
+            },
+            updateCanvas: function() {
+                var canvas = document.getElementById('main');
+
+                var ctx = document.getElementById('main').getContext('2d');
+                var tile = new Image();
+                tile.src = document.getElementById('image').src;
+                tile.onload = function() {
+                    draw(tile);
+                }
+
+                function draw(img) {
+                    var buffer = document.createElement('canvas');
+                    var bufferctx = buffer.getContext('2d');
+                    bufferctx.drawImage(img, 0, 0);
+                    var imageData = bufferctx.getImageData(0,0,buffer.width,  buffer.height);
+                    var data = imageData.data;
+                    var removeBlack = function() {
+                        for (var i = 0; i < data.length; i += 4) {
+                            if(data[i]+ data[i + 1] + data[i + 2] < 10){ 
+                                data[i + 3] = 0; // alpha
+                            }
+                        } 
+                        ctx.putImageData(imageData, 0, 0); 
+                    }; 
+                 removeBlack(); 
+                } 
             }
         },
 
@@ -274,7 +329,7 @@ var globals = {
                 }
                 tracksToLoad*=globals.music.tracksPerRequest;
                 tracksToLoad = Math.round(tracksToLoad);
-                console.log("Making "+requiredRequestTimes+" requests for trackdata; results in "+tracksToLoad+"tracks being loaded");
+                console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
                 for (var j=0; j<requiredRequestTimes; j++) {
                     setTimeout(function(){
                         SC.get("/users/"+globals.music.uid+"/favorites.json",{client_id: globals.music.cliId, offset: globals.music.tracksPerRequest*j, limit: globals.music.tracksPerRequest}).then(function(tracks){ //get favorite tracks
@@ -294,7 +349,7 @@ var globals = {
                                 globals.music.trackList.push(tracks[i].title);
                             }
                             
-                            if (globals.music.trackList.length == tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
+                            if (globals.music.trackList.length >= tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
                                 console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud");
                                 ID("music_trackTitle").innerHTML = "Select a track";
                                 globals.music.tracksFromCache = false;
@@ -350,12 +405,14 @@ var globals = {
                 tklElem.innerHTML = "";
                 for (var i=0; i<tracklist.length; i++) {
                     var p = document.createElement("p");
-                    var txt = document.createTextNode(tracklist[i].title);
+                    var txt = document.createTextNode(String(i+1)+"): "+tracklist[i].title);
                     p.setAttribute("onclick","globals.music.soundManager.playTrack("+JSON.stringify(tracklist[i])+");");
                     p.setAttribute("tabindex","0");
+                    p.setAttribute("class","songTitle")
                     p.appendChild(txt);
                     tklElem.appendChild(p);
                 }
+                globals.music.soundManager.startTrackManager(); //start the manager
             },
             changeSoundcloudUser: function() {
                 bootbox.prompt("New soundcloud user? (Enter nothing if you don't want to change users)",function(user) {
@@ -689,40 +746,41 @@ var login = {
         var keys = Object.keys(login.readySteps);
         if (login.loadedOnce == false) {
             login.previousReadySteps = JSON.parse(JSON.stringify(login.readySteps));
-            loadMessages.innerHTML = "<h2 style='text-decoration: underline'>Loading Scripts</h2>";
-            for (var i=0; i<keys.length; i++) {
-                var title = document.createElement("h3"); //create h3 tag
-                title.setAttribute("style","display: inline;");
-                var text = document.createTextNode(keys[i]+": ");
-                title.appendChild(text);
+            try{
+                loadMessages.innerHTML = "<h2 style='text-decoration: underline'>Loading Scripts</h2>";
+                for (var i=0; i<keys.length; i++) {
+                    var title = document.createElement("h3"); //create h3 tag
+                    title.setAttribute("style","display: inline;");
+                    var text = document.createTextNode(keys[i]+": ");
+                    title.appendChild(text);
 
-                var img = document.createElement("img"); //create image element
-                img.setAttribute("width",String(login.imageWidth)+"px");
-                img.setAttribute("height",String(login.imageHeight)+"px");
-                img.setAttribute("id","loadImg"+keys[i])
-                if (login.readySteps[keys[i]]) { //dynamically add check or noncheck
-                    img.setAttribute("src",login.imageCheckPath);
-                } else {
-                    img.setAttribute("src",login.imageNoCheckPath);
+                    var img = document.createElement("img"); //create image element
+                    img.setAttribute("width",String(login.imageWidth)+"px");
+                    img.setAttribute("height",String(login.imageHeight)+"px");
+                    img.setAttribute("id","loadImg"+keys[i])
+                    if (login.readySteps[keys[i]]) { //dynamically add check or noncheck
+                        img.setAttribute("src",login.imageCheckPath);
+                    } else {
+                        img.setAttribute("src",login.imageNoCheckPath);
+                    }
+
+                    var br = document.createElement("br");
+                    var br2 = document.createElement("br");
+
+                    loadMessages.appendChild(title);
+                    loadMessages.appendChild(img);
+                    loadMessages.appendChild(br);
+                    loadMessages.appendChild(br2);
                 }
+                var progressBar = document.createElement("progress");
+                progressBar.setAttribute("id","loadBar");
+                progressBar.setAttribute("class","loadBar");
+                progressBar.setAttribute("value","0");
 
-                var br = document.createElement("br");
-                var br2 = document.createElement("br");
+                loadMessages.appendChild(progressBar);
 
-                loadMessages.appendChild(title);
-                loadMessages.appendChild(img);
-                loadMessages.appendChild(br);
-                loadMessages.appendChild(br2);
-            }
-
-            var progressBar = document.createElement("progress");
-            progressBar.setAttribute("id","loadBar");
-            progressBar.setAttribute("class","loadBar");
-            progressBar.setAttribute("value","0");
-
-            loadMessages.appendChild(progressBar);
-
-            login.loadedOnce = true; //only set if successful
+                login.loadedOnce = true; //only set if successful
+            } catch(e) {} //not loaded yet
         } else {
             var ready = true;
             var stepsReady = keys.length;
