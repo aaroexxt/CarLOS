@@ -181,7 +181,7 @@ var globals = {
                     globals.music.soundManager.currentPlayingTrack = track;
                     if (globals.music.firstPlay) {
                         globals.music.soundManager.currentVolume = globals.music.defaultVolume;
-                        globals.music.soundManager.setPlayerVolume(globals.music.soundmanager.currentVolume);
+                        globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
                         globals.music.firstPlay = false;
                     }
                 }).catch(function(){
