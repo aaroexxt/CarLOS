@@ -180,7 +180,7 @@ var globals = {
                     ID("music_trackAuthor").innerHTML = "By: "+track.author;
                     globals.music.soundManager.currentPlayingTrack = track;
                     if (globals.music.firstPlay) {
-                        globals.music.soundmanager.currentVolume = globals.music.defaultVolume;
+                        globals.music.soundManager.currentVolume = globals.music.defaultVolume;
                         globals.music.soundManager.setPlayerVolume(globals.music.soundmanager.currentVolume);
                         globals.music.firstPlay = false;
                     }
