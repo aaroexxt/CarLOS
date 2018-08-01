@@ -226,7 +226,7 @@ var globals = {
                     globals.music.soundManager.playerObject.pause();
                     globals.music.soundManager.playingTrack = false;
                 } else {
-                    if (playerObject.getDuration != 1) { //no track so don't play
+                    if (globals.music.soundManager.playerObject.getDuration() != 1) { //no track so don't play
                         globals.music.soundManager.playerObject.play();
                         globals.music.soundManager.playingTrack = true;
                     }
