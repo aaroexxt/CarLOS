@@ -13,6 +13,7 @@ config nodemon to not restart when i modify globals.js
 geographic tracking w/upload to ext domain
 advanced panel of "A" menu which allows you to refresh soundcloud cache
 sync settings with settings from "A" menu, use switchery.js for settings
+menu doesnt dissapear (music), just moves in to side and on mouseover it plays animation and extends
 
 and ofc...
 a actual routing/geofinder algorithm
@@ -20,9 +21,12 @@ someday lol
 
 and also ofc...
 macchina code (when it arrives it is still "processing" as of 7/27/2018)
+yeet 7/31 it is shipped and on the way
+arrived aug 1
 
+BIG CHANGE: stream soundcloud on nodejs side with option to switch to client side
 
-
+playlist support
 
 
 
@@ -33,3 +37,8 @@ shuffle/notshuffle button DONE
 caching of soundcloud pages for low internet access DONE
 err loading track display DONE
 also dynamic hiding/showing of music menu DONE
+
+
+Portable ideas:
+'black box' under seat
+lithio battery under seat
