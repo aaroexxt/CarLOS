@@ -28,9 +28,24 @@
  *    distribution.
  */
 
-/********************
--- INCLUDE MODULES --
-********************/
+/*
+---- CODE LAYOUT ----
+
+This descriptor describes the layout of the code in this file.
+
+Initialization:
+1) Module initialization: initalizes modules that are required later on
+2) Runtime info/settings: Reads and parses runtime information and settings from external JSON file
+3) Serial device logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
+4) Arduino command handling: defines handling of arduino commands
+5) HTTP server setup/handling: sets up the HTTP server, also sets up socket.io connection
+6) Im too tired to finish this ill do it later
+
+*/
+
+/**************************
+-- MODULE INITIALIZATION --
+**************************/
 
 var http = require('http');
 var url = require('url');
@@ -42,6 +57,21 @@ var debughttp = require('debug')('http');
 var debuginit = require('debug')('init');
 var debugfile = require('debug')('upload');
 var singleLineLog = require('single-line-log').stdout; //single line logging
+
+var denyFileNames = ["pass.json","rpibackend.py","COSserver.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"]; //files that the server should not serve
+var ignoreDenyFileExtensions = true;
+var appendCWDtoRequest = true;
+
+var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
+var catchErrors = false; //enables clean error handling. Only turn off during development
+
+var sockets = [];
+var pyimgnum = 0; //python image counter
+var pyimgbasepath = cwd+"/index/tmpimgs/";
+
+var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and users
+
+
 
 var windowPlugin = require('window-size');
 var windowSize = windowPlugin.get();
@@ -103,8 +133,9 @@ for (var i=0; i<keys.length; i++) {
 }
 
 //console.clear();
-//console.log('\033c')
+console.log('\033c')
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+
 /************************
 -- SERIAL DEVICE LOGIC --
 ************************/
@@ -265,34 +296,9 @@ server.listen(runtimeSettings.serverPort, function(){ //listener
 	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
 });
 
-var userPool = new utils.authPool();
-
-var denyFileNames = ["pass.json","rpibackend.py","COSserver.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"];
-var ignoreDenyFileExtensions = true;
-var appendCWDtoRequest = true;
-
-var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = false; //enables clean error handling. Only turn off during development
-
-var sockets = [];
-var pyimgnum = 0; //python image counter
-var pyimgbasepath = cwd+"/index/tmpimgs/";
-
-var statusUpdateInterval = setInterval(function(){
-	var time = process.uptime();
-	var uptime = utils.formatHHMMSS(time); //rts.uptime
-	runtimeInformation.uptime = uptime;
-	runtimeInformation.users = userPool.auth_keys.length //rts.users
-	if (runtimeInformation.status.toLowerCase() != "running") {
-		console.log("Sending runtimeinfo because of status change");
-		allemit('POST', {"action": "runtimeInformation", "information":runtimeInformation})
-	}
-},1000);
-runtimeInformation.status = "Running";
-
-/*****************
--- FILE PARSERS --
-*****************/
+/**********************
+-- DATA FILE PARSERS --
+**********************/
 
 fs.readFile(cwd+"/responses.json", function(err,data){
 	if (err) {
@@ -413,6 +419,84 @@ stdinputListener.addPersistentListener("*",function(d) {
 		}
 	}
 });
+
+/****************************
+-- ERROR AND EXIT HANDLING --
+*****************************/
+
+process.on('SIGINT', function (code) { //on ctrl+c or exit
+	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
+	runtimeInformation.status = "Exiting";
+	sendArduinoCommand("status","Exiting");
+	for (var i=0; i<sockets.length; i++) {
+		sockets[i].socket.emit("pydata","q"); //quit python
+		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
+		sockets[i].socket.emit("disconnect","");
+	}
+	console.log("Unlinking OpenCV image files...");
+	for (var i=pyimgnum; i>=0; i--) {
+		var path = pyimgbasepath+"in/image"+i+".png";
+		console.log("Removing image file (in): "+path);
+		fs.unlink(path,function (err) {
+			console.log("Error removing?: "+err)
+		})
+		var path = pyimgbasepath+"out/image"+i+".jpg";
+		console.log("Removing image file (out): "+path);
+		fs.unlink(path,function (err) {
+			console.log("Error removing?: "+err)
+		})
+	}
+	console.log("Exiting in 1500ms (waiting for sockets to send...)");
+	setTimeout(function(){
+		process.exit(); //exit completely
+	},1500); //give some time for sockets to send
+});
+if (catchErrors) {
+	process.on('uncaughtException', function (err) { //on error
+		console.log("\nError signal recieved, graceful exiting (garbage collection)");
+		sendArduinoCommand("status","Error");
+		runtimeInformation.status = "Error";
+		for (var i=0; i<sockets.length; i++) {
+			sockets[i].socket.emit("pydata","q"); //quit python
+			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
+			sockets[i].socket.emit("disconnect","");
+		}
+		console.log("Unlinking OpenCV image files...");
+		for (var i=pyimgnum; i>=0; i--) {
+			var path = pyimgbasepath+"in/image"+i+".png";
+			console.log("Removing image file (in): "+path);
+			fs.unlink(path,function (err) {
+				console.log("Error removing?: "+err)
+			});
+			var path = pyimgbasepath+"out/image"+i+".jpg";
+			console.log("Removing image file (out): "+path);
+			fs.unlink(path,function (err) {
+				console.log("Error removing?: "+err)
+			});
+		}
+		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
+		console.log("Exiting in 1500ms (waiting for sockets to send...)");
+		setTimeout(function(){
+			process.exit(); //exit completely
+		},1500); //give some time for sockets to send
+	});
+}
+
+/********************
+-- MISC. INIT CODE --
+*********************/
+
+var statusUpdateInterval = setInterval(function(){
+	var time = process.uptime();
+	var uptime = utils.formatHHMMSS(time); //rts.uptime
+	runtimeInformation.uptime = uptime;
+	runtimeInformation.users = userPool.auth_keys.length //rts.users
+	if (runtimeInformation.status.toLowerCase() != "running") {
+		console.log("Sending runtimeinfo because of status change");
+		allemit('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+	}
+},1000);
+runtimeInformation.status = "Running";
 
 /*******************************
 -- SOCKET.IO CONNECTION LOGIC --
@@ -983,62 +1067,4 @@ function handler(req, res) {
 			return res.end("403 Forbidden (don't try to access this file pls)");
 		}
 	}
-}
-
-process.on('SIGINT', function (code) { //on ctrl+c or exit
-	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
-	runtimeInformation.status = "Exiting";
-	sendArduinoCommand("status","Exiting");
-	for (var i=0; i<sockets.length; i++) {
-		sockets[i].socket.emit("pydata","q"); //quit python
-		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
-		sockets[i].socket.emit("disconnect","");
-	}
-	console.log("Unlinking OpenCV image files...");
-	for (var i=pyimgnum; i>=0; i--) {
-		var path = pyimgbasepath+"in/image"+i+".png";
-		console.log("Removing image file (in): "+path);
-		fs.unlink(path,function (err) {
-			console.log("Error removing?: "+err)
-		})
-		var path = pyimgbasepath+"out/image"+i+".jpg";
-		console.log("Removing image file (out): "+path);
-		fs.unlink(path,function (err) {
-			console.log("Error removing?: "+err)
-		})
-	}
-	console.log("Exiting in 1500ms (waiting for sockets to send...)");
-	setTimeout(function(){
-		process.exit(); //exit completely
-	},1500); //give some time for sockets to send
-});
-if (catchErrors) {
-	process.on('uncaughtException', function (err) { //on error
-		console.log("\nError signal recieved, graceful exiting (garbage collection)");
-		sendArduinoCommand("status","Error");
-		runtimeInformation.status = "Error";
-		for (var i=0; i<sockets.length; i++) {
-			sockets[i].socket.emit("pydata","q"); //quit python
-			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
-			sockets[i].socket.emit("disconnect","");
-		}
-		console.log("Unlinking OpenCV image files...");
-		for (var i=pyimgnum; i>=0; i--) {
-			var path = pyimgbasepath+"in/image"+i+".png";
-			console.log("Removing image file (in): "+path);
-			fs.unlink(path,function (err) {
-				console.log("Error removing?: "+err)
-			});
-			var path = pyimgbasepath+"out/image"+i+".jpg";
-			console.log("Removing image file (out): "+path);
-			fs.unlink(path,function (err) {
-				console.log("Error removing?: "+err)
-			});
-		}
-		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
-		console.log("Exiting in 1500ms (waiting for sockets to send...)");
-		setTimeout(function(){
-			process.exit(); //exit completely
-		},1500); //give some time for sockets to send
-	});
 }
