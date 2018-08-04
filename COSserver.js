@@ -32,20 +32,28 @@
 ---- CODE LAYOUT ----
 
 This descriptor describes the layout of the code in this file.
+2 main phases: Initialization (I1-I9) and Runtime Code (R1-R2)
 
-Initialization:
-1) Module initialization: initalizes modules that are required later on
-2) Runtime info/settings: Reads and parses runtime information and settings from external JSON file
-3) Serial device logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
-4) Arduino command handling: defines handling of arduino commands
-5) HTTP server setup/handling: sets up the HTTP server, also sets up socket.io connection
-6) Im too tired to finish this ill do it later
+Initialization (9 steps):
+1) Module Initialization: initalizes modules that are required later on
+2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
+3) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
+4) Arduino Command Handling: defines handling of arduino commands
+5) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
+6) Neural Network Setup: sets up and trains neural network for processing of speech commands
+7) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
+8) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
+9) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients
+
+Runtime Code (2 steps):
+1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
+2) Socket.IO Connection Logic: large chunk of code which responds to client websocket connections
 
 */
 
-/**************************
--- MODULE INITIALIZATION --
-**************************/
+/**********************************
+--I1-- MODULE INITIALIZATION --I1--
+**********************************/
 
 var http = require('http');
 var url = require('url');
@@ -80,9 +88,9 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
-/**************************
--- RUNTIME INFO/SETTINGS --
-**************************/
+/**********************************
+--I2-- RUNTIME INFO/SETTINGS --I2--
+**********************************/
 
 var runtimeSettings = {
 	faces: "",
@@ -136,9 +144,9 @@ for (var i=0; i<keys.length; i++) {
 console.log('\033c')
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
-/************************
--- SERIAL DEVICE LOGIC --
-************************/
+/********************************
+--I3-- SERIAL DEVICE LOGIC --I3--
+********************************/
 
 var serialDevice = "none";
 var foundJSON = false;
@@ -216,9 +224,9 @@ if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoCo
 	})
 }
 
-/*****************************
--- ARDUINO COMMAND HANDLING --
-*****************************/
+/*************************************
+--I4-- ARDUINO COMMAND HANDLING --I4--
+*************************************/
 
 var arduinoCommandSplitChar = ";";
 var arduinoCommandValueChar = "|";
@@ -284,21 +292,9 @@ function sendArduinoCommand(command,value) {
 	arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
 }
 
-/*******************************
--- HTTP SERVER SETUP/HANDLING --
-*******************************/
-
-var server = http.createServer(handler); //setup server
-debuginit("~-Server Created Successfully-~")
-var io = require('socket.io')(server);
-
-server.listen(runtimeSettings.serverPort, function(){ //listener
-	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
-});
-
-/**********************
--- DATA FILE PARSERS --
-**********************/
+/******************************
+--I5-- DATA FILE PARSERS --I5--
+******************************/
 
 fs.readFile(cwd+"/responses.json", function(err,data){
 	if (err) {
@@ -384,9 +380,9 @@ fs.readFile(cwd+"/commands.json", function(err,data){
 	}
 });
 
-/*************************
--- NEURAL NETWORK SETUP --
-**************************/
+/*********************************
+--I6-- NEURAL NETWORK SETUP --I6--
+*********************************/
 
 var speechParser = require('./speechParser.js'); //include speech parsing file
 var neuralMatcher = require('./speechMatcher.js'); //include the speech matching file
@@ -396,9 +392,9 @@ var speechClassifierNet = new brain.NeuralNetwork(); //make the net
 var speechNetTargetError = 0.005;//0.00001; //<- for release
 var speechNetReady = false;
 
-/***********************
--- READING FROM STDIN --
-************************/
+/*******************************
+--I7-- READING FROM STDIN --I7--
+*******************************/
 
 var stdinput = process.openStdin();
 var stdinputListener = new utils.advancedEventListener(stdinput,"data");
@@ -420,9 +416,9 @@ stdinputListener.addPersistentListener("*",function(d) {
 	}
 });
 
-/****************************
--- ERROR AND EXIT HANDLING --
-*****************************/
+/************************************
+--I8-- ERROR AND EXIT HANDLING --I8--
+************************************/
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
 	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
@@ -482,9 +478,9 @@ if (catchErrors) {
 	});
 }
 
-/********************
--- MISC. INIT CODE --
-*********************/
+/****************************
+--I9-- MISC. INIT CODE --I9--
+****************************/
 
 var statusUpdateInterval = setInterval(function(){
 	var time = process.uptime();
@@ -498,9 +494,61 @@ var statusUpdateInterval = setInterval(function(){
 },1000);
 runtimeInformation.status = "Running";
 
-/*******************************
--- SOCKET.IO CONNECTION LOGIC --
-*******************************/
+/***************************************
+--R1-- HTTP SERVER SETUP/HANDLING --R1--
+***************************************/
+
+var server = http.createServer(function(req, res) {
+	var q = url.parse(req.url, true);
+	var filename = q.pathname;
+	//var splfilename = (ignoreDenyFileExtensions == true)?filename.substring(filename.lastIndexOf("/"),filename.lastIndexOf(".")):filename.substring(filename.lastIndexOf("/"));
+	var splfilename = filename.substring(filename.lastIndexOf("/"));
+	var bad = false;
+	for (var i=0; i<denyFileNames.length; i++) {
+		var deny = (ignoreDenyFileExtensions == true)?denyFileNames[i].substring(0,denyFileNames[i].lastIndexOf(".") || denyFileNames[i].length):denyFileNames[i]; //gotta fix html encoding-relaetd bugs
+		if (splfilename.indexOf(deny) !== -1) {
+			bad = true;
+		}
+	}
+	if (bad == false) {
+		if (appendCWDtoRequest) {
+			var request = cwd+"/index/"+filename;
+		} else {
+			var request = filename;
+		}
+		fs.readFile(request, function(err, data) {
+			if (filename != "./json/version" && filename != "./json" && filename != "/json/version" && filename != "/json") {
+				debughttp("GET filename: '"+filename+"', status: "+((err)?404:200));
+			}
+			if (err) {
+				res.writeHead(404, {'Content-Type': 'text/html'});
+				return res.end("404 Not Found :(");
+			}
+			if (filename.indexOf("css") > -1) {
+				res.writeHead(200, {'Content-Type': 'text/css'});
+			} else if (filename.indexOf("js" > -1) {
+				res.writeHead(200, {'Content-Type': 'text/js'});
+			} else {
+				res.writeHead(200, {'Content-Type': 'text/html'});
+			}
+			res.write(data);
+			return res.end();
+		});
+	} else {
+		res.writeHead(403, {'Content-Type': 'text/html'});
+		return res.end("403 Forbidden (don't try to access this file pls)");
+	}
+}); //setup server
+debuginit("~-Server Created Successfully-~")
+var io = require('socket.io')(server);
+
+server.listen(runtimeSettings.serverPort, function(){ //listener
+	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
+});
+
+/***************************************
+--R2-- SOCKET.IO CONNECTION LOGIC --R2--
+***************************************/
 
 io.on('connection', function (socket) { //on connection
 	sockets[sockets.length] = {socket: socket, type: "uninitialized", status: "init", id: socket.id, handler: undefined, authkey: "uninitialized"};
@@ -987,84 +1035,5 @@ function allon(id, callback) {
 		sockets[i].socket.on(id,function() {
 			callback();
 		});
-	}
-}
-
-function handler(req, res) {
-	if (req.url == '/fileupload') {
-		debughttp("GET fileupload");
-		var form = new formidable.IncomingForm();
-		form.parse(req, function (err, fields, files) {
-			debugfile("fileup: err="+err+", fields="+JSON.stringify(fields)+", files="+JSON.stringify(files));
-			if (((Object.keys(fields).length === 0 && fields.constructor === Object) && (Object.keys(files).length === 0 && fields.constructor === Object))) {
-					res.writeHead(200, {'Content-Type': 'text/html'});
-					res.write('<form action="fileupload" method="post" enctype="multipart/form-data">');
-					res.write('<input type="file" name="filetoupload"><br>');
-					res.write('<input type="submit">');
-					res.write('</form>');
-					return res.end();
-			} else {
-				res.write('File uploaded: <br>');
-				if (typeof files.filetoupload !== undefined) {
-					res.write('File size: '+files.filetoupload.size+' <br>');
-					res.write('File dir: '+files.filetoupload.path+' <br>');
-					var filename = files.filetoupload.path;
-					fs.readFile(filename, function(errr, data) {
-						if (filename != "./json/version" && filename != "./json" && filename != "/json/version" && filename != "/json") {
-							debughttp("GET filename upload: '"+filename+"', status: "+((errr)?404:200));
-						}
-						debughttp(data);
-						if (errr) {
-							res.writeHead(404, {'Content-Type': 'text/html'});
-							return res.end("404 Not Found File in FileUpload :(");
-						}  
-						res.writeHead(200, {'Content-Type': 'text/html'});
-						res.write(data);
-						return res.end();
-					});
-				} else {
-					res.write('Error finding file');
-				}
-				//res.end();
-			}
-		});
-	} else {
-		var q = url.parse(req.url, true);
-		var filename = q.pathname;
-		//var splfilename = (ignoreDenyFileExtensions == true)?filename.substring(filename.lastIndexOf("/"),filename.lastIndexOf(".")):filename.substring(filename.lastIndexOf("/"));
-		var splfilename = filename.substring(filename.lastIndexOf("/"));
-		var bad = false;
-		for (var i=0; i<denyFileNames.length; i++) {
-			var deny = (ignoreDenyFileExtensions == true)?denyFileNames[i].substring(0,denyFileNames[i].lastIndexOf(".") || denyFileNames[i].length):denyFileNames[i]; //gotta fix html encoding-relaetd bugs
-			if (splfilename.indexOf(deny) !== -1) {
-				bad = true;
-			}
-		}
-		if (bad == false) {
-			if (appendCWDtoRequest) {
-				var request = cwd+"/index/"+filename;
-			} else {
-				var request = filename;
-			}
-			fs.readFile(request, function(err, data) {
-				if (filename != "./json/version" && filename != "./json" && filename != "/json/version" && filename != "/json") {
-					debughttp("GET filename: '"+filename+"', status: "+((err)?404:200));
-				}
-				if (err) {
-					res.writeHead(404, {'Content-Type': 'text/html'});
-					return res.end("404 Not Found :(");
-				}
-				if (filename.indexOf("css") > -1) {
-					res.writeHead(200, {'Content-Type': 'text/css'});
-				} else {
-					res.writeHead(200, {'Content-Type': 'text/html'});
-				}
-				res.write(data);
-				return res.end();
-			});
-		} else {
-			res.writeHead(403, {'Content-Type': 'text/html'});
-			return res.end("403 Forbidden (don't try to access this file pls)");
-		}
 	}
 }

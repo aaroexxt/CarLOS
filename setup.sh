@@ -32,7 +32,7 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async formidable debug child-process brain.js opn window-size single-line-log serialport;
+sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log serialport node-fetch finalhandler;
 sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
 sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools
 sudo npm install --prefix $cwd socket.io@1.7.2;
