@@ -43,7 +43,7 @@ Initialization (9 steps):
 6) Neural Network Setup: sets up and trains neural network for processing of speech commands
 7) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
 8) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
-9) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients
+9) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
 
 Runtime Code (2 steps):
 1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
@@ -55,38 +55,19 @@ Runtime Code (2 steps):
 --I1-- MODULE INITIALIZATION --I1--
 **********************************/
 
-var http = require('http');
-var url = require('url');
 var fs = require('fs');
 var utils = require('./nodeutils.js'); //include the utils file
-
-var formidable = require('formidable');
-var debughttp = require('debug')('http');
-var debuginit = require('debug')('init');
-var debugfile = require('debug')('upload');
 var singleLineLog = require('single-line-log').stdout; //single line logging
-
-var denyFileNames = ["pass.json","rpibackend.py","COSserver.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"]; //files that the server should not serve
-var ignoreDenyFileExtensions = true;
-var appendCWDtoRequest = true;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
 
+var cwd = __dirname;
 var sockets = [];
 var pyimgnum = 0; //python image counter
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
 var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and users
-
-
-
-var windowPlugin = require('window-size');
-var windowSize = windowPlugin.get();
-process.stdout.on('resize', function() {
-	windowSize = windowPlugin.get();
-	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
-});
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
@@ -107,8 +88,6 @@ var runtimeInformation = {
 	arduinoConnected: false //set here and not in settings.json so it is not overridden
 
 }; //holds information like version
-
-var cwd = __dirname;
 
 try {
 	var settingsData = fs.readFileSync(cwd+"/settings.json");
@@ -494,20 +473,24 @@ var statusUpdateInterval = setInterval(function(){
 },1000);
 runtimeInformation.status = "Running";
 
+var windowPlugin = require('window-size');
+var windowSize = windowPlugin.get();
+process.stdout.on('resize', function() {
+	windowSize = windowPlugin.get();
+	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
+});
+
 /***************************************
 --R1-- HTTP SERVER SETUP/HANDLING --R1--
 ***************************************/
 
-//APPENDCWDTOREQUEST
-
-debuginit("~-Server Created Successfully-~");
-
 var express = require("express");
 var app = express();
-var server = http.Server(app);
+var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var finalHandler = require('finalhandler');
 var serveFavicon = require('serve-favicon');
+//var url = require('url');
 
 server.listen(runtimeSettings.serverPort, function() {
 	console.log((new Date()) + ' Node server is listening on port ' + runtimeSettings.serverPort);
@@ -529,9 +512,7 @@ app.get("/client", function(req, res) {
 		//res.setHeader('Content-Type', 'text/html')
 		res.end(buf)
 	})
-})
-
-
+});
 
 /***************************************
 --R2-- SOCKET.IO CONNECTION LOGIC --R2--
@@ -827,6 +808,32 @@ io.on('connection', function (socket) { //on connection
 					} else {
 						console.log("Authkey "+data.authkey+" denied");
 					}
+				break;
+				case "node-SC":
+					var load = require('audio-loader');
+					var fetch = require('node-fetch');
+					fetch("http://api.soundcloud.com/tracks/79031167/stream?client_id=3425f0db5f4339b4edbef6afeeb23264").then(function(response){
+						console.log("SC RESPONSE URL: "+response.url);
+						return new Promise((resolve, reject) => {
+				            const dest = fs.createWriteStream('./octocat.mp3');
+				            response.body.pipe(dest);
+				            response.body.on('error', err => {
+				                reject(err);
+				            });
+				            dest.on('finish', () => {
+				                resolve();
+				                load("./octocat.mp3").then(function (buffer) {
+									console.log("SC AUDIOBUFFER: "+buffer) // => <AudioBuffer>
+								}).catch(function(err) {
+									console.log("SC ERR: "+err.toString())
+								})
+				            });
+				            dest.on('error', err => {
+				                reject(err);
+				            });
+				        });
+						
+					});
 				break;
 				case "pydata":
 					if (securityOff) {console.warn("WARNING: pydata security protections are OFF");}
