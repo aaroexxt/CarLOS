@@ -11,9 +11,12 @@
     "settings": {
         "faces": ["QWFyb24="],
         "passes": ["cGFzc2NvZGU=","MTIzNDU="],
+        "unscrambleKeys": ["faces","passes"],
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
         "soundcloudCacheFile": "soundcloudCache.json",
-        "soundcloudCacheExpiryTime": 3600000
+        "soundcloudCacheExpiryTime": 3600000,
+        "arduinoBaudRate": 9600,
+        "serverPort": 80
     }
 }

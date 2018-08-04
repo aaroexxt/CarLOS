@@ -1,13 +1,41 @@
-var port = 80;
-var cwd = __dirname;
-//console.clear();
-console.log('\033c')
-console.log("");
-console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nNode.js initialized successfully :)\nBy Aaron Becker\nPORT: "+port+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+/*
+* fileserve.js by Aaron Becker
+* CarOS Node.JS server script
+*
+* Dedicated to Marc Perkel
+*/
+
+/*
+ * Copyright (c) 2018 Aaron Becker
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ *    1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ *
+ *    2. Altered source versions must be plainly marked as such, and must not
+ *    be misrepresented as being the original software.
+ *
+ *    3. This notice may not be removed or altered from any source
+ *    distribution.
+ */
+
+/********************
+-- INCLUDE MODULES --
+********************/
 
 var http = require('http');
 var url = require('url');
 var fs = require('fs');
+var utils = require('./nodeutils.js'); //include the utils file
 
 var formidable = require('formidable');
 var debughttp = require('debug')('http');
@@ -21,6 +49,10 @@ process.stdout.on('resize', function() {
 	windowSize = windowPlugin.get();
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
+
+/**************************
+-- RUNTIME INFO/SETTINGS --
+**************************/
 
 var runtimeSettings = {
 	faces: "",
@@ -37,6 +69,45 @@ var runtimeInformation = {
 	arduinoConnected: false //set here and not in settings.json so it is not overridden
 
 }; //holds information like version
+
+var cwd = __dirname;
+
+try {
+	var settingsData = fs.readFileSync(cwd+"/settings.json");
+} catch(e) {
+	console.error("[FATAL] Error reading info/settings file");
+	throw "[FATAL] Error reading info/settings file";
+}
+
+settingsData = JSON.parse(settingsData);
+if (typeof settingsData.settings.unscrambleKeys == "undefined") {
+	console.error("UnscrambleKeys undefined in runtimeSettings, not unscrambling. This may result in no users being able to login");
+	throw "UnscrambleKeys undefined in runtimeSettings, not unscrambling. This may result in no users being able to login";
+} else {
+	var keys = Object.keys(settingsData.settings);
+	for (var i=0; i<keys.length; i++) {
+		if (settingsData.settings.unscrambleKeys.indexOf(keys[i]) > -1) {
+			runtimeSettings[keys[i]] = [];
+			for (var j=0; j<settingsData.settings[keys[i]].length; j++) {
+				runtimeSettings[keys[i]][j] = utils.atob(settingsData.settings[keys[i]][j]); //undo atob encryption
+			}
+		} else {
+			runtimeSettings[keys[i]] = settingsData.settings[keys[i]]; //undo atob encryption
+		}
+	}
+}
+
+var keys = Object.keys(settingsData.information); //only override keys from settingsData
+for (var i=0; i<keys.length; i++) {
+	runtimeInformation[keys[i]] = settingsData.information[keys[i]];
+}
+
+//console.clear();
+//console.log('\033c')
+console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+/************************
+-- SERIAL DEVICE LOGIC --
+************************/
 
 var serialDevice = "none";
 var foundJSON = false;
@@ -91,15 +162,15 @@ if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoCo
 	}
 } else {
 	var arduino = new SerialPort(serialDevice, {
-		baudRate: 9600,
+		baudRate: runtimeSettings.arduinoBaudRate,
 		autoOpen: false
 	});
-	arduino.open(function (err) {
+	arduino.open(function (err) { //and open the port
 		if (err) { //arduino was connected in previous server iteration and was disconnected?
 			console.error("Error opening serial port to arduino at "+serialDevice+".");
 			runtimeInformation.arduinoConnected = false;
 			console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
-			var arduino = { //make a fake arduino class so that server doesnt fail on write
+			var arduino = { //make a fake arduino class so that server doesn't fail on write
 				write: function(t) {
 					console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
 				}
@@ -113,18 +184,86 @@ if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoCo
 		}
 	})
 }
+
+/*****************************
+-- ARDUINO COMMAND HANDLING --
+*****************************/
+
 var arduinoCommandSplitChar = ";";
 var arduinoCommandValueChar = "|";
+
+var arduinoCommandBuffer = ""; //need buffer because might not recieve whole command in one recieve
+function handleArduinoData(data) {
+	var command = arduinoCommandBuffer;
+	var sdata = String(data).split("");
+	for (var i=0; i<sdata.length; i++) {
+		if (sdata[i] == arduinoCommandSplitChar) {
+			var split = arduinoCommandBuffer.split(arduinoCommandValueChar);
+			if (split.length == 1) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", no value in command")
+				arduinoCommandRecognized(arduinoCommandBuffer,null);
+			} else if (split.length == 2) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", single value found")
+				arduinoCommandRecognized(split[0],split[1]);
+			} else if (split.length > 2) {
+				console.log("ARDUINO buf "+arduinoCommandBuffer+", multiple values found")
+				var values = [];
+				for (var i=1; i<split.length; i++) {
+					values.push(split[i]);
+				}
+				arduinoCommandRecognized(split[0],values);
+			}
+			arduinoCommandBuffer = "";
+		} else {
+			arduinoCommandBuffer+=sdata[i];
+		}
+	}
+}
+function arduinoCommandRecognized(command,value) {
+	switch(command) {
+		case "AOK": //arduino tells server that it is ok
+			arduino.write("SOK"); //tell arduino that server is ready
+			break;
+		case "CONN": //arduino tells server that it is connected
+			console.log("Arduino is connected :)");
+			break;
+		case "INFO": //arduino requested server information
+			console.log("Arduino has requested information, sending");
+			sendArduinoCommand("uptime",runtimeInformation.uptime);
+			sendArduinoCommand("status",runtimeInformation.status);
+			sendArduinoCommand("users",runtimeInformation.users);
+			break;
+		case "OTEMP": //arduino reports outside temperature
+			console.log("Outside arduino temp report "+value);
+			runtimeInformation.outsideTemp = Number(value);
+			break;
+		case "ITEMP": //arduino reports inside temperature
+			console.log("Inside arduino temp report "+value);
+			runtimeInformation.insideTemp = Number(value);
+			break;
+		case "CARCOMM": //yee it's a car command! work on this later ;)
+			break;
+		default:
+			console.error("Command "+command+" not recognized as valid arduino command");
+			break;
+	}
+	console.log("Complete command recognized: "+command+", value(s): "+JSON.stringify(value));
+}
+function sendArduinoCommand(command,value) {
+	arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
+}
+
+/*******************************
+-- HTTP SERVER SETUP/HANDLING --
+*******************************/
 
 var server = http.createServer(handler); //setup server
 debuginit("~-Server Created Successfully-~")
 var io = require('socket.io')(server);
 
-server.listen(port, function(){ //listener
-	console.log((new Date()) + ' Node server is listening on port '+port);
+server.listen(runtimeSettings.serverPort, function(){ //listener
+	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
 });
-
-var utils = require('./nodeutils.js'); //include the utils file
 
 var speechParser = require('./speechParser.js'); //include speech parsing file
 var neuralMatcher = require('./speechMatcher.js'); //include the speech matching file
@@ -144,7 +283,7 @@ var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
 
 var sockets = [];
-var pyimgnum = 0;
+var pyimgnum = 0; //python image counter
 var pyimgbasepath = cwd+"/index/tmpimgs/";
 
 var statusUpdateInterval = setInterval(function(){
@@ -159,25 +298,9 @@ var statusUpdateInterval = setInterval(function(){
 },1000);
 runtimeInformation.status = "Running";
 
-fs.readFile(cwd+"/settings.json", function(err,data){
-	if (err) {
-		console.error("[FATAL] Error reading info/settings file");
-		throw "[FATAL] Error reading info/settings file";
-	} else {
-		jsondat = JSON.parse(data);
-		runtimeSettings = jsondat.settings; //read data and set approval object
-		var keys = Object.keys(runtimeSettings);
-		for (var i=0; i<keys.length; i++) {
-			for (var j=0; j<runtimeSettings[keys[i]].length; j++) {
-				runtimeSettings[keys[i]][j] = utils.atob(runtimeSettings[keys[i]][j]); //undo atob encryption
-			}
-		}
-		var keys = Object.keys(jsondat.information); //only override keys from jsondat
-		for (var i=0; i<keys.length; i++) {
-			runtimeInformation[keys[i]] = jsondat.information[keys[i]];
-		}
-	}
-});
+/*****************
+-- FILE PARSERS --
+*****************/
 
 fs.readFile(cwd+"/responses.json", function(err,data){
 	if (err) {
@@ -263,66 +386,9 @@ fs.readFile(cwd+"/commands.json", function(err,data){
 	}
 });
 
-var arduinoCommandBuffer = ""; //need buffer because might not recieve whole command in one recieve
-function handleArduinoData(data) {
-	var command = arduinoCommandBuffer;
-	var sdata = String(data).split("");
-	for (var i=0; i<sdata.length; i++) {
-		if (sdata[i] == arduinoCommandSplitChar) {
-			var split = arduinoCommandBuffer.split(arduinoCommandValueChar);
-			if (split.length == 1) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", no value in command")
-				arduinoCommandRecognized(arduinoCommandBuffer,null);
-			} else if (split.length == 2) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", single value found")
-				arduinoCommandRecognized(split[0],split[1]);
-			} else if (split.length > 2) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", multiple values found")
-				var values = [];
-				for (var i=1; i<split.length; i++) {
-					values.push(split[i]);
-				}
-				arduinoCommandRecognized(split[0],values);
-			}
-			arduinoCommandBuffer = "";
-		} else {
-			arduinoCommandBuffer+=sdata[i];
-		}
-	}
-}
-function arduinoCommandRecognized(command,value) {
-	switch(command) {
-		case "AOK": //arduino tells server that it is ok
-			arduino.write("SOK"); //tell arduino that server is ready
-			break;
-		case "CONN": //arduino tells server that it is connected
-			console.log("Arduino is connected :)");
-			break;
-		case "INFO": //arduino requested server information
-			console.log("Arduino has requested information, sending");
-			sendArduinoCommand("uptime",runtimeInformation.uptime);
-			sendArduinoCommand("status",runtimeInformation.status);
-			sendArduinoCommand("users",runtimeInformation.users);
-			break;
-		case "OTEMP": //arduino reports outside temperature
-			console.log("Outside arduino temp report "+value);
-			runtimeInformation.outsideTemp = Number(value);
-			break;
-		case "ITEMP": //arduino reports inside temperature
-			console.log("Inside arduino temp report "+value);
-			runtimeInformation.insideTemp = Number(value);
-			break;
-		case "CARCOMM": //yee it's a car command! work on this later ;)
-			break;
-		default:
-			console.error("Command "+command+" not recognized as valid arduino command");
-			break;
-	}
-	console.log("Complete command recognized: "+command+", value(s): "+JSON.stringify(value));
-}
-function sendArduinoCommand(command,value) {
-	arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
-}
+/***********************
+-- READING FROM STDIN --
+************************/
 
 var stdinput = process.openStdin();
 var stdinputListener = new utils.advancedEventListener(stdinput,"data");
@@ -343,6 +409,10 @@ stdinputListener.addPersistentListener("*",function(d) {
 		}
 	}
 });
+
+/*******************************
+-- SOCKET.IO CONNECTION LOGIC --
+*******************************/
 
 io.on('connection', function (socket) { //on connection
 	sockets[sockets.length] = {socket: socket, type: "uninitialized", status: "init", id: socket.id, handler: undefined, authkey: "uninitialized"};
