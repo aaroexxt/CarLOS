@@ -498,53 +498,40 @@ runtimeInformation.status = "Running";
 --R1-- HTTP SERVER SETUP/HANDLING --R1--
 ***************************************/
 
-var server = http.createServer(function(req, res) {
-	var q = url.parse(req.url, true);
-	var filename = q.pathname;
-	//var splfilename = (ignoreDenyFileExtensions == true)?filename.substring(filename.lastIndexOf("/"),filename.lastIndexOf(".")):filename.substring(filename.lastIndexOf("/"));
-	var splfilename = filename.substring(filename.lastIndexOf("/"));
-	var bad = false;
-	for (var i=0; i<denyFileNames.length; i++) {
-		var deny = (ignoreDenyFileExtensions == true)?denyFileNames[i].substring(0,denyFileNames[i].lastIndexOf(".") || denyFileNames[i].length):denyFileNames[i]; //gotta fix html encoding-relaetd bugs
-		if (splfilename.indexOf(deny) !== -1) {
-			bad = true;
-		}
-	}
-	if (bad == false) {
-		if (appendCWDtoRequest) {
-			var request = cwd+"/index/"+filename;
-		} else {
-			var request = filename;
-		}
-		fs.readFile(request, function(err, data) {
-			if (filename != "./json/version" && filename != "./json" && filename != "/json/version" && filename != "/json") {
-				debughttp("GET filename: '"+filename+"', status: "+((err)?404:200));
-			}
-			if (err) {
-				res.writeHead(404, {'Content-Type': 'text/html'});
-				return res.end("404 Not Found :(");
-			}
-			if (filename.indexOf("css") > -1) {
-				res.writeHead(200, {'Content-Type': 'text/css'});
-			} else if (filename.indexOf("js" > -1) {
-				res.writeHead(200, {'Content-Type': 'text/js'});
-			} else {
-				res.writeHead(200, {'Content-Type': 'text/html'});
-			}
-			res.write(data);
-			return res.end();
-		});
-	} else {
-		res.writeHead(403, {'Content-Type': 'text/html'});
-		return res.end("403 Forbidden (don't try to access this file pls)");
-	}
-}); //setup server
-debuginit("~-Server Created Successfully-~")
-var io = require('socket.io')(server);
+//APPENDCWDTOREQUEST
 
-server.listen(runtimeSettings.serverPort, function(){ //listener
-	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
-});
+debuginit("~-Server Created Successfully-~");
+
+var express = require("express");
+var app = express();
+var server = http.Server(app);
+var io = require('socket.io')(server);
+var finalHandler = require('finalhandler');
+var serveFavicon = require('serve-favicon');
+
+server.listen(runtimeSettings.serverPort, function() {
+	console.log((new Date()) + ' Node server is listening on port ' + runtimeSettings.serverPort);
+})
+
+app.use(serveFavicon(cwd+"/index/assets/images/favicon.ico"));
+
+app.use(express.static(cwd+"/index/assets"))
+
+app.get("/client", function(req, res) {
+	var done = finalHandler(req, res, {
+		onerror: function(err) {
+			console.log("[HTTP] Error: "+err.stack || err.toString())
+		}
+	});
+
+	fs.readFile(cwd+'/index/COS.html', function (err, buf) {
+		if (err) return done(err)
+		//res.setHeader('Content-Type', 'text/html')
+		res.end(buf)
+	})
+})
+
+
 
 /***************************************
 --R2-- SOCKET.IO CONNECTION LOGIC --R2--
