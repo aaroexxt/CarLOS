@@ -32,7 +32,7 @@ launchpython="true";
 printtitle="true";
 cwd=$(pwd)
 defaultroot="$cwd/index";
-defaultscript="$cwd/fileserve.js";
+defaultscript="$cwd/COSserver.js";
 defaultpython="$cwd/index/python/rpibackend.py";
 
 port="80";

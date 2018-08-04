@@ -1,6 +1,6 @@
 /*
 * fileserve.js by Aaron Becker
-* CarOS Node.JS server script
+* CarOS Node.JS Server
 *
 * Dedicated to Marc Perkel
 */
@@ -265,17 +265,9 @@ server.listen(runtimeSettings.serverPort, function(){ //listener
 	console.log((new Date()) + ' Node server is listening on port '+runtimeSettings.serverPort);
 });
 
-var speechParser = require('./speechParser.js'); //include speech parsing file
-var neuralMatcher = require('./speechMatcher.js'); //include the speech matching file
-neuralMatcher.algorithm.stemmer = neuralMatcher.stemmer;
-var brain = require("brain.js");
-var speechClassifierNet = new brain.NeuralNetwork(); //make the net
-var speechNetTargetError = 0.005;//0.00001; //<- for release
-var speechNetReady = false;
-
 var userPool = new utils.authPool();
 
-var denyFileNames = ["pass.json","rpibackend.py","fileserve.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"];
+var denyFileNames = ["pass.json","rpibackend.py","COSserver.js","nodeutils.js","training.py","live.py","commands.json","responses.json","commandGroup.json"];
 var ignoreDenyFileExtensions = true;
 var appendCWDtoRequest = true;
 
@@ -385,6 +377,18 @@ fs.readFile(cwd+"/commands.json", function(err,data){
 		})
 	}
 });
+
+/*************************
+-- NEURAL NETWORK SETUP --
+**************************/
+
+var speechParser = require('./speechParser.js'); //include speech parsing file
+var neuralMatcher = require('./speechMatcher.js'); //include the speech matching file
+neuralMatcher.algorithm.stemmer = neuralMatcher.stemmer;
+var brain = require("brain.js");
+var speechClassifierNet = new brain.NeuralNetwork(); //make the net
+var speechNetTargetError = 0.005;//0.00001; //<- for release
+var speechNetReady = false;
 
 /***********************
 -- READING FROM STDIN --

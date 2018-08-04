@@ -28,6 +28,9 @@ BIG CHANGE: stream soundcloud on nodejs side with option to switch to client sid
 
 playlist support
 
+cache neural network weights for more efficient starting of server(brain.js toFunction)
+
+Finish CLEANING UP FILESERVE.JS
 
 
 DONE stuff:
