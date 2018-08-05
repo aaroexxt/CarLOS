@@ -137,7 +137,7 @@ var socketHandler = function(uPool,sPool){ //socket functions
                         for (var i=0; i<this.sPool.length; i++) {
                             if (this.sPool[i].id == keyObj.properties.socketID) {
                                 this.sPool[i].socket.emit(name, data);
-                                console.log("found key socket emitting now")
+                                console.log("[UTILS] key found for socket ID "+keyObj.properties.socketID);
                             }
                         }
                     }
@@ -184,6 +184,22 @@ var socketHandler = function(uPool,sPool){ //socket functions
             }
         } else {
             console.error("[UTILS] userPool or socketPool invalid in socketHandler emitToAll")
+        }
+    }
+    this.socketListenToAll = function(ev,callback){
+        if (this.validateUsers(this.uPool) && this.validateSockets(this.sPool)) {
+            if (this.validateData([ev,callback])) {
+                var sanitized = this.sanitizeData([ev,callback]);
+                ev = sanitized[0];
+                callback = sanitized[1];
+                for (var i=0; i<this.sPool.length; i++) {
+                    this.sPool[i].socket.on(ev, callback);
+                }
+            } else {
+                console.error("[UTILS] Data passed into listenToAll is invalid")
+            }
+        } else {
+            console.error("[UTILS] userPool or socketPool invalid in socketHandler listenToAll")
         }
     }
     //non socket functions

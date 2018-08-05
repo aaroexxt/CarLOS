@@ -33,7 +33,13 @@ cache neural network weights for more efficient starting of server(brain.js toFu
 reverse proxy cache
 load balancing
 
-Finish CLEANING UP FILESERVE.JS:
+colors in console w/overriding prototype
+
+better 404 page
+
+implement track type handling (client vs python)
+
+Finish CLEANING UP cosserver.JS:
     - clean up init process (initweb and initpython functions)
     - add allemit and allon to socketUtils
     - 

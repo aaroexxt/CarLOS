@@ -149,7 +149,6 @@
 			var socket = io();
 
 			var reloadPage = false;
-			//login.initialize() //init because im on a plane
 
 			//SET UP SOCKET LISTENERS
 			socket.emit('initweb', { data: 'ready' });
@@ -378,6 +377,8 @@
 					skittLT.innerHTML = data.response;
 				}
 			});
+
+			login.initialize() //init because im on a plane and at bottom because it shouldnt interfere
 
 		</script>
 		<!--Google maps script-->

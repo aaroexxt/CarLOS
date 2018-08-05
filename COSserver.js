@@ -33,7 +33,7 @@
 
 This descriptor describes the layout of the code in this file.
 2 main phases: Initialization (I1-I9) and Runtime Code (R1-R2)
-	Sub-phase: SocketIO Subsections (S1-S? FINISH TMRW HELLO R U LISTENING FUTURE AARON)
+	Sub-phase: SocketIO Subsections (R2:S1-R2:S2)
 
 Initialization (9 steps):
 1) Module Initialization: initalizes modules that are required later on
@@ -43,13 +43,16 @@ Initialization (9 steps):
 5) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
 6) Neural Network Setup: sets up and trains neural network for processing of speech commands
 7) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
-8) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
-9) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
+8) Console Colors: overrides prototypes for console to provide colors in console
+9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
+10) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
 
 Runtime Code (2 steps):
 1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
 2) Socket.IO Connection Logic: large chunk of code which responds to client websocket connections
-
+	--SocketIO Subsections--
+	1) Web/Python Init Logic: Connection logic for determining type of connection
+	2) Action Handlers: Handlers for requests from web and python clients
 */
 
 /**********************************
@@ -121,7 +124,6 @@ for (var i=0; i<keys.length; i++) {
 }
 
 //console.clear();
-console.log('\033c')
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
 /********************************
@@ -396,8 +398,50 @@ stdinputListener.addPersistentListener("*",function(d) {
 	}
 });
 
+/***************************
+--I8-- CONSOLE COLORS --I8--
+****************************/
+
+var colors = require('colors');
+
+const originalWarn = console.warn;
+const originalErr = console.error;
+
+console.warn = function(){
+	if (arguments.length > 1) {
+		var firstArg = arguments[0];
+		var restArgs = [];
+		for (var i=1; i<arguments.length; i++) {
+			restArgs.push(arguments[i]);
+		}
+		originalWarn(colors.yellow.underline(firstArg),restArgs);
+	} else {
+		originalWarn(colors.yellow.underline(arguments[0]));
+	}
+}
+
+console.error = function(){
+	if (arguments.length > 1) {
+		var firstArg = arguments[0];
+		var restArgs = [];
+		for (var i=1; i<arguments.length; i++) {
+			restArgs.push(arguments[i]);
+		}
+		originalErr(colors.red.underline(firstArg),restArgs);
+	} else {
+		originalErr(colors.red.underline(arguments[0]));
+	}
+}
+
+/*
+console.warn("TESTING WARNING");
+console.warn("TESTING WARNING %s","THIS SHOULD BE APPENDED");
+console.error("TESTING ERR");
+console.error("TESTING ERR %s","THIS SHOULD BE APPENDED");
+*/
+
 /************************************
---I8-- ERROR AND EXIT HANDLING --I8--
+--I9-- ERROR AND EXIT HANDLING --I9--
 ************************************/
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
@@ -458,9 +502,9 @@ if (catchErrors) {
 	});
 }
 
-/****************************
---I9-- MISC. INIT CODE --I9--
-****************************/
+/******************************
+--I10-- MISC. INIT CODE --I10--
+******************************/
 
 var statusUpdateInterval = setInterval(function(){
 	var time = process.uptime();
@@ -469,7 +513,7 @@ var statusUpdateInterval = setInterval(function(){
 	runtimeInformation.users = userPool.auth_keys.length //rts.users
 	if (runtimeInformation.status.toLowerCase() != "running") {
 		console.log("Sending runtimeinfo because of status change");
-		allemit('POST', {"action": "runtimeInformation", "information":runtimeInformation})
+		socketHandler.socketEmitToAll('POST', {"action": "runtimeInformation", "information":runtimeInformation})
 	}
 },1000);
 runtimeInformation.status = "Running";
@@ -495,24 +539,40 @@ var serveFavicon = require('serve-favicon');
 
 server.listen(runtimeSettings.serverPort, function() {
 	console.log((new Date()) + ' Node server is listening on port ' + runtimeSettings.serverPort);
-})
+});
 
-app.use(serveFavicon(cwd+"/index/assets/images/favicon.ico"));
+app.use(serveFavicon(cwd+runtimeSettings.faviconDirectory)); //serve favicon
 
-app.use(express.static(cwd+"/index/assets"))
+app.use(express.static(cwd+runtimeSettings.assetsDirectory)); //define a static directory
 
-app.get("/client", function(req, res) {
+app.get("/client", function(req, res) { //COS main route
 	var done = finalHandler(req, res, {
 		onerror: function(err) {
 			console.log("[HTTP] Error: "+err.stack || err.toString())
 		}
 	});
 
-	fs.readFile(cwd+'/index/COS.html', function (err, buf) {
+	fs.readFile(cwd+runtimeSettings.defaultFileDirectory, function (err, buf) {
 		if (err) return done(err)
 		//res.setHeader('Content-Type', 'text/html')
 		res.end(buf)
 	})
+});
+
+app.get("/console", function(req, res) { //console route
+	var done = finalHandler(req, res, {
+		onerror: function(err) {
+			console.log("[HTTP] Error: "+err.stack || err.toString())
+		}
+	});
+
+	res.send("Umm... It's not made yet, so check back later");
+	res.end();
+});
+
+app.use(function(req, res, next){
+  res.status(404); //crappy 404 page
+  res.send("<h1>Uhoh, you tried to go to a page that doesn't exist.</h1><br> Navigate to /client to go to the main page.");
 });
 
 /***************************************
@@ -527,6 +587,10 @@ io.on('connection', function (socket) { //on connection
 	var socketHandler = new utils.socketHandler(userPool,sockets);
 	track.handler = socketHandler;
 
+	/****************************************
+	--R2:S1-- WEB/PYTHON INIT LOGIC --R2:S1--
+	****************************************/
+
 	socket.on('initweb', function (data) { //set up listener for web intialization
 		track.status = "connected";
 		track.type = "client";
@@ -540,10 +604,57 @@ io.on('connection', function (socket) { //on connection
 		socket.on('disconnect', function (data) { //we know that it is the python socket, setup listener to emit pydisconnect
 			console.log("PYDISCONNECT")
 			sockets[socketid].status = "disconnected";
-			allemit('pydisconnect',{});
+			socketHandler.socketEmitToAll('pydisconnect',{});
 			runtimeInformation.pythonConnected = false;
 		})
 	});
+
+	function initpython(data,socket,socketHandler,track) {
+		//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
+		if (securityOff) {
+			console.warn("WARNING: Python security is OFF")
+			socketHandler.socketEmitToAll('pycwd', cwd); //emit cwd
+		} else {
+			socketHandler.socketEmitToPython('pycwd', cwd); //check if python script is running
+		}
+		socketHandler.socketEmitToWeb('webready', {data: "ready?"}); //check if there is a web browser connected
+		socketHandler.socketListenToAll('webok', function (data) { //if there is, send data
+			//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
+			socketHandler.socketEmitToWeb('webdata',{data: "SEND!"});
+		});
+	}
+	function initweb(data,socket,socketHandler,track) {
+		//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
+		if (securityOff) {
+			console.warn("WARNING: Python security is OFF")
+			socketHandler.socketEmitToAll('pyready', {data: "ready?"}); //emit cwd
+		} else {
+			socketHandler.socketEmitToPython('pyready', {data: "ready?"}); //check if python script is running
+		}
+		socketHandler.socketListenToAll('pyok', function (data) { //if it is, go ahead and send data//authorize
+			var myauth = new userPool.key();
+			myauth.properties.approved = false; //set approved parameter
+			myauth.properties.videoAttemptNumber = 1; //video login attempt number
+			myauth.properties.passcodeAttemptNumber = 1; //passcode login attempt number
+			myauth.properties.socketID = socket.id; //socket id attached to key
+			myauth.properties.allowOpenCV = true; //allow opencv to happen with key
+			//console.log(myauth);
+			myauth.init();
+			track.authkey = myauth;
+			//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
+			//console.log("emitting to id: "+socket.id)
+			socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
+				authkey: myauth.key,
+				runtimeInformation: runtimeInformation
+			});
+
+			runtimeInformation.pythonConnected = true;
+		});
+	}
+
+	/**********************************
+	--R2:S2-- ACTION HANDLERS --R2:S2--
+	**********************************/
 
 	socket.on("GET", function (data) { //make it nice! like one unified action for all commands
 		socketHandler.update(userPool,sockets); //update socketHandler
@@ -560,6 +671,7 @@ io.on('connection', function (socket) { //on connection
 		var validKey = userPool.validateKey(key);
 		var processeddata = data.data;
 		//console.log("OPENCVALLOWED? "+((keyObjectValid == true)?keyObject.properties.allowOpenCV:"invalid keyObject"))
+		//console.log("TRACK TYPE: "+track.type);
 		if ((track.type == "uninitialized" || true)) { //different actions based on tracking type, if uninit just give all
 			switch(action) {
 				/*GENERAL ACTIONS*/
@@ -567,10 +679,10 @@ io.on('connection', function (socket) { //on connection
 					var ok = validKey;
 					if (ok == true) {
 						console.log("Validating authkey: "+key+", valid=true");
-						socketHandler.socketEmitToWeb('POST', {"action": "validatekey", "valid": "true"})
+						socketHandler.socketEmitToKey(key, 'POST', {"action": "validatekey", "valid": "true"});
 					} else {
 						console.log("Validating authkey: "+key+", valid=false");
-						socketHandler.socketEmitToWeb('POST', {"action": "validatekey", "valid": "false"})
+						socketHandler.socketEmitToID(track.id,'POST', {"action": "validatekey", "valid": "false"});
 					}
 					break;
 				case "readback":
@@ -668,17 +780,17 @@ io.on('connection', function (socket) { //on connection
 									fs.writeFile(path, b, function(err) {
 										console.log("Wrote file error?: "+err);
 									});
-									socketHandler.socketEmitToID(socket.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
+									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
 									console.log("Sending to opencv");
 									keyObject.properties.allowOpenCV = false;
 									if (securityOff) {
-										allemit("pydata","i:"+pyimgnum) //Sync imagenum variable
-										allemit("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
+										socketHandler.socketEmitToAll("pydata","i:"+pyimgnum) //Sync imagenum variable
+										socketHandler.socketEmitToAll("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
 									} else {
 										socketHandler.socketEmitToPython("pydata","i:"+pyimgnum) //Sync imagenum variable
 										socketHandler.socketEmitToPython("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
 									}
-									/*allon(("opencvresp:"+pyimgnum), function (data) {
+									/*socketHandler.socketListenToAll(("opencvresp:"+pyimgnum), function (data) {
 										console.log("data from opencv "+JSON.stringify(data));
 									});*/
 									pyimgnum++;
@@ -730,7 +842,7 @@ io.on('connection', function (socket) { //on connection
 							var pykeyObject = userPool.findKey(pykey);
 							if (pykeyObject == null) {
 								console.error("PyKey "+pykey+" not found in userPoolDB. Was request made before server restart?");
-								socketHandler.socketEmitToID(socket.id,"POST",{action: "processingError", error: "OpenCVClientMissingKey, key:"+pykey});
+								socketHandler.socketEmitToID(track.id,"POST",{action: "processingError", error: "OpenCVClientMissingKey, key:"+pykey});
 							} else if (typeof pykeyObject.properties.videoAttemptNumber !== "number") {
 								socketHandler.socketEmitToKey(pykey,"POST",{action: "processingError", error: "OpenCVClientKeyMissingVidAttemptProperty"});
 								console.error("VidAttempt not valid on key "+pykey);
@@ -863,7 +975,7 @@ io.on('connection', function (socket) { //on connection
 					if (validKey || securityOff) {
 						console.log("Authkey "+data.authkey+" approved")
 						if (securityOff) {
-							allemit('pydata',data.data);
+							socketHandler.socketEmitToAll('pydata',data.data);
 						} else {
 							socketHandler.socketEmitToPython('pydata',data.data);
 						}
@@ -993,66 +1105,7 @@ io.on('connection', function (socket) { //on connection
 socket shenanigans (thx jerry)
 {"type":2,"nsp":"/","data":["opencvresp:0",{"image":"true","data":"0,/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/out/image0.jpg"}]}
 {"type":2,"nsp":"/","data":["pyok",""]}
-
 */
-	socket.on('gpio', function(data) {}) //why is this here?
 });
-
-function initpython(data,socket,socketHandler,track) {
-	//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
-	if (securityOff) {
-		console.warn("WARNING: Python security is OFF")
-		allemit('pycwd', cwd); //emit cwd
-	} else {
-		socketHandler.socketEmitToPython('pycwd', cwd); //check if python script is running
-	}
-	socketHandler.socketEmitToWeb('webready', {data: "ready?"}); //check if there is a web browser connected
-	allon('webok', function (data) { //if there is, send data
-		//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
-		socketHandler.socketEmitToWeb('webdata',{data: "SEND!"});
-	});
-}
-function initweb(data,socket,socketHandler,track) {
-	//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
-	if (securityOff) {
-		console.warn("WARNING: Python security is OFF")
-		allemit('pyready', {data: "ready?"}); //emit cwd
-	} else {
-		socketHandler.socketEmitToPython('pyready', {data: "ready?"}); //check if python script is running
-	}
-	allon('pyok', function (data) { //if it is, go ahead and send data//authorize
-		var myauth = new userPool.key();
-		myauth.properties.approved = false; //set approved parameter
-		myauth.properties.videoAttemptNumber = 1; //video login attempt number
-		myauth.properties.passcodeAttemptNumber = 1; //passcode login attempt number
-		myauth.properties.socketID = socket.id; //socket id attached to key
-		myauth.properties.allowOpenCV = true; //allow opencv to happen with key
-		//console.log(myauth);
-		myauth.init();
-		track.authkey = myauth;
-		//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
-		//console.log("emitting to id: "+socket.id)
-		socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
-			authkey: myauth.key,
-			runtimeInformation: runtimeInformation
-		});
-
-		runtimeInformation.pythonConnected = true;
-	});
-}
-
-function allemit(id, data) {
-	for (var i=0; i<sockets.length; i++) {
-		sockets[i].socket.emit(id,data);
-	}
-}
-
-function allon(id, callback) {
-	for (var i=0; i<sockets.length; i++) {
-		sockets[i].socket.on(id,function() {
-			callback();
-		});
-	}
-}
 
 //I see you all the way at the bottom... what r u doing here, go back up and code something useful!

@@ -15,6 +15,9 @@
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
         "soundcloudCacheFile": "SCcache/soundcloudCache.json",
+        "faviconDirectory": "/index/assets/images/favicon.ico",
+        "defaultFileDirectory": "/index/COS.html",
+        "assetsDirectory": "/index/assets",
         "soundcloudCacheExpiryTime": 3600000,
         "arduinoBaudRate": 9600,
         "serverPort": 80
