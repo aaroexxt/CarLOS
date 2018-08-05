@@ -355,9 +355,9 @@ if [ "$usenodemon" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc listtype=$foundDevice serial=$device &
+            DEBUG=$debugval nodemon --quiet --verbose $nodeloc listtype=$foundDevice serial=$device &
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc listtype=$foundDevice serial=$device &
+            DEBUG=$debugval nodemon --quiet --inspect --verbose $nodeloc listtype=$foundDevice serial=$device &
         fi
         
     else

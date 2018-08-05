@@ -810,29 +810,47 @@ io.on('connection', function (socket) { //on connection
 					}
 				break;
 				case "node-SC":
-					var load = require('audio-loader');
+					var player = require('play-sound')(opts = {});
+
 					var fetch = require('node-fetch');
-					fetch("http://api.soundcloud.com/tracks/79031167/stream?client_id=3425f0db5f4339b4edbef6afeeb23264").then(function(response){
-						console.log("SC RESPONSE URL: "+response.url);
-						return new Promise((resolve, reject) => {
-				            const dest = fs.createWriteStream('./octocat.mp3');
-				            response.body.pipe(dest);
-				            response.body.on('error', err => {
-				                reject(err);
-				            });
-				            dest.on('finish', () => {
-				                resolve();
-				                load("./octocat.mp3").then(function (buffer) {
-									console.log("SC AUDIOBUFFER: "+buffer) // => <AudioBuffer>
-								}).catch(function(err) {
-									console.log("SC ERR: "+err.toString())
-								})
-				            });
-				            dest.on('error', err => {
-				                reject(err);
-				            });
-				        });
-						
+					var progress = require('progress-stream');
+					var trackID = data.trackID || 194674830;
+					fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id=3425f0db5f4339b4edbef6afeeb23264").then(function(response){
+						console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
+						var remoteFileSize = require("remote-file-size");
+						remoteFileSize(response.url, function(err, size) {
+							if (err) {
+								console.error("Error getting SC file size: "+err);
+							} else {
+								console.log("SIZE: "+size)
+								return new Promise((resolve, reject) => {
+						            const dest = fs.createWriteStream('./octocat.mp3');
+						            var str = progress({
+						            	time: 1000,
+						            	length: size
+						            }, progress => {
+						            	console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta);
+						            });
+						            response.body.pipe(str).pipe(dest);
+						            response.body.on('error', err => {
+						                reject(err);
+						            });
+						            dest.on('finish', () => {
+						                resolve();
+						            });
+						            dest.on('error', err => {
+						                reject(err);
+						            });
+						        }).then( () => {
+						        	console.log("loading octocat")
+						        	player.play('octocat.mp3', function(err){
+										if (err) throw err
+									})
+						        }).catch( err => {
+						        	console.error("Error writing SC track: "+err)
+						        })
+							}
+						})
 					});
 				break;
 				case "pydata":

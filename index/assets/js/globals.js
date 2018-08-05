@@ -359,7 +359,7 @@ var globals = {
                         });
                     },globals.music.delayBetweenTracklistRequests*j);
                 }
-            }).catch(function(e) {
+            }).catch( e => {
                 console.error("error getting soundcloud tracks: "+JSON.stringify(e));
                 if (e.status == 0 || e.message.indexOf("HTTP Error: 0") > -1) {
                     console.log("Getting tracks from cache")
