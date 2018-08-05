@@ -134,8 +134,37 @@ var globals = {
         socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
     },
     music: {
-        cliId: '3425f0db5f4339b4edbef6afeeb23264',
-        defaultUsername: "bexterdubs", //username to take tracks from
+
+        socketListener.addPersistentListener("serverLoadedTracks", data => {
+            if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
+                globals.music.likedTracks = data.likedTracks;
+                globals.music.trackList = data.trackList;
+                ID("music_trackTitle").innerHTML = "Select a track";
+                globals.music.tracksFromCache = false;
+                //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
+                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
+            } else {
+                console.error("Server said that it had tracks but there are no tracks provided");
+            }
+        });
+
+        socketListener.addPersistentListener("serverNoTrackCache", data => {
+            console.warn("TrackCache has no tracks; no music playing possible");
+            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
+        }
+
+        socketListener.addPersistentListener("serverErrorLoadingTracks", data => {
+            console.log("Error is potential username invalidity, log for user");
+            ID("music_trackTitle").innerHTML = "An error other than an internet disconnected error occurred (code "+data.error.status+") occurred. Message: "+data.error.message;
+        }
+
+        socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
+            ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
+        }
+        
+
+        cliId: '',
+        defaultUsername: "", //username to take tracks from
         maxLikedTracks: 0, //user amount of liked tracks
         maxTracksInRequest: 200,
         tracksPerRequest: 40,
@@ -298,104 +327,7 @@ var globals = {
             }
         },
 
-        init: function(username) { //init w/username
-            if (typeof username == "undefined") {
-                username = globals.music.defaultUsername;
-            }
-            SC.initialize({
-                client_id: globals.music.cliId, //uid: 176787227 176787227
-                //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
-            });
-
-            SC.resolve("https://soundcloud.com/"+username+"/").then(function(data){ //get uid from username
-                console.log("Initializing soundcloud with username: "+username+" which corresponds to uid: "+data.id);
-                globals.music.maxLikedTracks = data.public_favorites_count;
-                globals.music.uid = data.id;
-                globals.music.likedTracks = [];
-                globals.music.trackList = [];
-                var offsettracks = 0;
-                if (globals.music.tracksPerRequest > globals.music.maxTracksInRequest) {
-                    globals.music.tracksPerRequest = globals.music.maxTracksInRequest;
-                }
-                var requiredRequestTimes = Math.ceil(globals.music.maxLikedTracks/globals.music.tracksPerRequest);
-                if (requiredRequestTimes > globals.music.requestConstraint) {
-                    requiredRequestTimes = globals.music.requestConstraint;
-                }
-                var tracksToLoad = (globals.music.maxLikedTracks/globals.music.tracksPerRequest); //evaluate
-                if (tracksToLoad > globals.music.requestConstraint) {
-                    while (tracksToLoad>globals.music.requestConstraint) {
-                        tracksToLoad-=1;
-                    }
-                }
-                tracksToLoad*=globals.music.tracksPerRequest;
-                tracksToLoad = Math.round(tracksToLoad);
-                console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
-                for (var j=0; j<requiredRequestTimes; j++) {
-                    setTimeout(function(){
-                        SC.get("/users/"+globals.music.uid+"/favorites.json",{client_id: globals.music.cliId, offset: globals.music.tracksPerRequest*j, limit: globals.music.tracksPerRequest}).then(function(tracks){ //get favorite tracks
-                            for (var i=0; i<tracks.length; i++) {
-                                globals.music.likedTracks.push({ //extract track info
-                                    title: tracks[i].title,
-                                    index: i,
-                                    id: tracks[i].id,
-                                    author: tracks[i].user.username,
-                                    duration: tracks[i].duration,
-                                    playing: false,
-                                    artwork: {
-                                        artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
-                                        waveformUrl: tracks[i].waveform_url
-                                    }
-                                });
-                                globals.music.trackList.push(tracks[i].title);
-                            }
-                            
-                            if (globals.music.trackList.length >= tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
-                                console.log("processed "+globals.music.likedTracks.length+" tracks for soundcloud");
-                                ID("music_trackTitle").innerHTML = "Select a track";
-                                globals.music.tracksFromCache = false;
-                                socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
-                                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
-                            }
-                        });
-                    },globals.music.delayBetweenTracklistRequests*j);
-                }
-            }).catch( e => {
-                console.error("error getting soundcloud tracks: "+JSON.stringify(e));
-                if (e.status == 0 || e.message.indexOf("HTTP Error: 0") > -1) {
-                    console.log("Getting tracks from cache")
-                    socket.emit("GET",{action: "retreiveSoundcloudCache", authkey: globals.authkey});
-                    ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
-                    socketListener.addListener("returnSoundcloudCache", function(data) {
-                        if (data.hasCache) {
-                            var cachelen = data.cacheLength;
-                            var cache = data.cache.cache;
-                            var cacheExpiry = data.cache.expiryTime;
-                            console.log("Cache expires at dT: "+cacheExpiry);
-
-                            if (typeof cache == "undefined" || cachelen == 0) {
-                                console.error("TrackCache is undefined or has no tracks");
-                                ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
-                            } else {
-                                globals.music.tracksFromCache = true;
-                                ID("music_trackTitle").innerHTML = "Loaded tracks from cache. Select a track.";
-                                globals.music.likedTracks = [];
-                                globals.music.trackList = [];
-                                for (var i=0; i<cache.length; i++) {
-                                    globals.music.likedTracks.push(cache[i]);
-                                    globals.music.trackList.push(cache[i].title);
-                                }
-                                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
-                            }
-                        } else {
-                            console.warn("TrackCache has no tracks; no music playing possible");
-                            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
-                        }
-                    });
-                } else {
-                    console.log("Error is potential username invalidity, log for user");
-                    ID("music_trackTitle").innerHTML = "An error other than an internet disconnected error occurred (code "+e.status+") occurred. Message: "+e.message;
-                }
-            });
+        
 
         },
 

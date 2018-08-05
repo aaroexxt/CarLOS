@@ -45,6 +45,18 @@ Finish CLEANING UP cosserver.JS:
     - 
 
 
+music:
+
+server onstartup looks for cache file, if it finds it it sends it to server
+else it requests it and saves the results
+
+once tracks are loaded, it loads the tracks into mp3 files
+
+changescuser now has to go to server
+
+retry button on client side
+
+
 DONE stuff:
 
 also ability to switch soundcloud users DONE
