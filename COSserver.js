@@ -33,6 +33,7 @@
 
 This descriptor describes the layout of the code in this file.
 2 main phases: Initialization (I1-I9) and Runtime Code (R1-R2)
+	Sub-phase: SocketIO Subsections (S1-S? FINISH TMRW HELLO R U LISTENING FUTURE AARON)
 
 Initialization (9 steps):
 1) Module Initialization: initalizes modules that are required later on
@@ -843,9 +844,13 @@ io.on('connection', function (socket) { //on connection
 						            });
 						        }).then( () => {
 						        	console.log("loading octocat")
-						        	player.play('octocat.mp3', function(err){
-										if (err) throw err
+						        	var audio = player.play('octocat.mp3', function(err){
+										if (err && !err.killed) throw err
+										if (err.killed) console.log("Killed audio track")
 									})
+									setTimeout( () => {
+										audio.kill();
+									},10000)
 						        }).catch( err => {
 						        	console.error("Error writing SC track: "+err)
 						        })
@@ -1049,3 +1054,5 @@ function allon(id, callback) {
 		});
 	}
 }
+
+//I see you all the way at the bottom... what r u doing here, go back up and code something useful!

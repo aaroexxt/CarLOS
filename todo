@@ -30,7 +30,13 @@ playlist support
 
 cache neural network weights for more efficient starting of server(brain.js toFunction)
 
-Finish CLEANING UP FILESERVE.JS
+reverse proxy cache
+load balancing
+
+Finish CLEANING UP FILESERVE.JS:
+    - clean up init process (initweb and initpython functions)
+    - add allemit and allon to socketUtils
+    - 
 
 
 DONE stuff:
