@@ -9,7 +9,7 @@ CHARTJS STATS PAGE LIKE IN TESLA
 odometer
 music waveform dynamic movement when music plays
 
-config nodemon to not restart when i modify globals.js
+
 geographic tracking w/upload to ext domain
 advanced panel of "A" menu which allows you to refresh soundcloud cache
 sync settings with settings from "A" menu, use switchery.js for settings
@@ -31,6 +31,7 @@ playlist support
 cache neural network weights for more efficient starting of server(brain.js toFunction)
 
 reverse proxy cache
+username cache
 load balancing
 
 colors in console w/overriding prototype
@@ -64,6 +65,7 @@ shuffle/notshuffle button DONE
 caching of soundcloud pages for low internet access DONE
 err loading track display DONE
 also dynamic hiding/showing of music menu DONE
+config nodemon to not restart when i modify globals.js DONE
 
 
 Portable ideas:

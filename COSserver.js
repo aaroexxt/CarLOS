@@ -763,15 +763,19 @@ function saveTracks(likedTracks) { //save tracks
 			var tracksLoaded = 0;
 			console.log("Have to save: "+tracksToLoad+" tracks");
 
+			//function does not execute yet, check below
 			function loadTrackIndex(trackIndex) {
 				var trackID = likedTracks[trackIndex].id;
 				console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
-				
+
+				//todo delete unfinished tracks
+
+				var unfinTrackPath = (cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");
 				var trackPath = (cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
 				console.log("Checking if track exists at path "+trackPath);
 				fs.readFile(trackPath, (err, data) => {
 					if (err) {
-						console.log("Track does not exist, downloading");
+						console.log("Track does not exist, downloading at path "+unfinTrackPath);
 						fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id="+soundcloudSettings.clientID, {timeout: soundcloudSettings.requestTimeout}).then(function(response){
 							console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
 							
@@ -781,8 +785,8 @@ function saveTracks(likedTracks) { //save tracks
 								} else {
 									console.log("SIZE: "+size);
 									return new Promise((sresolve, sreject) => {
-										console.log("writing to path: "+trackPath);
-							            const dest = fs.createWriteStream(trackPath);
+										console.log("writing to path: "+unfinTrackPath);
+							            const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
 							            var str = progress({
 							            	time: 1000,
 							            	length: size
@@ -794,14 +798,21 @@ function saveTracks(likedTracks) { //save tracks
 							                sreject(err);
 							            });
 							            dest.on('finish', () => {
-							                sresolve();
+							            	console.log("Renaming to finished track")
+							            	fs.rename(unfinTrackPath, trackPath, err => {
+							            		if (err) {
+							            			sreject("Error renaming track");
+							            		} else {
+							            			sresolve();
+							            		}
+							            	});
 							            });
 							            dest.on('error', err => {
 							                sreject(err);
 							            });
 							        }).then( () => {
 							        	tracksLoaded++;
-							        	console.log("Track with id="+likedTracks[trackIndex].id+" written successfully, overall prog: "+tracksLoaded/tracksToLoad);
+							        	console.log("Track with id="+likedTracks[trackIndex].id+" written successfully, overall prog: "+(tracksLoaded/tracksToLoad)*100);
 							        	if (tracksLoaded == tracksToLoad) {
 							        		console.log("Done loading tracks, resolving");
 							        		resolve();
@@ -818,7 +829,7 @@ function saveTracks(likedTracks) { //save tracks
 						});
 					} else {
 						tracksLoaded++;
-						console.log("Track with id="+likedTracks[i].id+" was found already, (skipping) overall prog: "+tracksLoaded/tracksToLoad);
+						console.log("Track with id="+likedTracks[i].id+" was found already, (skipping) overall prog: "+(tracksLoaded/tracksToLoad)*100);
 			        	if (tracksLoaded == tracksToLoad) {
 			        		console.log("Done loading tracks, resolving");
 			        		resolve();
@@ -829,7 +840,29 @@ function saveTracks(likedTracks) { //save tracks
 				});
 			}
 
-			loadTrackIndex(0); //start track loading (recursive)
+			console.log("Checking directory: "+cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+" for unfinished tracks");
+			var unfinishedTracks = [];
+			fs.readdir(cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory, (err, files) => {
+				if (err) {
+					reject("Error checking cache directory for unfinished tracks");
+				} else {
+					for (var i=0; i<files.length; i++) {
+						if (files[i].indexOf("UNFINISHED")) {
+							unfinishedTracks.push(files[i]);
+
+							let path = cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+"/"+files[i];
+							fs.unlink(path, err => {
+								if (err) {
+									console.error("Error unlinking unfinished track at path "+path);
+								}
+							})
+						}
+					}
+					console.log("Found "+unfinishedTracks.length+" unfinished tracks, loading new");
+					loadTrackIndex(0); //start track loading (recursive)
+				}
+			});
+			
 		} else {
 			reject("likedTracks undefined or no tracks");
 		}

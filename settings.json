@@ -42,6 +42,6 @@
         "tracksFromCache": false,
         "likedTracks": [],
         "trackList": [],
-        "requestTimeout": 1000
+        "requestTimeout": 21000
     }
 }
