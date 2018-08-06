@@ -153,11 +153,6 @@ var globals = {
             ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
         }
 
-        socketListener.addPersistentListener("serverErrorLoadingTracks", data => {
-            console.log("Error is potential username invalidity, log for user");
-            ID("music_trackTitle").innerHTML = "An error other than an internet disconnected error occurred (code "+data.error.status+") occurred. Message: "+data.error.message;
-        }
-
         socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
             ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
         }

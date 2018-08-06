@@ -23,7 +23,7 @@
     },
     "soundcloudSettings": {
         "clientID": "3425f0db5f4339b4edbef6afeeb23264",
-        "soundcloudCacheFile": "SCcache/soundcloudCache.json",
+        "soundcloudCacheFile": "SCcache/soundcloudCache",
         "soundcloudTrackCacheDirectory": "SCcache/tracks",
         "defaultUsername": "bexterdubs",
         "noArtworkUrl": "images/noAlbumArt.png",
@@ -33,14 +33,16 @@
         "maxTracksInRequest": 200,
         "tracksPerRequest": 40,
         "delayBetweenTracklistRequests": 100,
+        "delayBetweenFilesaveRequests": 10000,
         "requestConstraint": 1,
         "trackUpdateInterval": 0,
         "nextTrackShuffle": false,
         "nextTrackLoop": false,
-        "userID": 0,
+        "userID": 176787227,
         "firstPlay": true,
         "tracksFromCache": false,
         "likedTracks": [],
-        "trackList": []
+        "trackList": [],
+        "requestTimeout": 20000
     }
 }

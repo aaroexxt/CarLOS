@@ -427,6 +427,7 @@ var colors = require('colors');
 
 const originalWarn = console.warn;
 const originalErr = console.error;
+const originalInfo = console.info;
 
 console.warn = function(){
 	if (arguments.length > 1) {
@@ -451,6 +452,19 @@ console.error = function(){
 		originalErr(colors.red.underline(firstArg),restArgs);
 	} else {
 		originalErr(colors.red.underline(arguments[0]));
+	}
+}
+
+console.info = function(){
+	if (arguments.length > 1) {
+		var firstArg = arguments[0];
+		var restArgs = [];
+		for (var i=1; i<arguments.length; i++) {
+			restArgs.push(arguments[i]);
+		}
+		originalInfo(colors.blue.underline(firstArg),restArgs);
+	} else {
+		originalInfo(colors.blue.underline(arguments[0]));
 	}
 }
 
@@ -603,23 +617,23 @@ function initSC (username) { //init w/username
 	if (typeof username == "undefined") {
 	    username = soundcloudSettings.defaultUsername;
 	}
-	SC.initialize({
-	    id: soundcloudSettings.clientID, //uid: 176787227 176787227
+	SC.init({
+	    id: soundcloudSettings.clientID //uid: 176787227
 	    //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
 	});
 
-	SC.resolve("https://soundcloud.com/"+username+"/").then(function(data){ //get uid from username
-	    console.log("Initialized soundcloud with username: "+username+" which corresponds to uid: "+data.id);
+	fetch("https://api.soundcloud.com/resolve/?url="+"https://soundcloud.com/"+username+"/"+"&client_id="+soundcloudSettings.clientID+"&format=json", {timeout: soundcloudSettings.requestTimeout}).then( res => res.json()).then( data => { //get favorite tracks
+	    console.log(colors.green("Initialized soundcloud with username: "+colors.underline(username)+" which corresponds to uid: "+colors.underline(data.id)));
 	    soundcloudSettings.maxLikedTracks = data.public_favorites_count;
 	    soundcloudSettings.userID = data.id;
 	    soundcloudSettings.likedTracks = [];
 	    soundcloudSettings.trackList = [];
-	    var offsettracks = 0;
+
 	    if (soundcloudSettings.tracksPerRequest > soundcloudSettings.maxTracksInRequest) {
 	        soundcloudSettings.tracksPerRequest = soundcloudSettings.maxTracksInRequest;
 	    }
-	    var requiredRequestTimes = Math.ceil(soundcloudSettings.maxLikedTracks/soundcloudSettings.tracksPerRequest);
-	    if (requiredRequestTimes > soundcloudSettings.requestConstraint) {
+	    var requiredRequestTimes = Math.ceil(soundcloudSettings.maxLikedTracks/soundcloudSettings.tracksPerRequest); //how many requests?
+	    if (requiredRequestTimes > soundcloudSettings.requestConstraint) { //constrain it
 	        requiredRequestTimes = soundcloudSettings.requestConstraint;
 	    }
 	    var tracksToLoad = (soundcloudSettings.maxLikedTracks/soundcloudSettings.tracksPerRequest); //evaluate
@@ -630,10 +644,12 @@ function initSC (username) { //init w/username
 	    }
 	    tracksToLoad*=soundcloudSettings.tracksPerRequest;
 	    tracksToLoad = Math.round(tracksToLoad);
+	    var requestCounter = 0;
 	    console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
 	    for (var j=0; j<requiredRequestTimes; j++) {
 	        setTimeout(function(){
-	            SC.get("/users/"+soundcloudSettings.userID+"/favorites.json",{client_id: soundcloudSettings.cliId, offset: soundcloudSettings.tracksPerRequest*j, limit: soundcloudSettings.tracksPerRequest}).then(function(tracks){ //get favorite tracks
+	            fetch("https://api.soundcloud.com/users/"+soundcloudSettings.userID+"/favorites.json?client_id="+soundcloudSettings.clientID+"&offset="+(soundcloudSettings.tracksPerRequest*j)+"&limit="+soundcloudSettings.tracksPerRequest+"&format=json", {timeout: soundcloudSettings.requestTimeout}).then( res => res.json()).then( tracks => { //get favorite tracks
+	                //console.log("TRACKS "+JSON.stringify(tracks));
 	                for (var i=0; i<tracks.length; i++) {
 	                    soundcloudSettings.likedTracks.push({ //extract track info
 	                        title: tracks[i].title,
@@ -649,132 +665,157 @@ function initSC (username) { //init w/username
 	                    });
 	                    soundcloudSettings.trackList.push(tracks[i].title);
 	                }
+
+	                //console.info(JSON.stringify(soundcloudSettings));
+	                requestCounter++; //increment the counter
 	                
-	                if (soundcloudSettings.trackList.length >= tracksToLoad) { //does loaded tracklist length equal tracks to load (equates for partial requests)
-	                    console.log("Processed "+soundcloudSettings.likedTracks.length+" tracks for soundcloud");
+	                if (soundcloudSettings.trackList.length >= tracksToLoad || requestCounter >= requiredRequestTimes) { //does loaded tracklist length equal tracks to load (equates for partial requests)
+	                    console.log(colors.green("Processed "+colors.underline(soundcloudSettings.likedTracks.length)+" tracks for soundcloud"));
 	                    soundcloudSettings.tracksFromCache = false;
 	                    socketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: soundcloudSettings.trackList, likedTracks: soundcloudSettings.trackList, hasTracks: true}); //send serverloadedtracks
-	                    saveTrackCache(soundcloudSettings.trackList, soundcloudSettings.likedTracks).then( () => {
+	                    saveTrackCache(soundcloudSettings.likedTracks, soundcloudSettings.userID).then( () => {
 	                    	console.log(colors.green("Saved track cache"))
 	                    }).catch( err => {
 	                    	console.error("Error saving cache: "+err);
 	                    });
-	                    saveTracks().then( () => {
-	                    	console.log(colors.green("Loaded all SC tracks"))
+	                    saveTracks(soundcloudSettings.likedTracks).then( () => {
+	                    	console.log(colors.green("Loaded all SC tracks"));
+	                    }).catch( err => {
+	                    	console.error("Error saving tracks: "+err);
 	                    });
 	                }
+	            }).catch( e => {
+	            	console.error("Failed to get track from trackRequest")
 	            });
 	        },soundcloudSettings.delayBetweenTracklistRequests*j);
 	    }
-	}).catch( e => {
-	    console.error("Error getting soundcloud tracks: "+JSON.stringify(e));
-	    if (e.status == 0 || e.message.indexOf("HTTP Error: 0") > -1) {
-	        console.log("Getting tracks from cache");
-	        socketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
-	        loadCache().then( data => {
-	        	var cachelen = data.cacheLength;
-                var cache = data.cache.cache;
-                var cacheExpiry = data.cache.expiryTime;
-                console.log("Cache expires at dT: "+cacheExpiry);
-
-                if (typeof cache == "undefined" || cachelen == 0) {
-                	console.warn("TrackCache is undefined or has no tracks");
-	            	socketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
-                } else {
-                    soundcloudSettings.tracksFromCache = true;
-                    ID("music_trackTitle").innerHTML = "Loaded tracks from cache. Select a track.";
-                    soundcloudSettings.likedTracks = [];
-                    soundcloudSettings.trackList = [];
-                    for (var i=0; i<cache.length; i++) {
-                        soundcloudSettings.likedTracks.push(cache[i]);
-                        soundcloudSettings.trackList.push(cache[i].title);
-                    }
-                    socketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: soundcloudSettings.trackList, likedTracks: soundcloudSettings.trackList, hasTracks: true}); //send serverloadedtracks
-                }
-	        }).catch( error => {
-	        	console.warn("Server has no track cache, no music playing possible");
-	            socketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
-	        });
-	    } else {
-	        console.error("Error is potential username invalidity, log for user");
-	        socketHandler.socketEmitToWeb("POST", {action: "serverErrorLoadingTrack", error: {status: e.status, message: e.message}}); //send serverloadedtracks
-	    }
+	}).catch(e => {
+		failedToLoadTracks(e); //failed to load the tracks
 	});
 }
 
-function saveTrackCache(likedTracks) { //save cache
+function failedToLoadTracks(e) {
+	console.error("Error getting soundcloud tracks: "+JSON.stringify(e));
+    console.log("Getting tracks from cache");
+    socketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
+    loadCache(soundcloudSettings.userID).then( cache => {
+    	var cachelen = cache.length;
+        var cache = cache.cache;
+        var cacheExpiry = cache.expiryTime;
+        console.log("Cache expires at dT: "+cacheExpiry);
+
+        if (typeof cache == "undefined" || cachelen == 0) {
+        	console.warn("TrackCache is undefined or has no tracks");
+        	socketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
+        } else {
+            soundcloudSettings.tracksFromCache = true;
+            soundcloudSettings.likedTracks = [];
+            soundcloudSettings.trackList = [];
+            for (var i=0; i<cache.length; i++) {
+                soundcloudSettings.likedTracks.push(cache[i]);
+                soundcloudSettings.trackList.push(cache[i].title);
+            }
+            socketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: soundcloudSettings.trackList, likedTracks: soundcloudSettings.trackList, hasTracks: true}); //send serverloadedtracks
+        }
+    }).catch( error => {
+    	console.warn("Server has no track cache, no music playing possible");
+        socketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
+    });
+}
+
+function saveTrackCache(likedTracks,userID) { //save cache
 	return new Promise((resolve, reject) => {
-		if (typeof likedTracks == "Array" && likedTracks.length > 0) {
-			var expiry = new Date().getTime()+soundcloudSettings.soundcloudCacheExpiryTime;
-			var writeableCache = {
-				expiryTime: expiry,
-				cache: likedTracks
-			}
-			var toWrite = JSON.stringify(writeableCache);
-			fs.writeFile(cwd+"/"+soundcloudSettings.soundcloudCacheFile, toWrite, function(err) {
-				if (err != null) {
-					reject("Error writing SC Cache file"+err);
-				} else {
-					resolve();
+		if (typeof userID !== "undefined") {
+			if (typeof likedTracks !== "undefined" && likedTracks.length > 0) {
+				var expiry = new Date().getTime()+soundcloudSettings.soundcloudCacheExpiryTime;
+				var writeableCache = {
+					expiryTime: expiry,
+					cache: likedTracks
 				}
-			});
+				var toWrite = JSON.stringify(writeableCache);
+				fs.writeFile(cwd+"/"+soundcloudSettings.soundcloudCacheFile+"-"+userID+".json", toWrite, function(err) {
+					if (err != null) {
+						reject("Error writing SC Cache file"+err);
+					} else {
+						resolve();
+					}
+				});
+			} else {
+				reject("likedTracks undefined or no tracks");
+			}
 		} else {
-			reject("likedTracks undefined or no tracks");
+			reject("saveCache userID property not specified")
 		}
 	});
 }
 
 function saveTracks(likedTracks) { //save tracks
 	return new Promise((resolve, reject) => {
-		if (typeof likedTracks == "Array" && likedTracks.length > 0) {
+		if (typeof likedTracks !== "undefined" && likedTracks.length > 0) {
 
 			var tracksToLoad = likedTracks.length;
 			var tracksLoaded = 0;
 			console.log("Have to save: "+tracksToLoad+" tracks");
-			for (var i=0; i<1; i++) {
-				var trackID = likedTracks[i].id;
-				console.log("Fetching SC track "+likedTracks[i].title);
-				fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id="+soundcloudSettings.clientID).then(function(response){
-					console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
+			for (var i=0; i<likedTracks.length; i++) {
+				setTimeout( () => {
+					var trackID = likedTracks[i].id;
+					console.log("Fetching SC track "+likedTracks[i].title);
 					
-					remoteFileSize(response.url, function(err, size) { //get size of file
+					var trackPath = (cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
+					console.log("Checking if track exists at path "+trackPath);
+					fs.readFile(trackPath, (err, data) => {
 						if (err) {
-							reject("Error getting SC file size: "+err);
+							console.log("Track does not exist, downloading");
+							fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id="+soundcloudSettings.clientID).then(function(response){
+								console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
+								
+								remoteFileSize(response.url, function(err, size) { //get size of file
+									if (err) {
+										reject("Error getting SC file size: "+err);
+									} else {
+										console.log("SIZE: "+size);
+										return new Promise((sresolve, sreject) => {
+											console.log("writing to path: "+trackPath);
+								            const dest = fs.createWriteStream(trackPath);
+								            var str = progress({
+								            	time: 1000,
+								            	length: size
+								            }, progress => {
+								            	console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
+								            });
+								            response.body.pipe(str).pipe(dest);
+								            response.body.on('error', err => {
+								                sreject(err);
+								            });
+								            dest.on('finish', () => {
+								                sresolve();
+								            });
+								            dest.on('error', err => {
+								                sreject(err);
+								            });
+								        }).then( () => {
+								        	tracksLoaded++;
+								        	console.log("Track with id="+likedTracks[i].id+" written successfully, overall prog: "+tracksLoaded/tracksToLoad);
+								        	if (tracksLoaded == tracksToLoad) {
+								        		console.log("Done loading tracks, resolving");
+								        		resolve();
+								        	}
+								        }).catch( err => {
+								        	console.error("Error writing SC track: "+err)
+								        })
+									}
+								})
+							});
 						} else {
-							console.log("SIZE: "+size);
-							return new Promise((sresolve, sreject) => {
-								let trackPath = cwd+"/"+soundcloudSettings.soundcloudTrackCacheDirectory+"/"+"track-"+likedTracks[i].id+".mp3";
-								console.log("writing to path: "+trackPath);
-					            const dest = fs.createWriteStream(trackPath);
-					            var str = progress({
-					            	time: 1000,
-					            	length: size
-					            }, progress => {
-					            	console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta);
-					            });
-					            response.body.pipe(str).pipe(dest);
-					            response.body.on('error', err => {
-					                sreject(err);
-					            });
-					            dest.on('finish', () => {
-					                sresolve();
-					            });
-					            dest.on('error', err => {
-					                sreject(err);
-					            });
-					        }).then( () => {
-					        	console.log("Track with id="+likedTracks[i].id+" written successfully, overall prog: "+tracksLoaded/tracksToLoad);
-					        	tracksLoaded++;
-					        	if (tracksLoaded == tracksToLoad || true) {
-					        		console.log("Done loading tracks, resolving");
-					        		resolve();
-					        	}
-					        }).catch( err => {
-					        	console.error("Error writing SC track: "+err)
-					        })
+							tracksLoaded++;
+							console.log("Track with id="+likedTracks[i].id+" was found already, (skipping) overall prog: "+tracksLoaded/tracksToLoad);
+				        	if (tracksLoaded == tracksToLoad) {
+				        		console.log("Done loading tracks, resolving");
+				        		resolve();
+				        	}
 						}
-					})
-				});
+					});
+				},soundcloudSettings.delayBetweenFilesaveRequests);
 			}
 		} else {
 			reject("likedTracks undefined or no tracks");
@@ -792,11 +833,14 @@ setTimeout( () => {
 },10000);
 */
 
-function loadCache() { // load cache
+function loadCache(userID) { // load cache
 	return new Promise((resolve, reject) => {
+		if (typeof userID == "undefined") {
+			reject("loadCache userID property not specified");
+		}
 		var cf = soundcloudSettings.soundcloudCacheFile;
-		console.log("Retreiving soundcloudCache from '"+cf+"'");
-		fs.readFile(cwd+"/"+cf, function(err, data) {
+		console.log("Retreiving soundcloudCache from '"+cf+"-"+userID+".json'");
+		fs.readFile(cwd+"/"+cf+"-"+userID+".json", function(err, data) { //include userID so caches are user specific
 			if (err) {
 				reject("No soundcloud cache file found");
 			} else {
@@ -826,6 +870,7 @@ function loadCache() { // load cache
 	});
 }
 
+console.info("SCSCSCtime")
 initSC(soundcloudSettings.defaultUsername);
 
 /***************************************
