@@ -355,9 +355,9 @@ if [ "$usenodemon" = "true" ]; then
         echo "Starting node server in background (option passed)...";
         echo "WARNING: Node running in background can't recover from --inspect error. If this occurs, try again without the -b option.";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --quiet --verbose $nodeloc listtype=$foundDevice serial=$device &
+            DEBUG=$debugval nodemon --quiet -L $nodeloc listtype=$foundDevice serial=$device &
         else
-            DEBUG=$debugval nodemon --quiet --inspect --verbose $nodeloc listtype=$foundDevice serial=$device &
+            DEBUG=$debugval nodemon --quiet --inspect -L $nodeloc listtype=$foundDevice serial=$device &
         fi
         
     else
@@ -365,9 +365,9 @@ if [ "$usenodemon" = "true" ]; then
         #the 2x start was a little bit annoying
         #DEBUG=$debugval nodemon --inspect --verbose $nodeloc || echo "Oh no, there was an exception :( Trying again without --inspect"; DEBUG=* node $nodeloc || printf "\n\n\n\nAnother error! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         if [ "$platform" = "linux" ]; then
-            DEBUG=$debugval nodemon --verbose $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon -L $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval nodemon --inspect --verbose $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --inspect -L $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 else

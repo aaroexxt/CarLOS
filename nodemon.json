@@ -7,7 +7,7 @@
     ],
     "watch": ["COSserver.js"],
     "e": ["js"],
-    "delay": 2500,
+    "delay": 1000,
     "execMap": {
         "rb": "ruby",
         "pde": "processing --sketch={{pwd}} --run"

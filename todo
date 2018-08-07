@@ -32,9 +32,10 @@ cache neural network weights for more efficient starting of server(brain.js toFu
 
 reverse proxy cache
 username cache
+use nodejs lib for progress bars in console
 load balancing
 
-colors in console w/overriding prototype
+
 
 better 404 page
 
@@ -66,6 +67,7 @@ caching of soundcloud pages for low internet access DONE
 err loading track display DONE
 also dynamic hiding/showing of music menu DONE
 config nodemon to not restart when i modify globals.js DONE
+colors in console w/overriding prototype DONE
 
 
 Portable ideas:
