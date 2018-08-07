@@ -134,28 +134,6 @@ var globals = {
         socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
     },
     music: {
-
-        socketListener.addPersistentListener("serverLoadedTracks", data => {
-            if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
-                globals.music.likedTracks = data.likedTracks;
-                globals.music.trackList = data.trackList;
-                ID("music_trackTitle").innerHTML = "Select a track";
-                globals.music.tracksFromCache = false;
-                //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
-                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
-            } else {
-                console.error("Server said that it had tracks but there are no tracks provided");
-            }
-        });
-
-        socketListener.addPersistentListener("serverNoTrackCache", data => {
-            console.warn("TrackCache has no tracks; no music playing possible");
-            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
-        }
-
-        socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
-            ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
-        }
         
 
         cliId: '',

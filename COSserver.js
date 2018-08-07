@@ -82,8 +82,6 @@ var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and
 
 var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler which keeps track of sockets and userPool and can send messages to specific clients
 
-
-
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
 **********************************/
@@ -571,6 +569,76 @@ process.stdout.on('resize', function() {
 	console.log("Updated terminal size to width: "+windowSize.width+", height: "+windowSize.height);
 });
 
+function progressBar(options) {
+	if (typeof options != "object") {
+		options = {
+			startPercent: 0,
+			task: "Doing a task: ",
+			showETA: false
+		}
+	} else {
+		if (typeof options.startPercent == "undefined") {
+			options.startPercent = 0;
+		}
+		if (typeof options.task == "undefined") {
+			options.task = "Doing a task: ";
+		} else {
+			options.task = options.task+": ";
+		}
+		if (typeof options.showETA !== "boolean") {
+			options.showETA = false;
+		}
+	}
+	if (options.task.length+9 > windowSize.width) {
+		options.task = options.task.substring(0,windowSize.width-9);
+	}
+
+	this.update = (newPercent, eta) => {
+		if (newPercent > 1) {
+			newPercent = 1;
+		}
+		if (newPercent < 0) {
+			newPercent = 0;
+		}
+		if (eta && options.showETA) {
+			var chars = Math.round((windowSize.width-options.task.length-11-eta.length)*newPercent);
+		} else {
+			var chars = Math.round((windowSize.width-options.task.length-9)*newPercent);
+		}
+		
+		var str = colors.yellow(options.task)+colors.blue("[");
+		var hashStr = "";
+		for (var i=0; i<chars; i++) {
+			hashStr+="#";
+		}
+		str+=colors.grey(hashStr);
+		if (eta && options.showETA) {
+			str+=colors.blue("]> ")+colors.green(String(Math.round(newPercent*100)+"%, "+eta));
+		} else {
+			str+=colors.blue("]> ")+colors.green(String(Math.round(newPercent*100)+"%"));
+		}
+		singleLineLog(str);
+	}
+
+	this.update(options.startPercent);
+}
+
+var pB = new progressBar({
+	task: "L",
+	showETA: true
+});
+var cnt = 0;
+var dir = 0.01;
+setInterval( () => {
+	pB.update(cnt);
+	cnt+=dir
+	if (cnt > 1) {
+		dir = -0.01;
+	} else if (cnt < 0) {
+		dir = 0.01;
+	}
+},50);
+
 /***************************************
 --R1-- HTTP SERVER SETUP/HANDLING --R1--
 ***************************************/
@@ -895,18 +963,17 @@ function saveAllTracks(likedTracks) { //save tracks
 									return new Promise((sresolve, sreject) => {
 										console.log("writing to path: "+unfinTrackPath);
 							            const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
-							            const progressBar = term.progressBar( {
-											width: windowPlugin.get().width, //get current width
-											title: "Downloading track '"+likedTracks[trackIndex].title+"':" ,
-											eta: true,
-											percent: true
-										});
+							            var pBar = new progressBar({
+							            	startPercent: 0,
+							            	task: "Downloading '"+likedTracks[trackIndex].title+"'",
+							            	showETA: true
+							            });
 							            var str = progress({
 							            	time: 500,
 							            	length: size
 							            }, progress => {
 							            	//console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
-							            	progressBar.update(progress.percentage/100);
+							            	pBar.update(progress.percentage/100,progress.eta);
 							            });
 							            response.body.pipe(str).pipe(dest);
 							            response.body.on('error', err => {
@@ -1007,18 +1074,17 @@ function saveTrack(trackObject) {
 							return new Promise((sresolve, sreject) => {
 								console.log("writing to path: "+unfinTrackPath);
 					            const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
-					            const progressBar = term.progressBar( {
-									width: windowPlugin.get().width, //get current width
-									title: "Downloading track '"+likedTracks[trackIndex].title+"':" ,
-									eta: true,
-									percent: true
-								});
+					            var pBar = new progressBar({
+					            	startPercent: 0,
+					            	task: "Downloading '"+trackObject.title+"'",
+					            	showETA: true
+					            });
 					            var str = progress({
 					            	time: 500,
 					            	length: size
 					            }, progress => {
 					            	//console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
-					            	progressBar.update(progress.percentage/100);
+					            	pBar.update(progress.percentage/100,progress.eta);
 					            });
 					            response.body.pipe(str).pipe(dest);
 					            response.body.on('error', err => {

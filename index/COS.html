@@ -18,6 +18,7 @@
 		<!--<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>-->
 		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
+		<link rel="shortcut icon" href="favicon.ico" />
 		<meta charset="UTF-8">
 	</head>
 	<body>
@@ -240,6 +241,28 @@
 					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
 				}
 			});
+
+		socketListener.addPersistentListener("serverLoadedTracks", data => {
+            if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
+                globals.music.likedTracks = data.likedTracks;
+                globals.music.trackList = data.trackList;
+                ID("music_trackTitle").innerHTML = "Select a track";
+                globals.music.tracksFromCache = false;
+                //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
+                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
+            } else {
+                console.error("Server said that it had tracks but there are no tracks provided");
+            }
+        });
+
+        socketListener.addPersistentListener("serverNoTrackCache", data => {
+            console.warn("TrackCache has no tracks; no music playing possible");
+            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
+        });
+
+        socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
+            ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
+        });
 
 			socketListener.addPersistentListener("login-opencvqueue", function(data) {
 				globals.openCVQueue.push(String(data.queue));

@@ -32,19 +32,18 @@ cache neural network weights for more efficient starting of server(brain.js toFu
 
 reverse proxy cache
 username cache
-use nodejs lib for progress bars in console
+
 load balancing
+
+better favicon
+
+GPS+MAGNETOMETER EXT from arduino
 
 
 
 better 404 page
 
 implement track type handling (client vs python)
-
-Finish CLEANING UP cosserver.JS:
-    - clean up init process (initweb and initpython functions)
-    - add allemit and allon to socketUtils
-    - 
 
 
 music:
@@ -68,6 +67,11 @@ err loading track display DONE
 also dynamic hiding/showing of music menu DONE
 config nodemon to not restart when i modify globals.js DONE
 colors in console w/overriding prototype DONE
+use nodejs lib for progress bars in console DONE
+Finish CLEANING UP cosserver.JS: DONE
+    - clean up init process (initweb and initpython functions) KINDA-DONE
+    - add allemit and allon to socketUtils DONE
+    - 
 
 
 Portable ideas:
