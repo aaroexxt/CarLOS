@@ -277,6 +277,7 @@ var socketHandler = function(uPool,sPool){ //socket functions
     }
 }
 
+var singleLineLog = require('single-line-log').stdout; //single line logging for progressBar
 var advancedEventListener = function(object,evt) {
     if (typeof object === "undefined") {
         console.error("[NODE_UTILS] Socket undefined in initialization");
@@ -365,6 +366,60 @@ function formatHHMMSS(seconds){
   return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
 }
 
+function progressBar(options) {
+    if (typeof options != "object") {
+        options = {
+            startPercent: 0,
+            task: "Doing a task: ",
+            showETA: false
+        }
+    } else {
+        if (typeof options.startPercent == "undefined") {
+            options.startPercent = 0;
+        }
+        if (typeof options.task == "undefined") {
+            options.task = "Doing a task: ";
+        } else {
+            options.task = options.task+": ";
+        }
+        if (typeof options.showETA !== "boolean") {
+            options.showETA = false;
+        }
+    }
+    if (options.task.length+9 > windowSize.width) {
+        options.task = options.task.substring(0,windowSize.width-9);
+    }
+
+    this.update = (newPercent, eta) => {
+        if (newPercent > 1) {
+            newPercent = 1;
+        }
+        if (newPercent < 0) {
+            newPercent = 0;
+        }
+        if (eta && options.showETA) {
+            var chars = Math.round((windowSize.width-options.task.length-11-eta.length)*newPercent);
+        } else {
+            var chars = Math.round((windowSize.width-options.task.length-9)*newPercent);
+        }
+        
+        var str = colors.yellow(options.task)+colors.blue("[");
+        var hashStr = "";
+        for (var i=0; i<chars; i++) {
+            hashStr+="#";
+        }
+        str+=colors.grey(hashStr);
+        if (eta && options.showETA) {
+            str+=colors.blue("]> ")+colors.green(String(Math.round(newPercent*100)+"%, "+eta));
+        } else {
+            str+=colors.blue("]> ")+colors.green(String(Math.round(newPercent*100)+"%"));
+        }
+        singleLineLog(str);
+    }
+
+    this.update(options.startPercent);
+}
+
 /*module.exports = {
     generateUUID: generateUUID,
     authPool: authPool
@@ -374,5 +429,6 @@ exports.authPool = authPool;
 exports.atob = atob_poly;
 exports.btoa = btoa_poly;
 exports.formatHHMMSS = formatHHMMSS;
+exports.progressBar = progressBar;
 exports.socketHandler = socketHandler;
 exports.advancedEventListener = advancedEventListener;
