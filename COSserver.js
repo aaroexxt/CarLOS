@@ -495,12 +495,16 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 		var path = pyimgbasepath+"in/image"+i+".png";
 		console.log("Removing image file (in): "+path);
 		fs.unlink(path,function (err) {
-			console.log("Error removing?: "+err)
+			if (err) {
+				console.error("Error removing OpenCV file: "+err);
+			}
 		})
 		var path = pyimgbasepath+"out/image"+i+".jpg";
 		console.log("Removing image file (out): "+path);
 		fs.unlink(path,function (err) {
-			console.log("Error removing?: "+err)
+			if (err) {
+				console.error("Error removing OpenCV file: "+err);
+			}
 		})
 	}
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
@@ -508,6 +512,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 		process.exit(); //exit completely
 	},1500); //give some time for sockets to send
 });
+
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
@@ -523,12 +528,16 @@ if (catchErrors) {
 			var path = pyimgbasepath+"in/image"+i+".png";
 			console.log("Removing image file (in): "+path);
 			fs.unlink(path,function (err) {
-				console.log("Error removing?: "+err)
+				if (err) {
+					console.error("Error removing OpenCV file: "+err);
+				}
 			});
 			var path = pyimgbasepath+"out/image"+i+".jpg";
 			console.log("Removing image file (out): "+path);
 			fs.unlink(path,function (err) {
-				console.log("Error removing?: "+err)
+				if (err) {
+					console.error("Error removing OpenCV file: "+err);
+				}
 			});
 		}
 		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
@@ -1345,7 +1354,9 @@ socketHandler.update(userPool,sockets);
 									}
 								}
 								fs.unlink(pyimgbasepath+"/in/image"+innum+".png",function(err){
-									console.log("Error removing?: "+err);
+									if (err) {
+										console.error("Error removing OpenCV file: "+err);
+									}
 								})
 								//console.log("pathout "+pathout);
 								fs.readFile(pathout, function(err, buf) {
