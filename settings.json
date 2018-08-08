@@ -29,8 +29,10 @@
         "initErrorDelay": 30000,
         "initMaxAttempts": 3,
         "defaultUsername": "bexterdubs",
+        "currentUser": "bexterdubs",
         "noArtworkUrl": "images/noAlbumArt.png",
         "defaultVolume": 50,
+        "currentVolume": 50,
         "volStep": 10,
         "maxLikedTracks": 0,
         "maxTracksInRequest": 200,
@@ -45,6 +47,9 @@
         "tracksFromCache": false,
         "likedTracks": [],
         "trackList": [],
-        "requestTimeout": 21000
+        "requestTimeout": 21000,
+        "soundcloudReady": false,
+        "playingMusicOnServer": true,
+        "waitingClients": []
     }
 }

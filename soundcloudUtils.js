@@ -49,6 +49,7 @@ var SCUtils = {
             this.failedToLoadTracksFirstRun = true; //make sure it can run again
             this.loadUserdataCache(options.username,options.soundcloudSettings).then( data => {
                 this.loadTracklist(data,options.soundcloudSettings).then( () => {
+                    options.soundcloudSettings.currentUser = options.username;
                     return resolve();
                 }).catch( err => {
                     return reject(err);
@@ -63,6 +64,7 @@ var SCUtils = {
                     });
 
                     this.loadTracklist(data,options.soundcloudSettings).then( () => { //load tracklist with data from online
+                        options.soundcloudSettings.currentUser = options.username;
                         return resolve();
                     }).catch( err => {
                         return reject(err);
@@ -384,6 +386,7 @@ var SCUtils = {
                         return reject("TrackObject is invalid")
                     }
                     var trackID = likedTracks[trackIndex].id;
+                    SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingTracksUpdate", track: likedTracks[trackIndex].title, percent: ((tracksLoaded+1)/tracksToLoad)*100});
                     //console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
 
                     var unfinTrackPath = (SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");

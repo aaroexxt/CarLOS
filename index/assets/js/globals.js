@@ -20,7 +20,7 @@ var globals = {
                         <br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
                         <br>Heartbeat Timeout (s): `+(globals.runtimeInformation.heartbeatMS/1000)+`
                         </p>
-                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); setTimeout(function(){globals.MainPopup.displayMain()},500);});">Update Runtime Information</button>
+                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); setTimeout(function(){globals.MainPopup.displayMain()},300);});">Update Runtime Information</button>
                         <br>
                         <h3>Car Stats</h3>
                     </center>
@@ -47,9 +47,7 @@ var globals = {
                         <h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
                         <h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
                     </center>
-
-
-                    `,
+                `,
                 backdrop: false,
                 closeButton: false,
                 onEscape: true,
@@ -62,9 +60,58 @@ var globals = {
                         callback: function() {
                             globals.MainPopup.dialogObject.modal('hide');
                         }
+                    },
+                    advancedSettings: {
+                        label: "Advanced",
+                        className: "btncenter",
+                        callback: function() {
+                            globals.MainPopup.dialogObject.modal('hide');
+                            setTimeout(() => {
+                                globals.MainPopup.displayAdvanced();
+                            }, 300);
+                        }
                     }
                 }
             })
+        },
+        displayAdvanced: function() {
+            globals.MainPopup.dialogObject = bootbox.dialog({
+                message: `
+                    <hr class="asep">
+                    <img class="asep" src="images/a.png">
+                    <center>
+                        <h2>Advanced Settings</h2>
+                        <button onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
+                        <p>Will toggle output of soundcloud playing to be server audio port or client device. Warning: Needs internet if playing on client device. More stable+tested more on server side.</p>
+                        <br>
+                        <p>Currently playing on: `+((globals.music.playingMusicOnServer) ? "server" : "client")+`
+                    </center>
+                `,
+                backdrop: false,
+                closeButton: false,
+                onEscape: true,
+                size: "large",
+                className: "center",
+                buttons: {
+                    cancel: {
+                        label: "Close Window",
+                        className: "btncenter",
+                        callback: function() {
+                            globals.MainPopup.dialogObject.modal('hide');
+                        }
+                    },
+                    basicSettings: {
+                        label: "Back",
+                        className: "btncenter",
+                        callback: function() {
+                            globals.MainPopup.dialogObject.modal('hide');
+                            setTimeout(() => {
+                                globals.MainPopup.displayMain();
+                            },300);
+                        }
+                    }
+                }
+            });
         }
     },
     menu: {
@@ -135,12 +182,6 @@ var globals = {
     },
     music: {
         
-
-        cliId: '',
-        defaultUsername: "", //username to take tracks from
-        maxLikedTracks: 0, //user amount of liked tracks
-        maxTracksInRequest: 200,
-        tracksPerRequest: 40,
         noArtworkUrl: "images/noAlbumArt.png",
         delayBetweenTracklistRequests: 100,
         requestConstraint: 1, //max tracks in request (limits)
@@ -148,12 +189,59 @@ var globals = {
         trackUpdateInterval: 0, //track updater that gets percent of track
         nextTrackShuffle: false,
         nextTrackLoop: false,
+        soundcloudReady: false,
         volStep: 10, //volstep
         uid: 0, //user id (determined by defaultUsername)
         firstPlay: true,
         tracksFromCache: false,
         likedTracks: [],
         trackList: [],
+        setListeners: false,
+        playingMusicOnServer: true,
+
+        init: function() {
+            if (!globals.music.setListeners) {
+                globals.music.setListeners = true;
+                socketListener.addPersistentListener("serverDataReady", data => {
+                    if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
+                        globals.music.likedTracks = data.likedTracks;
+                        globals.music.trackList = data.trackList;
+                        ID("music_trackTitle").innerHTML = "Select a track";
+                        globals.music.tracksFromCache = false;
+                        //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
+                        globals.music.musicUI.updateTrackList(globals.music.likedTracks);
+                    } else {
+                        console.error("Server said that it had tracks but there are no tracks provided (track response may be malformed)");
+                    }
+                });
+
+                socketListener.addPersistentListener("serverNoTrackCache", data => {
+                    console.warn("TrackCache has no tracks; no music playing possible");
+                    ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
+                });
+
+                socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
+                    ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
+                });
+
+                socketListener.addPersistentListener("serverLoadingTracklist", data => {
+                    ID("music_trackTitle").innerHTML = "Server is loading tracks.";
+                });
+
+                socketListener.addPersistentListener("serverLoadingTracksUpdate", data => {
+                    ID("music_trackAuthor").innerHTML = "Loading percent: "+data.percent+" (Loading track: "+data.track+")";
+                });
+            }
+
+            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
+        },
+
+        togglePlayerOutput: function() {
+            if (globals.music.soundcloudReady) {
+                globals.music.playingMusicOnServer = !globals.music.playingMusicOnServer;
+            }
+        },
+
         soundManager: {
             playingTrack: false,
             currentVolume: 50,
@@ -298,10 +386,6 @@ var globals = {
                  removeBlack(); 
                 } 
             }
-        },
-
-        
-
         },
 
         musicUI: {
@@ -816,6 +900,16 @@ var login = {
             }
         });
     }, initialize: function() {
+
+        setTimeout(function(){
+            globals.initWifiIndicator("wifilevel"); //init wifi, time and map
+            globals.initSpeedIndicator("wifispeed");
+        }, globals.delayWifiTime);
+
+        globals.initTimeIndicator("time");
+        login.initializeStats();
+        login.initializeMap();
+
         setInterval(function(){ //validate key listener
             socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
             socketListener.addListener("validatekey",function (data){
@@ -835,22 +929,6 @@ var login = {
             })
         }, 25000);
 
-        setTimeout(function(){
-            globals.initWifiIndicator("wifilevel"); //init wifi, time and map
-        }, globals.delayWifiTime);
-        globals.initSpeedIndicator("wifispeed");
-        globals.initTimeIndicator("time");
-        setTimeout(function(){
-            globals.updateRuntimeInformation();
-            //globals.MainPopup.displayMain();
-            globals.menu.changeState(globals.defaultApp);
-            login.approvedLogin();
-        },2000);
-        setTimeout(function(){
-            globals.music.init(globals.music.defaultUsername);
-            login.initializeStats();
-            login.initializeMap();
-        },1000);
         if (typeof Speech !== "undefined") {
             if (Speech.isSupported) {
                 var voices = Speech.listVoices();
@@ -876,9 +954,10 @@ var login = {
         } else {
             console.error("Speech not defined; annyang is active however")
         }
-
-        /*setTimeout(function(){
-            login.approvedLogin();
-        },2000);*/
+    }, initializeOnceAuthkeyValid: function(){
+        login.approvedLogin();
+        setTimeout(()=>{login.approvedLogin()},2000);
+        globals.music.init(globals.music.defaultUsername);
+        globals.menu.changeState(globals.defaultApp);
     }
 }

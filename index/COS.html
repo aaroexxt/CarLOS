@@ -5,7 +5,6 @@
 		<script src="js/socket.io.js"></script>
 		<script src="js/helpLib.js"></script>
 		<script src="js/utils.js"></script>
-		<script src="js/mapImageOverlay.js"></script>
 		<script src="js/speaker.js"></script>
 		<script src="js/annyang.js"></script>
 		<script src="js/globals.js"></script>
@@ -179,6 +178,7 @@
 				} else {
 					globals.authkey = data.authkey;
 					login.readySteps.validAuthkey = true;
+					login.initializeOnceAuthkeyValid();
 				}
 				if (typeof data.runtimeInformation == "undefined" || data.runtimeInformation == "undefined") {
 					console.error("RuntimeInformation recieved from server is undefined, what happened?");
@@ -241,28 +241,6 @@
 					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
 				}
 			});
-
-		socketListener.addPersistentListener("serverLoadedTracks", data => {
-            if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
-                globals.music.likedTracks = data.likedTracks;
-                globals.music.trackList = data.trackList;
-                ID("music_trackTitle").innerHTML = "Select a track";
-                globals.music.tracksFromCache = false;
-                //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
-                globals.music.musicUI.updateTrackList(globals.music.likedTracks);
-            } else {
-                console.error("Server said that it had tracks but there are no tracks provided");
-            }
-        });
-
-        socketListener.addPersistentListener("serverNoTrackCache", data => {
-            console.warn("TrackCache has no tracks; no music playing possible");
-            ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
-        });
-
-        socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
-            ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
-        });
 
 			socketListener.addPersistentListener("login-opencvqueue", function(data) {
 				globals.openCVQueue.push(String(data.queue));

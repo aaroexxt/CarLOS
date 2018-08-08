@@ -561,6 +561,25 @@ function initSCLoop() {
 		socketHandler: socketHandler
 	}).then( () => {
 		console.log(colors.green("Initialized Soundcloud successfully! :)"));
+
+		soundcloudSettings.soundcloudReady = true;
+
+		for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+			socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+				"action": "serverDataReady",
+				hasTracks: true,
+				likedTracks: soundcloudSettings.likedTracks,
+				trackList: soundcloudSettings.trackList,
+				settingsData: {
+					currentUser: soundcloudSettings.currentUser,
+					noArtworkUrl: soundcloudSettings.noArtworkUrl,
+					defaultVolume: soundcloudSettings.defaultVolume,
+					volStep: soundcloudSettings.volStep,
+					currentVolume: soundcloudSettings.currentVolume,
+					tracksFromCache: soundcloudSettings.tracksFromCache
+				}
+			});
+		}
 	}).catch( err => {
 		timesLeft--;
 		firstRun = true;
@@ -776,6 +795,37 @@ socketHandler.update(userPool,sockets);
 					console.log("Runtime information requested");
 					socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information": runtimeInformation});
 				break;
+				case "SCClientReady":
+				if (validKey || securityOff) {
+					if (soundcloudSettings.soundcloudReady) {
+						console.log("SCClientReady request recieved; sending data");
+						socketHandler.socketEmitToKey(key, 'POST', {
+							"action": "serverDataReady",
+							hasTracks: true,
+							likedTracks: soundcloudSettings.likedTracks,
+							trackList: soundcloudSettings.trackList,
+							settingsData: {
+								currentUser: soundcloudSettings.currentUser,
+								noArtworkUrl: soundcloudSettings.noArtworkUrl,
+								defaultVolume: soundcloudSettings.defaultVolume,
+								volStep: soundcloudSettings.volStep,
+								currentVolume: soundcloudSettings.currentVolume,
+								tracksFromCache: soundcloudSettings.tracksFromCache,
+								playingMusicOnServer: soundcloudSettings.playingMusicOnServer,
+								nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
+								nextTrackLoop: soundcloudSettings.nextTrackLoop,
+								soundcloudReady: soundcloudSettings.soundcloudReady
+							}
+						});
+					} else {
+						console.log("SCClientReady request recieved; soundcloud is not ready");
+						socketHandler.socketEmitToKey(key, 'POST', {
+							"action": "serverLoadingTracklist"
+						});
+						soundcloudSettings.waitingClients.push(socket.id);
+					}
+				}
+				break;
 
 				/*OPENCV HANDLERS*/
 				//yes I know I can use single line comments
@@ -794,10 +844,12 @@ socketHandler.update(userPool,sockets);
 									var b = new Buffer(raw, 'base64');
 									var path = pyimgbasepath+"in/image"+pyimgnum+".png";
 									fs.writeFile(path, b, function(err) {
-										console.log("Wrote file error?: "+err);
+										if (err) {
+											console.error("Error writing opencv image file");
+										}
 									});
 									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
-									console.log("Sending to opencv");
+									//console.log("Sending to opencv");
 									keyObject.properties.allowOpenCV = false;
 									if (securityOff) {
 										socketHandler.socketEmitToAll("pydata","i:"+pyimgnum) //Sync imagenum variable
