@@ -277,7 +277,6 @@ var socketHandler = function(uPool,sPool){ //socket functions
     }
 }
 
-var singleLineLog = require('single-line-log').stdout; //single line logging for progressBar
 var advancedEventListener = function(object,evt) {
     if (typeof object === "undefined") {
         console.error("[NODE_UTILS] Socket undefined in initialization");
@@ -366,7 +365,12 @@ function formatHHMMSS(seconds){
   return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
 }
 
+var windowPlugin = require('window-size');
+var singleLineLog = require('single-line-log').stdout; //single line logging for progressBar
+var colors = require('colors');
 function progressBar(options) {
+    var windowSize = windowPlugin.get();
+    
     if (typeof options != "object") {
         options = {
             startPercent: 0,
@@ -391,6 +395,8 @@ function progressBar(options) {
     }
 
     this.update = (newPercent, eta) => {
+        var windowSize = windowPlugin.get(); //inefficient but fine
+
         if (newPercent > 1) {
             newPercent = 1;
         }

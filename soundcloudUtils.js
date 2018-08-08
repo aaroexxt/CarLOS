@@ -16,49 +16,53 @@ var SCUtils = {
     INIT: LOAD TRACKS & CACHE
     ************************/
 
-    init: function(username, masterSCSettings, cwd, sktHandler) { //init w/username
+    init: function(options) { //required: options object with properties 'soundcloudSettings','username','socketHandler', and 'cwd'
         return new Promise((resolve, reject) => {
-            if (typeof masterSCSettings == "undefined") {
-                return reject("SoundcloudSettings undefined on init; did you specify them?");
+            if (typeof options == "undefined") {
+                return reject("Options was not defined in scInit");
             } else {
-                this.localSoundcloudSettings = masterSCSettings; //shouldn't be used
-            }
-            if (typeof username == "undefined") {
-                username = masterSCSettings.defaultUsername;
-            }
-            if (typeof sktHandler == "undefined") {
-                return reject("socketHandler not defined; can't send to sockets");
-            } else {
-                this.extSocketHandler = sktHandler;
-            }
-            if (typeof cwd == "undefined") {
-                return reject("CWD Undefined on SC init; was it specified?");
-            } else {
-                this.CWD = cwd;
+                if (typeof options.soundcloudSettings == "undefined") {
+                    return reject("SoundcloudSettings undefined on init; did you specify them?");
+                } else {
+                    this.localSoundcloudSettings = options.soundcloudSettings; //shouldn't be used
+                }
+                if (typeof options.username == "undefined") {
+                    options.username = options.soundcloudSettings.defaultUsername;
+                }
+                if (typeof options.socketHandler == "undefined") {
+                    return reject("socketHandler not defined; can't send to sockets");
+                } else {
+                    this.extSocketHandler = options.socketHandler;
+                }
+                if (typeof options.cwd == "undefined") {
+                    return reject("CWD Undefined on SC init; was it specified?");
+                } else {
+                    this.CWD = options.cwd;
+                }
             }
             /*SC.init({
-                id: masterSCSettings.clientID //uid: 176787227
+                id: options.soundcloudSettings.clientID //uid: 176787227
                 //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
             });*/
 
             //console.info(Object.keys(this))
             this.failedToLoadTracksFirstRun = true; //make sure it can run again
-            this.loadUserdataCache(username,masterSCSettings).then( data => {
-                this.loadTracklist(data,masterSCSettings).then( () => {
+            this.loadUserdataCache(options.username,options.soundcloudSettings).then( data => {
+                this.loadTracklist(data,options.soundcloudSettings).then( () => {
                     return resolve();
                 }).catch( err => {
                     return reject(err);
                 }); //load tracklist with data from cache
             }).catch( err => {
                 console.warn("No userdata cache found, fetching from online (err: "+err+")");
-                fetch("https://api.soundcloud.com/resolve/?url="+"https://soundcloud.com/"+username+"/"+"&client_id="+masterSCSettings.clientID+"&format=json", {timeout: masterSCSettings.requestTimeout}).then( res => res.json()).then( data => { //get favorite tracks
-                    this.saveUserdataCache(data,masterSCSettings).then( () => {
+                fetch("https://api.soundcloud.com/resolve/?url="+"https://soundcloud.com/"+options.username+"/"+"&client_id="+options.soundcloudSettings.clientID+"&format=json", {timeout: options.soundcloudSettings.requestTimeout}).then( res => res.json()).then( data => { //get favorite tracks
+                    this.saveUserdataCache(data,options.soundcloudSettings).then( () => {
                         console.log(colors.green("Saved SC userdata cache file"));
                     }).catch( err => {
                         console.error("Error saving SC userdata cache: "+err);
                     });
 
-                    this.loadTracklist(data,masterSCSettings).then( () => { //load tracklist with data from online
+                    this.loadTracklist(data,options.soundcloudSettings).then( () => { //load tracklist with data from online
                         return resolve();
                     }).catch( err => {
                         return reject(err);
@@ -200,9 +204,9 @@ var SCUtils = {
                             scSettings.tracksFromCache = false;
                             SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                             console.log("Saving SC cache...");
-                            this.saveTrackCache(scSettings.likedTracks, scSettings.userID, scSettings).then( () => {
+                            SCUtils.saveTrackCache(scSettings.likedTracks, scSettings.userID, scSettings).then( () => {
                                 console.log(colors.green("Saved track cache; saving tracks"));
-                                this.saveAllTracks(scSettings.likedTracks, scSettings).then( () => {
+                                SCUtils.saveAllTracks(scSettings).then( () => {
                                     console.log(colors.green("Loaded all SC tracks"));
                                     return resolve();
                                 }).catch( err => {
@@ -380,29 +384,35 @@ var SCUtils = {
                         return reject("TrackObject is invalid")
                     }
                     var trackID = likedTracks[trackIndex].id;
-                    console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
-
-                    //todo delete unfinished tracks
+                    //console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
 
                     var unfinTrackPath = (SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");
                     var trackPath = (SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
-                    console.log("Checking if track exists at path "+trackPath);
+                    var pTitle = (likedTracks[trackIndex].title.length > 20) ? likedTracks[trackIndex].title.substring(0,20) : likedTracks[trackIndex].title;
+                    var lpTitle = (likedTracks[trackIndex].title.length > 35) ? likedTracks[trackIndex].title.substring(0,35) : likedTracks[trackIndex].title;
+                    //console.log("Checking if track exists at path "+trackPath);
                     fs.readFile(trackPath, (err, data) => {
                         if (err) {
-                            console.log("Track does not exist, downloading at path "+unfinTrackPath);
+                            //console.log("Track does not exist, downloading at path "+unfinTrackPath);
                             fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id="+scSettings.clientID, {timeout: scSettings.requestTimeout}).then(function(response){
                                 //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
                                 remoteFileSize(response.url, function(err, size) { //get size of file
                                     if (err) {
-                                        return reject("Error getting SC file size: "+err);
+                                        if (err.toString().indexOf("401") > 0) {
+                                            console.warn("A 401 error was recieved on attempt to get size; denied. Can't fetch track");
+                                            tracksLoaded++;
+                                            loadTrackIndex(tracksLoaded);
+                                        } else {
+                                            return reject("Error getting SC file size: "+err);
+                                        }
                                     } else {
-                                        console.log("Got track URL and size. SIZE: "+size);
+                                        //console.log("Got track URL and size. SIZE: "+size);
                                         return new Promise((sresolve, sreject) => {
-                                            console.log("writing to path: "+unfinTrackPath);
+                                            //console.log("writing to path: "+unfinTrackPath);
                                             const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
                                             var pBar = new utils.progressBar({
                                                 startPercent: 0,
-                                                task: "Downloading '"+likedTracks[trackIndex].title+"'",
+                                                task: "Downloading '"+pTitle+"'",
                                                 showETA: true
                                             });
                                             var str = progress({
@@ -417,7 +427,7 @@ var SCUtils = {
                                                 return sreject(err);
                                             });
                                             dest.on('finish', () => {
-                                                console.log("Renaming to finished track")
+                                                //console.log("Renaming to finished track")
                                                 fs.rename(unfinTrackPath, trackPath, err => {
                                                     if (err) {
                                                         return sreject("Error renaming track");
@@ -427,11 +437,17 @@ var SCUtils = {
                                                 });
                                             });
                                             dest.on('error', err => {
-                                                return sreject(err);
+                                                if (err.toString().indexOf("401") > 0) {
+                                                    console.warn("401 forbidden gotten; can't download");
+                                                    tracksLoaded++;
+                                                    loadTrackIndex(tracksLoaded);
+                                                } else {
+                                                    return sreject(err);
+                                                }
                                             });
                                         }).then( () => {
                                             tracksLoaded++;
-                                            console.log("Track with id="+likedTracks[trackIndex].id+" written successfully, overall prog: "+(tracksLoaded/tracksToLoad)*100);
+                                            console.log("Track '"+lpTitle+"' written successfully, overall prog: "+(tracksLoaded/tracksToLoad)*100);
                                             if (tracksLoaded == tracksToLoad) {
                                                 console.log("Done loading tracks, resolving");
                                                 return resolve();
@@ -439,7 +455,7 @@ var SCUtils = {
                                                 loadTrackIndex(tracksLoaded);
                                             }
                                         }).catch( err => {
-                                            console.error("Error writing SC track: "+err)
+                                            console.error("Error writing SC track: "+err);
                                         })
                                     }
                                 })
@@ -448,7 +464,7 @@ var SCUtils = {
                             });
                         } else {
                             tracksLoaded++;
-                            console.log("Track with id="+likedTracks[trackIndex].id+" was found already, (skipping) overall prog: "+(tracksLoaded/tracksToLoad)*100);
+                            console.log("Track '"+lpTitle+"' found already, prog: "+(tracksLoaded/tracksToLoad)*100);
                             if (tracksLoaded == tracksToLoad) {
                                 console.log("Done loading tracks, resolving");
                                 return resolve();
@@ -477,7 +493,9 @@ var SCUtils = {
                                 })
                             }
                         }
-                        console.log("Found "+unfinishedTracks.length+" unfinished tracks, deleted");
+                        if (unfinishedTracks.length > 0) {
+                            console.log("Found "+unfinishedTracks.length+" unfinished tracks, deleted");
+                        }
                         loadTrackIndex(0); //start track loading (recursive)
                     }
                 });
@@ -507,7 +525,7 @@ var SCUtils = {
 
             var unfinTrackPath = (this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");
             var trackPath = (this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
-            console.log("Checking if track exists at path "+trackPath);
+            //console.log("Checking if track exists at path "+trackPath);
             fs.readFile(trackPath, (err, data) => {
                 if (err) {
                     console.log("Track does not exist, downloading at path "+unfinTrackPath);
@@ -521,9 +539,10 @@ var SCUtils = {
                                 return new Promise((sresolve, sreject) => {
                                     console.log("writing to path: "+unfinTrackPath);
                                     const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
+                                    var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
                                     var pBar = new utils.progressBar({
                                         startPercent: 0,
-                                        task: "Downloading '"+trackObject.title+"'",
+                                        task: "Downloading '"+pTitle+"'",
                                         showETA: true
                                     });
                                     var str = progress({
@@ -552,7 +571,7 @@ var SCUtils = {
                                         return sreject(err);
                                     });
                                 }).then( () => {
-                                    console.log("Track with id="+trackObject.id+" written successfully, resolving");
+                                    console.log("Track '"+trackObject.title+"' written successfully, resolving");
                                     return resolve();
                                 }).catch( err => {
                                     console.error("Error writing SC track: "+err);
@@ -563,7 +582,7 @@ var SCUtils = {
                         return reject("Error fetching track stream URL");
                     });
                 } else {
-                    console.log("Track with id="+trackObject.id+" was found already, resolving");
+                    console.log("Track '"+trackObject.title+"' found already, prog: "+(tracksLoaded/tracksToLoad)*100);
                     return resolve();
                 }
             });

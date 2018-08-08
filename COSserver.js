@@ -45,7 +45,8 @@ Initialization (9 steps):
 7) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
 8) Console Colors: overrides prototypes for console to provide colors in console
 9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
-10) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
+10) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
+11) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
 
 Runtime Code (2 steps):
 1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
@@ -546,8 +547,39 @@ if (catchErrors) {
 	});
 }
 
+/***********************************
+--I10-- SOUNDCLOUD INIT CODE --I10--
+***********************************/
+
+var timesLeft = soundcloudSettings.initMaxAttempts;
+function initSCLoop() {
+	console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
+	soundcloudUtils.init({
+		soundcloudSettings: soundcloudSettings,
+		username: soundcloudSettings.defaultUsername,
+		cwd: cwd,
+		socketHandler: socketHandler
+	}).then( () => {
+		console.log(colors.green("Initialized Soundcloud successfully! :)"));
+	}).catch( err => {
+		timesLeft--;
+		firstRun = true;
+		if (timesLeft > 0) {
+			console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+soundcloudSettings.initErrorDelay+" ms.");
+			setTimeout( () => {
+				initSCLoop();
+			}, soundcloudSettings.initErrorDelay);
+		} else {
+			console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
+		}
+	});
+}
+
+console.info("Starting SC MASTER");
+initSCLoop();
+
 /******************************
---I10-- MISC. INIT CODE --I10--
+--I11-- MISC. INIT CODE --I11--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){
@@ -621,30 +653,6 @@ app.use(function(req, res, next){
   res.status(404); //crappy 404 page
   res.send("<h1>Uhoh, you tried to go to a page that doesn't exist.</h1><br> Navigate to /client to go to the main page.");
 });
-
-
-
-var timesLeft = soundcloudSettings.initMaxAttempts;
-function initSCLoop() {
-	console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
-	soundcloudUtils.init(soundcloudSettings.defaultUsername, soundcloudSettings, cwd, socketHandler).then( () => {
-		console.log(colors.green("Initialized Soundcloud successfully!"));
-	}).catch( err => {
-		timesLeft--;
-		firstRun = true;
-		if (timesLeft > 0) {
-			console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+soundcloudSettings.initErrorDelay+" ms.");
-			setTimeout( () => {
-				initSCLoop();
-			}, soundcloudSettings.initErrorDelay);
-		} else {
-			console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
-		}
-	});
-}
-
-console.info("Starting SC MASTER");
-initSCLoop();
 
 /***************************************
 --R2-- SOCKET.IO CONNECTION LOGIC --R2--
