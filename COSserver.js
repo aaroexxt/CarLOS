@@ -62,7 +62,7 @@ Runtime Code (2 steps):
 
 var fs = require('fs');
 var utils = require('./nodeUtils.js'); //include the utils file
-var soundcloudUtils = require('./soundcloudUtils.js').SCUtils;
+var soundcloudUtils = require('./soundcloudUtils.js');
 var singleLineLog = require('single-line-log').stdout; //single line logging
 var player = require('play-sound')(opts = {});
 var fetch = require('node-fetch');
@@ -554,32 +554,37 @@ if (catchErrors) {
 var timesLeft = soundcloudSettings.initMaxAttempts;
 function initSCLoop() {
 	console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
-	soundcloudUtils.init({
+	soundcloudUtils.SCUtils.init({
 		soundcloudSettings: soundcloudSettings,
 		username: soundcloudSettings.defaultUsername,
 		cwd: cwd,
 		socketHandler: socketHandler
 	}).then( () => {
-		console.log(colors.green("Initialized Soundcloud successfully! :)"));
+		console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
+		soundcloudUtils.SCSoundManager.init().then( () => {
+			console.log(colors.green("Initialized trackManager successfully!"));
+			soundcloudSettings.soundcloudReady = true;
 
-		soundcloudSettings.soundcloudReady = true;
-
-		for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-			socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
-				"action": "serverDataReady",
-				hasTracks: true,
-				likedTracks: soundcloudSettings.likedTracks,
-				trackList: soundcloudSettings.trackList,
-				settingsData: {
-					currentUser: soundcloudSettings.currentUser,
-					noArtworkUrl: soundcloudSettings.noArtworkUrl,
-					defaultVolume: soundcloudSettings.defaultVolume,
-					volStep: soundcloudSettings.volStep,
-					currentVolume: soundcloudSettings.currentVolume,
-					tracksFromCache: soundcloudSettings.tracksFromCache
-				}
-			});
-		}
+			for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+				socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+					"action": "serverDataReady",
+					hasTracks: true,
+					likedTracks: soundcloudSettings.likedTracks,
+					trackList: soundcloudSettings.trackList,
+					settingsData: {
+						currentUser: soundcloudSettings.currentUser,
+						noArtworkUrl: soundcloudSettings.noArtworkUrl,
+						defaultVolume: soundcloudSettings.defaultVolume,
+						volStep: soundcloudSettings.volStep,
+						currentVolume: soundcloudSettings.currentVolume,
+						tracksFromCache: soundcloudSettings.tracksFromCache
+					}
+				});
+			}
+			
+		}).catch( e => {
+			console.error("Error initializing trackManager: "+e);
+		});
 	}).catch( err => {
 		timesLeft--;
 		firstRun = true;
@@ -838,7 +843,7 @@ socketHandler.update(userPool,sockets);
 						} else {
 							if ((validKey || securityOff) && keyObject.properties.videoAttemptNumber < runtimeSettings.maxVideoAttempts) {
 								if (keyObject.properties.allowOpenCV) {
-									console.log("recv imgdata");
+									//console.log("recv imgdata");
 									var raw = data.raw;
 									raw = raw.replace(/^data:image\/\w+;base64,/, "");
 									var b = new Buffer(raw, 'base64');

@@ -1,3 +1,4 @@
+//Utils dependencies
 var player = require('play-sound')(opts = {});
 var fetch = require('node-fetch');
 var progress = require('progress-stream');
@@ -5,6 +6,15 @@ var remoteFileSize = require("remote-file-size");
 var utils = require("./nodeUtils.js");
 var colors = require("colors");
 var fs = require('fs');
+
+//SoundManager dependencies
+var Speaker = require("speaker");
+var speaker = new Speaker();
+var lame = require("lame");
+var pcmVolume = require("pcm-volume");
+var mp3d = require('mp3-duration');
+var timedStream = require('timed-stream');
+var path = require('path'); 
 
 var SCUtils = {
     localSoundcloudSettings: undefined,
@@ -603,4 +613,248 @@ var SCUtils = {
     */
 }
 
+var SCSoundManager = {
+    playingTrack: false,
+    currentVolume: 50,
+
+    MINVOLUME: 0, //pcm constants, shouldn't be changed for any reason
+    MAXVOLUME: 1.5,
+
+    currentPlayingTrack: {},
+    currentPlayingTrackDuration: 0,
+    currentPlayingTrackPosition: 0,
+
+    playerObject: {
+        play: function(){},
+        stop: function(){}
+    },
+    init: () => {
+        return new Promise((resolve, reject) => {
+            this.currentPlayingTrack = SCUtils.localSoundcloudSettings.likedTracks[0]; //start with first track
+            SCSoundManager.currentVolume = SCUtils.localSoundcloudSettings.defaultVolume;
+            SCSoundManager.playTrack(this.currentPlayingTrack);
+            resolve();
+        });
+    },
+    processClientEvent: function(ev) {
+        if (ev && ev.type) {
+            switch (ev.type) {
+                case "playPause":
+                    if (SCSoundManager.playingTrack) {
+                        SCSoundManager.playerObject.stop();
+                        SCSoundManager.playingTrack = false;
+                    } else {
+                        SCSoundManager.playerObject.play();
+                        SCSoundManager.playingTrack = true;
+                    }
+                    break;
+                case "volumeUp":
+                    break;
+                case "volumeDown":
+                    break;
+                case "trackForward":
+                    break;
+                case "trackBackward":
+                    break;
+                case "clientLocalTrackFinished":
+                    break;
+                case "clientPlayTrack":
+                    break;
+                case "changeTrackLoopState":
+                    SCUtils.localSoundcloudSettings.nextTrackLoop = !SCUtils.localSoundcloudSettings.nextTrackLoop;
+                    break;
+                case "changeTrackShuffleState":
+                    SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
+                    break;
+                default:
+                    console.error("unknown event "+ev+" passed into SCProcCliEvent");
+                    break;
+            }
+        } else {
+            console.error("SCSoundmanager proc cliEv called with no event or invalid");
+        }
+    },
+        /*console.log("playing id: "+track.id); 
+        SC.stream('/tracks/' + track.id).then(function(player) {
+            globals.music.soundManager.playerObject.pause(); //pause previous
+            globals.music.soundManager.playerObject = player;
+            globals.music.soundManager.playerObject.play();
+            globals.music.soundManager.playingTrack = true;
+            ID("music_trackArt").src = (!track.artwork.artworkUrl) ? SCUtils.localSoundcloudSettings.noArtworkUrl : track.artwork.artworkUrl;
+            ID("music_waveformArt").src = track.artwork.waveformUrl;
+            ID("music_trackTitle").innerHTML = track.title;
+            ID("music_trackAuthor").innerHTML = "By: "+track.author;
+            globals.music.soundManager.currentPlayingTrack = track;
+        }).catch(function(){
+            console.error("Error playing track with id ("+track.id+"): ",arguments);
+            ID("music_trackArt").src = "images/errorLoadingTrack.png";
+        });
+    },*/
+    playTrackServer: function(track) {
+        ID("music_trackArt").src = (!track.artwork.artworkUrl) ? SCUtils.localSoundcloudSettings.noArtworkUrl : track.artwork.artworkUrl;
+        ID("music_waveformArt").src = track.artwork.waveformUrl;
+        ID("music_trackTitle").innerHTML = track.title;
+        ID("music_trackAuthor").innerHTML = "By: "+track.author;
+    },
+    
+    getPercent: function() {
+        return Math.round((SCSoundManager.playerObject.currentTime()/SCSoundManager.playerObject.getDuration())*100);
+    },
+    startTrackManager: function() {
+        clearInterval(SCUtils.localSoundcloudSettings.trackUpdateInterval);
+        SCUtils.localSoundcloudSettings.trackUpdateInterval = setInterval(function() {
+            var isDone = ((SCSoundManager.playerObject.currentTime()/SCSoundManager.playerObject.getDuration()) >= 0.999);
+            if (isDone) {
+                if (SCUtils.localSoundcloudSettings.nextTrackLoop) { //loop?
+                    SCSoundManager.playerObject.seek(0); //loop the track
+                } else {
+                    SCSoundManager.forwardTrack(); //nah just forward
+                }
+            }
+        },200)
+    },
+    volUp: function() {
+        if (SCSoundManager.currentVolume+SCUtils.localSoundcloudSettings.volStep <= 100) {
+            SCSoundManager.currentVolume+=SCUtils.localSoundcloudSettings.volStep;
+            SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
+        }
+    },
+    volDown: function() {
+        if (SCSoundManager.currentVolume-SCUtils.localSoundcloudSettings.volStep > 0) {
+            SCSoundManager.currentVolume-=SCUtils.localSoundcloudSettings.volStep;
+            SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
+        }
+    },
+    backTrack: function() { //always goes back 1
+        var ind = SCSoundManager.currentPlayingTrack.index-1;
+        if (ind < 0) {
+            ind = SCUtils.localSoundcloudSettings.likedTracks.length-1; //go to last track
+        }
+        SCSoundManager.playTrack(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+    },
+    forwardTrack: function() { //can go forward one or shuffle to get to next track
+        if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
+            var ind = Math.round(Math.random()*SCUtils.localSoundcloudSettings.likedTracks.length);
+            if (ind == SCSoundManager.currentPlayingTrack.index) { //is track so add one
+                ind++;
+                if (ind > SCUtils.localSoundcloudSettings.likedTracks.length) { //lol very random chance that it wrapped over
+                    ind = 0;
+                }
+            }
+            SCSoundManager.playTrack(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+        } else {
+            var ind = SCSoundManager.currentPlayingTrack.index+1;
+            if (ind > SCUtils.localSoundcloudSettings.likedTracks.length) {
+                ind = 0; //go to first track
+            }
+            SCSoundManager.playTrack(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+        }
+    },
+    setPlayerVolume: function(vol) {
+        if (SCSoundManager.currentVolume == null || typeof SCSoundManager.currentVolume == "undefined") {
+            SCSoundManager.currentVolume = SCUtils.localSoundcloudSettings.defaultVolume;
+        }
+        if (vol < 0) {
+            vol = 0;
+        }
+        if (vol > 100) {
+            vol = 100;
+        }
+        var nMap = function (number, in_min, in_max, out_min, out_max) {
+            return (number - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+        }
+
+        var clamp = function(number, min, max) {
+            return Math.min(Math.max(number, min), max);
+        }
+
+        SCSoundManager.currentVolume = clamp(SCSoundManager.currentVolume, 0, 100);
+        SCSoundManager.pcmVolumeAdjust.setVolume(nMap(SCSoundManager.currentVolume, 0, 100, SCSoundManager.MINVOLUME, SCSoundManager.MAXVOLUME)); //map the volume
+    },
+    playTrack: function(trackObject) {
+        var trackPath = SCUtils.CWD+"/"+SCUtils.localSoundcloudSettings.soundcloudTrackCacheDirectory+"/track-"+trackObject.id+".mp3";
+        console.log("Playing track from path: "+trackPath);
+        fs.stat(trackPath, function(err, stat) {
+            if (err == null) {
+                //console.log("file exists, ok w/stat "+JSON.stringify(stat));
+
+                mp3d(trackPath, (err, duration) => {
+                    if (err) {
+                        return console.error("error getting duration of mp3: "+err.message);
+                    } else {
+                        console.log("Track duration in seconds long: "+duration);
+                        SCSoundManager.currentPlayingTrackDuration = duration;
+                        SCSoundManager.currentPlayingTrackPosition = 0;
+
+                        var ts = new timedStream();
+
+                        var readable = fs.createReadStream(trackPath); //create the read path
+                        var decoder = new lame.Decoder({
+                            channels: 2,
+                            bitDepth: 16,
+                            sampleRate: 44100,
+                            bitRate: 128,
+                            outSampleRate: 22050,
+                            mode: lame.STEREO
+                        });
+                        var volumeTweak = new pcmVolume();
+                        SCSoundManager.pcmVolumeAdjust = volumeTweak;
+
+
+                        SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
+
+                        var spk = new Speaker();
+                        spk.on('error', err => console.error('error on speaker, ', err));
+
+                        readable.pipe(ts)
+                            .pipe(decoder)
+                            .pipe(volumeTweak)
+                            .pipe(spk)
+                            .on('close', () => { console.log("SPK CLOSE!"); this.stop(); }); //pipe stream to MP3 decoder
+                        
+                        function resume() {
+                            ts.resumeStream();
+                            ts.pipe(decoder);
+                            //volumeTweak.pipe(spk); //pipe adjusted volume tweak stream to speaker (which will play it)
+                            //decoder.pipe(volumeTweak); //pipe decoder to volumeTweaker to change volume
+                            
+                        }
+
+                        function pause() {
+                            ts.pauseStream();
+                            ts.unpipe(decoder);
+                        }
+
+                        var seekBuffer = 0;
+                        volumeTweak.on('data', data => {
+                            seekBuffer+=data.length;
+                            console.log("sbl: "+seekBuffer);
+                        });
+
+                        setTimeout( () => {
+                            console.log("PAUSING");
+                            pause();
+                            setTimeout( () => {
+                                console.log("RESUMING");
+                                resume();
+                            },5000);
+                        },5000);
+
+                        var trackSniffTimeout = 10;
+                        var trackSniffInterval = setInterval( () => {
+                            SCSoundManager.currentPlayingTrackPosition+=trackSniffTimeout/1000;
+                            if (SCSoundManager.currentPlayingTrackPosition > SCSoundManager.currentPlayingTrackDuration) {
+                                console.info("TRACK HAS ENDED!");
+                            }
+                        },10);
+                    }
+                });
+            } else {
+                return console.error("File doesn't exist")
+            }
+        })
+    }
+}
+
 exports.SCUtils = SCUtils;
+exports.SCSoundManager = SCSoundManager;

@@ -257,7 +257,7 @@ var globals = {
                     return 1;
                 }
             },
-            playTrack: function(track) {
+            playTrackLocal: function(track) {
                 console.log("playing id: "+track.id); 
                 SC.stream('/tracks/' + track.id).then(function(player) {
                     globals.music.soundManager.playerObject.pause(); //pause previous
@@ -278,6 +278,12 @@ var globals = {
                     console.error("Error playing track with id ("+track.id+"): ",arguments);
                     ID("music_trackArt").src = "images/errorLoadingTrack.png";
                 });
+            },
+            playTrackServer: function(track) {
+                ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
+                ID("music_waveformArt").src = track.artwork.waveformUrl;
+                ID("music_trackTitle").innerHTML = track.title;
+                ID("music_trackAuthor").innerHTML = "By: "+track.author;
             },
             setPlayerVolume: function(vol) {
                 if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
@@ -323,23 +329,13 @@ var globals = {
                 }
             },
             volUp: function() {
-                if (globals.music.soundManager.currentVolume+globals.music.volStep <= 100) {
-                    globals.music.soundManager.currentVolume+=globals.music.volStep;
-                    globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
-                }
+                socket.emit("GET", {action: "scClientUserEvent", type: "volumeUp"});
             },
             volDown: function() {
-                if (globals.music.soundManager.currentVolume-globals.music.volStep > 0) {
-                    globals.music.soundManager.currentVolume-=globals.music.volStep;
-                    globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
-                }
+                socket.emit("GET", {action: "scClientUserEvent", type: "volumeDown"});
             },
             backTrack: function() { //always goes back 1
-                var ind = globals.music.soundManager.currentPlayingTrack.index-1;
-                if (ind < 0) {
-                    ind = globals.music.likedTracks.length-1; //go to last track
-                }
-                globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
+                socket.emit("GET", {action: "scClientUserEvent", type: "backTrack"});
             },
             forwardTrack: function() { //can go forward one or shuffle to get to next track
                 if (globals.music.nextTrackShuffle) {

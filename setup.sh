@@ -22,6 +22,12 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install -y gcc g++ make;
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
+    echo "Installing libasound for speaker (linux)...";
+    sudo apt-get install libasound2-dev
+    echo "Starting vnc..."
+    sudo apt-get update;
+    sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
+    sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"
 elif [ "$platform" = "mac" ]; then
     echo "Installing node (mac)...";
     brew install node
@@ -32,7 +38,7 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon play-sound progress-stream remote-file-size colors node-soundcloud terminal-kit;
+sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon speaker lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream;
 sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
 sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools
 sudo npm install --prefix $cwd socket.io@1.7.2;
@@ -50,7 +56,3 @@ echo "Done :)";
 echo "Run 'sudo bash $cwd/start.sh' to start the sever";
 exit;
 #VNC STUFF BELOW
-echo "Starting vnc..."
-sudo apt-get update;
-sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
-sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"
