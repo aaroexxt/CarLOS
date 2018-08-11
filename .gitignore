@@ -4,6 +4,8 @@ node_modules/.bin/acorn
 node_modules/.bin/browser-pack
 node_modules/*
 compile/*
+*.mp3
+SCcache/*
 *.DS_Store
 *DS_Store
 .DS_Store

@@ -39,23 +39,24 @@ better favicon
 
 GPS+MAGNETOMETER EXT from arduino
 
+use a timed listener to get song playing length on client side instead of bytes through decoder
+
+do opencv processing inside of nodejs server instead of inside python file
 
 
-better 404 page
 
 implement track type handling (client vs python)
 
 
-music:
 
-server onstartup looks for cache file, if it finds it it sends it to server
-else it requests it and saves the results
 
-once tracks are loaded, it loads the tracks into mp3 files
+
 
 changescuser now has to go to server
 
 retry button on client side
+
+
 
 
 DONE stuff:
@@ -72,6 +73,12 @@ Finish CLEANING UP cosserver.JS: DONE
     - clean up init process (initweb and initpython functions) KINDA-DONE
     - add allemit and allon to socketUtils DONE
     - 
+music:
+
+server onstartup looks for cache file, if it finds it it sends it to server DONE
+else it requests it and saves the results DONE
+once tracks are loaded, it loads the tracks into mp3 files DONE
+better 404 page DONE (slightly)
 
 
 Portable ideas:

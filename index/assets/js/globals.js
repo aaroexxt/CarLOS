@@ -183,21 +183,17 @@ var globals = {
     music: {
         
         noArtworkUrl: "images/noAlbumArt.png",
-        delayBetweenTracklistRequests: 100,
-        requestConstraint: 1, //max tracks in request (limits)
-        defaultVolume: 50,
-        trackUpdateInterval: 0, //track updater that gets percent of track
         nextTrackShuffle: false,
         nextTrackLoop: false,
         soundcloudReady: false,
-        volStep: 10, //volstep
-        uid: 0, //user id (determined by defaultUsername)
         firstPlay: true,
         tracksFromCache: false,
         likedTracks: [],
         trackList: [],
         setListeners: false,
         playingMusicOnServer: true,
+
+        oldSettingsData: {},
 
         init: function() {
             if (!globals.music.setListeners) {
@@ -206,13 +202,65 @@ var globals = {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
                         globals.music.trackList = data.trackList;
+                        globals.music.currentUser = data.currentUser;
+                        globals.music.noArtworkUrl = data.noArtworkUrl;
+                        globals.music.volStep = data.volStep;
+                        globals.music.currentVolume = data.currentVolume;
+                        globals.music.playingMusicOnServer = data.playingMusicOnServer;
+                        globals.music.nextTrackShuffle = data.nextTrackShuffle;
+                        if (globals.music.nextTrackShuffle) {
+                            ID("music_shuffleButton").className+=' activeLoopShuffle';
+                        }
+                        globals.music.nextTrackLoop = data.nextTrackLoop;
+                        if (globals.music.nextTrackLoop) {
+                            ID("music_loopButton").className+=' activeLoopShuffle';
+                        }
+                        globals.music.soundcloudReady = data.soundcloudReady;
+                        SC.initialize({
+                            client_id: data.clientID
+                        });
                         ID("music_trackTitle").innerHTML = "Select a track";
-                        globals.music.tracksFromCache = false;
+                        globals.music.tracksFromCache = data.tracksFromCache;
                         //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
                         globals.music.musicUI.updateTrackList(globals.music.likedTracks);
                     } else {
                         console.error("Server said that it had tracks but there are no tracks provided (track response may be malformed)");
                     }
+                    socketListener.addPersistentListener("serverPlayingTrackUpdate", data => {
+                        console.log("PLAYINGTRACKUPDATE: ",data);
+                        if (JSON.stringify(globals.music.oldSettingsData) != JSON.stringify(data.settingsData)) {
+                            console.log("DataChange");
+                            globals.music.currentUser = data.settingsData.currentUser;
+                            globals.music.currentVolume = data.settingsData.currentVolume;
+                            if (globals.music.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) {
+                                globals.music.nextTrackShuffle = data.settingsData.nextTrackShuffle;
+                                if (globals.music.nextTrackShuffle) {
+                                    ID("music_shuffleButton").className+=' activeLoopShuffle';
+                                } else {
+                                    ID("music_shuffleButton").className = "controlButton";
+                                }
+                            }
+                            if (globals.music.oldSettingsData.nextTrackLoop != data.settingsData.nextTrackLoop) {
+                                globals.music.nextTrackLoop = data.settingsData.nextTrackLoop;
+                                if (globals.music.nextTrackLoop) {
+                                    ID("music_loopButton").className+=' activeLoopShuffle';
+                                } else {
+                                    ID("music_loopButton").className = "controlButton";
+                                }
+                            }
+                            globals.music.oldSettingsData = data.settingsData;
+                        }
+                        
+                        if (JSON.stringify(globals.music.soundManager.currentPlayingTrack) != JSON.stringify(data.currentPlayingTrack)) {
+                            console.log("TrackChange");
+                            var nTrack = data.currentPlayingTrack;
+                            globals.music.soundManager.currentPlayingTrack = nTrack;
+                            ID("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? globals.music.noArtworkUrl : nTrack.artwork.artworkUrl;
+                            ID("music_waveformArt").src = nTrack.artwork.waveformUrl;
+                            ID("music_trackTitle").innerHTML = nTrack.title;
+                            ID("music_trackAuthor").innerHTML = "By: "+nTrack.author;
+                        }
+                    });
                 });
 
                 socketListener.addPersistentListener("serverNoTrackCache", data => {
@@ -231,6 +279,7 @@ var globals = {
                 socketListener.addPersistentListener("serverLoadingTracksUpdate", data => {
                     ID("music_trackAuthor").innerHTML = "Loading percent: "+data.percent+" (Loading track: "+data.track+")";
                 });
+
             }
 
             socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
@@ -239,6 +288,7 @@ var globals = {
         togglePlayerOutput: function() {
             if (globals.music.soundcloudReady) {
                 globals.music.playingMusicOnServer = !globals.music.playingMusicOnServer;
+                socket.emit("GET", {action: "SCClientUserEvent", type: "togglePlayerOutput", origin: "client-"+globals.authkey});
             }
         },
 
@@ -279,11 +329,13 @@ var globals = {
                     ID("music_trackArt").src = "images/errorLoadingTrack.png";
                 });
             },
-            playTrackServer: function(track) {
+            playTrackRequested: function(track) {
+                globals.music.soundManager.currentPlayingTrack = track;
                 ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
                 ID("music_waveformArt").src = track.artwork.waveformUrl;
                 ID("music_trackTitle").innerHTML = track.title;
                 ID("music_trackAuthor").innerHTML = "By: "+track.author;
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "clientTrackSelected", data: {trackID: track.id}, origin: "client-"+globals.authkey});
             },
             setPlayerVolume: function(vol) {
                 if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
@@ -318,42 +370,27 @@ var globals = {
                 },200)
             },
             playPauseTrack: function() {
-                if (globals.music.soundManager.playingTrack) {
-                    globals.music.soundManager.playerObject.pause();
-                    globals.music.soundManager.playingTrack = false;
-                } else {
-                    if (globals.music.soundManager.playerObject.getDuration() != 1) { //no track so don't play
-                        globals.music.soundManager.playerObject.play();
-                        globals.music.soundManager.playingTrack = true;
-                    }
-                }
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "playPause", origin: "client-"+globals.authkey});
             },
             volUp: function() {
-                socket.emit("GET", {action: "scClientUserEvent", type: "volumeUp"});
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "volumeUp", origin: "client-"+globals.authkey});
             },
             volDown: function() {
-                socket.emit("GET", {action: "scClientUserEvent", type: "volumeDown"});
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "volumeDown", origin: "client-"+globals.authkey});
             },
-            backTrack: function() { //always goes back 1
-                socket.emit("GET", {action: "scClientUserEvent", type: "backTrack"});
+            backTrack: function() {
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "trackBackward", origin: "client-"+globals.authkey});
             },
             forwardTrack: function() { //can go forward one or shuffle to get to next track
-                if (globals.music.nextTrackShuffle) {
-                    var ind = Math.round(Math.random()*globals.music.likedTracks.length);
-                    if (ind == globals.music.soundManager.currentPlayingTrack.index) { //is track so add one
-                        ind++;
-                        if (ind > globals.music.likedTracks.length) { //lol very random chance that it wrapped over
-                            ind = 0;
-                        }
-                    }
-                    globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
-                } else {
-                    var ind = globals.music.soundManager.currentPlayingTrack.index+1;
-                    if (ind > globals.music.likedTracks.length) {
-                        ind = 0; //go to first track
-                    }
-                    globals.music.soundManager.playTrack(globals.music.likedTracks[ind]);
-                }
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "trackForward", origin: "client-"+globals.authkey});
+            },
+            changeLoopState: function() {
+                globals.music.nextTrackLoop = !globals.music.nextTrackLoop;
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "changeTrackLoopState", origin: "client-"+globals.authkey});
+            },
+            changeShuffleState: function() {
+                globals.music.nextTrackShuffle = !globals.music.nextTrackShuffle;
+                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "changeTrackShuffleState", origin: "client-"+globals.authkey});
             },
             updateCanvas: function() {
                 var canvas = document.getElementById('main');
@@ -391,7 +428,7 @@ var globals = {
                 for (var i=0; i<tracklist.length; i++) {
                     var p = document.createElement("p");
                     var txt = document.createTextNode(String(i+1)+"): "+tracklist[i].title);
-                    p.setAttribute("onclick","globals.music.soundManager.playTrack("+JSON.stringify(tracklist[i])+");");
+                    p.setAttribute("onclick","globals.music.soundManager.playTrackRequested("+JSON.stringify(tracklist[i])+");");
                     p.setAttribute("tabindex","0");
                     p.setAttribute("class","songTitle")
                     p.appendChild(txt);

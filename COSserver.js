@@ -807,12 +807,13 @@ socketHandler.update(userPool,sockets);
 							hasTracks: true,
 							likedTracks: soundcloudSettings.likedTracks,
 							trackList: soundcloudSettings.trackList,
+							clientID: soundcloudSettings.clientID,
 							settingsData: {
 								currentUser: soundcloudSettings.currentUser,
 								noArtworkUrl: soundcloudSettings.noArtworkUrl,
 								defaultVolume: soundcloudSettings.defaultVolume,
 								volStep: soundcloudSettings.volStep,
-								currentVolume: soundcloudSettings.currentVolume,
+								currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
 								tracksFromCache: soundcloudSettings.tracksFromCache,
 								playingMusicOnServer: soundcloudSettings.playingMusicOnServer,
 								nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
@@ -827,6 +828,23 @@ socketHandler.update(userPool,sockets);
 						});
 						soundcloudSettings.waitingClients.push(socket.id);
 					}
+				}
+				break;
+
+				case "SCClientUserEvent":
+				if (validKey || securityOff) {
+					if (data.type) {
+						soundcloudUtils.SCSoundManager.processClientEvent({
+							type: data.type,
+							data: data.data,
+							origin: data.origin
+						});
+					} else {
+						console.log("Type undefined sccliuserevent");
+					}
+				} else {
+					console.error("keyObject invalid w/key '"+key+"'");
+					socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientInvalidKeyObject"});
 				}
 				break;
 

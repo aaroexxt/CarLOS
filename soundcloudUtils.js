@@ -20,6 +20,7 @@ var SCUtils = {
     CWD: undefined,
     failedToLoadTracksFirstRun: true,
     extSocketHandler: undefined,
+    track401Offset: 0, //offset to keep track of tracks that load as 401 and to subtract length
 
     /************************
     INIT: LOAD TRACKS & CACHE
@@ -188,54 +189,51 @@ var SCUtils = {
             var requestCounter = 0;
             console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
             for (var j=0; j<requiredRequestTimes; j++) {
-                setTimeout(function(){
-                    fetch("https://api.soundcloud.com/users/"+scSettings.userID+"/favorites.json?client_id="+scSettings.clientID+"&offset="+(scSettings.tracksPerRequest*j)+"&limit="+scSettings.tracksPerRequest+"&format=json", {timeout: scSettings.requestTimeout}).then( res => res.json()).then( tracks => { //get favorite tracks
-                        //console.log("TRACKS "+JSON.stringify(tracks));
-                        for (var i=0; i<tracks.length; i++) {
-                            scSettings.likedTracks.push({ //extract track info
-                                title: tracks[i].title,
-                                index: i,
-                                id: tracks[i].id,
-                                author: tracks[i].user.username,
-                                duration: tracks[i].duration,
-                                playing: false,
-                                artwork: {
-                                    artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
-                                    waveformUrl: tracks[i].waveform_url
-                                }
-                            });
-                            scSettings.trackList.push(tracks[i].title);
-                        }
+                fetch("https://api.soundcloud.com/users/"+scSettings.userID+"/favorites.json?client_id="+scSettings.clientID+"&offset="+(scSettings.tracksPerRequest*j)+"&limit="+scSettings.tracksPerRequest+"&format=json", {timeout: scSettings.requestTimeout}).then( res => res.json()).then( tracks => { //get favorite tracks
+                    for (var i=0; i<tracks.length; i++) {
+                        scSettings.likedTracks.push({ //extract track info
+                            title: tracks[i].title,
+                            index: i,
+                            id: tracks[i].id,
+                            author: tracks[i].user.username,
+                            duration: tracks[i].duration,
+                            playing: false,
+                            artwork: {
+                                artworkUrl: (tracks[i].artwork_url !== null && typeof tracks[i].artwork_url !== "undefined") ? tracks[i].artwork_url.substring(0,tracks[i].artwork_url.indexOf("large"))+"t500x500"+tracks[i].artwork_url.substring(tracks[i].artwork_url.indexOf("large")+"large".length) : tracks[i].artwork_url,
+                                waveformUrl: tracks[i].waveform_url
+                            }
+                        });
+                        scSettings.trackList.push(tracks[i].title);
+                    }
 
-                        //console.info(JSON.stringify(scSettings));
-                        requestCounter++; //increment the counter
-                        
-                        if (scSettings.trackList.length >= tracksToLoad || requestCounter >= requiredRequestTimes) { //does loaded tracklist length equal tracks to load (equates for partial requests)
-                            console.log(colors.green("Processed "+colors.underline(scSettings.likedTracks.length)+" tracks for soundcloud"));
-                            scSettings.tracksFromCache = false;
-                            SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
-                            console.log("Saving SC cache...");
-                            SCUtils.saveTrackCache(scSettings.likedTracks, scSettings.userID, scSettings).then( () => {
-                                console.log(colors.green("Saved track cache; saving tracks"));
-                                SCUtils.saveAllTracks(scSettings).then( () => {
-                                    console.log(colors.green("Loaded all SC tracks"));
-                                    return resolve();
-                                }).catch( err => {
-                                    return reject("Error saving tracks: "+err);
-                                });
+                    requestCounter++; //increment the counter
+                    //console.log("REQUEST_COUNTER: "+requestCounter+", likedtracks ",scSettings.likedTracks);
+                    
+                    if (scSettings.trackList.length >= tracksToLoad || requestCounter >= requiredRequestTimes) { //does loaded tracklist length equal tracks to load (equates for partial requests)
+                        console.log(colors.green("Processed "+colors.underline(scSettings.likedTracks.length)+" tracks for soundcloud"));
+                        scSettings.tracksFromCache = false;
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
+                        console.log("Saving SC cache...");
+                        SCUtils.saveTrackCache(scSettings.likedTracks, scSettings.userID, scSettings).then( () => {
+                            console.log(colors.green("Saved track cache; saving tracks"));
+                            SCUtils.saveAllTracks(scSettings).then( () => {
+                                console.log(colors.green("Loaded all SC tracks"));
+                                return resolve();
                             }).catch( err => {
-                                return reject("Error saving cache: "+err);
+                                return reject("Error saving tracks: "+err);
                             });
-                        }
-                    }).catch( e => {
-                        console.warn("Failed to get track from trackRequest (e: "+e+"); going to cache");
-                        SCUtils.failedToLoadTracks(e, scSettings).then( () => {
-                            return resolve();
                         }).catch( err => {
-                            return reject(err);
-                        }); //failed to load the tracks
-                    });
-                },scSettings.delayBetweenTracklistRequests*j);
+                            return reject("Error saving cache: "+err);
+                        });
+                    }
+                }).catch( e => {
+                    console.warn("Failed to get track from trackRequest (e: "+e+"); going to cache");
+                    SCUtils.failedToLoadTracks(e, scSettings).then( () => {
+                        return resolve();
+                    }).catch( err => {
+                        return reject(err);
+                    }); //failed to load the tracks
+                });
             }
         })
     },
@@ -413,6 +411,7 @@ var SCUtils = {
                                         if (err.toString().indexOf("401") > 0) {
                                             console.warn("A 401 error was recieved on attempt to get size; denied. Can't fetch track");
                                             tracksLoaded++;
+                                            SCUtils.track401Offset++;
                                             loadTrackIndex(tracksLoaded);
                                         } else {
                                             return reject("Error getting SC file size: "+err);
@@ -633,16 +632,16 @@ var SCSoundManager = {
 
     init: () => {
         return new Promise((resolve, reject) => {
-            this.currentPlayingTrack = SCUtils.localSoundcloudSettings.likedTracks[0]; //start with first track
+            SCSoundManager.currentPlayingTrack = SCUtils.localSoundcloudSettings.likedTracks[0]; //start with first track
             SCSoundManager.currentVolume = SCUtils.localSoundcloudSettings.defaultVolume;
-            SCSoundManager.playTrack(this.currentPlayingTrack);
+            //SCSoundManager.playTrackLogic(this.currentPlayingTrack);
             resolve();
         });
     },
     lookupTrackByID: trackID => {
         return new Promise((resolve, reject) => {
             var lt = SCUtils.localSoundcloudSettings.likedTracks;
-            for (var i=0; i<lr.length; i++) {
+            for (var i=0; i<lt.length; i++) {
                 if (lt[i].id == trackID) {
                     return resolve(lt[i]);
                 }
@@ -652,7 +651,7 @@ var SCSoundManager = {
     },
     processClientEvent: function(ev) {
         if (ev && ev.type) {
-            console.log("[SCSoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+((ev.data) ? ev.data : "no data provided"));
+            console.log("[SCSoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
             switch (ev.type) {
                 case "playPause":
                     if (SCSoundManager.playingTrack) {
@@ -677,38 +676,47 @@ var SCSoundManager = {
                     break;
                 case "trackForward":
                     if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
-                        var ind = Math.round(Math.random()*SCUtils.localSoundcloudSettings.likedTracks.length);
+                        var ind = Math.round(Math.random()*(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset));
                         if (ind == SCSoundManager.currentPlayingTrack.index) { //is track so add one
                             ind++;
-                            if (ind > SCUtils.localSoundcloudSettings.likedTracks.length) { //lol very random chance that it wrapped over
+                            if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) { //lol very random chance that it wrapped over
                                 ind = 0;
                             }
                         }
                         SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
                     } else {
+                        console.info("OLDIND "+SCSoundManager.currentPlayingTrack.index)
                         var ind = SCSoundManager.currentPlayingTrack.index+1;
-                        if (ind > SCUtils.localSoundcloudSettings.likedTracks.length) {
+                        if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) {
                             ind = 0; //go to first track
+                            console.info("IND OVERFLOW")
                         }
+                        console.info("NOIND OVERFLOW (ind="+ind+", len="+(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)+")");
                         SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
                     }
                     break;
                 case "trackBackward":
                     var ind = SCSoundManager.currentPlayingTrack.index-1;
                     if (ind < 0) {
-                        ind = SCUtils.localSoundcloudSettings.likedTracks.length-1; //go to last track
+                        ind = SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset-1; //go to last track
                     }
                     SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
                     break;
                 case "clientLocalTrackFinished":
+                    SCSoundManager.processClientEvent({
+                        type: "trackForward",
+                        origin: "internal (client local track finished"
+                    });
                     break;
                 case "clientTrackSelected":
                     if (ev.data) {
-                        var trackID = data.trackID;
-                        var trackObject = SCSoundManager.lookupTrackByID(trackID);
-                        if (SCUtils.localSoundcloudSettings.playMusicOnServer) {
-
-                        }
+                        var trackID = ev.data.trackID;
+                        SCSoundManager.lookupTrackByID(trackID).then( trackData => {
+                            SCSoundManager.playTrackLogic(trackData);
+                        }).catch( err => {
+                            console.error("Error looking up track with id "+trackID+": "+err);
+                        })
+                        
                     } else {
                         console.error("ClientTrackSelected event fired but no data provided");
                     }
@@ -719,37 +727,76 @@ var SCSoundManager = {
                 case "changeTrackShuffleState":
                     SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
                     break;
+                case "togglePlayerOutput":
+                    SCUtils.localSoundcloudSettings.playMusicOnServer = !SCUtils.localSoundcloudSettings.playMusicOnServer;
+                    console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
+                    break;
                 default:
-                    console.error("unknown event "+ev+" passed into SCProcCliEvent");
+                    console.error("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
                     break;
             }
         } else {
             console.error("SCSoundmanager proc cliEv called with no event or invalid");
         }
     },
-        /*console.log("playing id: "+track.id); 
-        SC.stream('/tracks/' + track.id).then(function(player) {
-            globals.music.soundManager.playerObject.pause(); //pause previous
-            globals.music.soundManager.playerObject = player;
-            globals.music.soundManager.playerObject.play();
-            globals.music.soundManager.playingTrack = true;
-            ID("music_trackArt").src = (!track.artwork.artworkUrl) ? SCUtils.localSoundcloudSettings.noArtworkUrl : track.artwork.artworkUrl;
-            ID("music_waveformArt").src = track.artwork.waveformUrl;
-            ID("music_trackTitle").innerHTML = track.title;
-            ID("music_trackAuthor").innerHTML = "By: "+track.author;
-            globals.music.soundManager.currentPlayingTrack = track;
-        }).catch(function(){
-            console.error("Error playing track with id ("+track.id+"): ",arguments);
-            ID("music_trackArt").src = "images/errorLoadingTrack.png";
-        });
-    },*/
+
+    playTrackLogic: function(trackObject) {
+        if (trackObject) {
+            clearInterval(SCSoundManager.clientUpdateInterval); //clear the client update loop
+            if (SCUtils.localSoundcloudSettings.playMusicOnServer) {
+                console.log("Playing music on: SERVER");
+                if (SCSoundManager.playingTrack) {
+                    SCSoundManager.trackControl.pause(); //pause track so that two tracks don't overlap
+                }
+                var trackPath = SCUtils.CWD+"/"+SCUtils.localSoundcloudSettings.soundcloudTrackCacheDirectory+"/track-"+trackObject.id+".mp3";
+                fs.stat(trackPath, function(err, stat) {
+                    if (err) {
+                        console.warn("Track with title: "+trackObject.title+" had no copy saved locally; downloading one (was it deleted somehow?)");
+                        SCUtils.saveTrack().then( () => {
+                            SCSoundManager.playTrackServer(trackObject);
+                            setCUI();
+                        }).catch( err => {
+                            console.error("Error playing track with title: "+trackObject.title+"; no copy saved locally and couldn't download (protected track?)");
+                        })
+                    } else {
+                        SCSoundManager.playTrackServer(trackObject);
+                        setCUI();
+                    }
+                });
+
+                function setCUI() {
+                    SCSoundManager.clientUpdateInterval = setInterval(function(){
+                        var ps = SCSoundManager.getPlayedSeconds();
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {
+                            action: "serverPlayingTrackUpdate",
+                            currentPlayingTrack: SCSoundManager.currentPlayingTrack,
+                            percent: SCSoundManager.getPercent(),
+                            playedSeconds: ps,
+                            timeStamp: utils.formatHHMMSS(ps),
+                            settingsData: {
+                                currentUser: SCUtils.localSoundcloudSettings.currentUser,
+                                currentVolume: SCSoundManager.currentVolume,
+                                nextTrackShuffle: SCUtils.localSoundcloudSettings.nextTrackShuffle,
+                                nextTrackLoop: SCUtils.localSoundcloudSettings.nextTrackLoop
+                            }
+                        });
+                    },SCUtils.localSoundcloudSettings.clientUpdateTime);
+                }
+            } else {
+                console.log("Playing music on: CLIENT");
+                //PROGRAM CLIENT PLAY MUSIC
+            }
+        } else {
+            console.error("Invalid track passed into playTrackLogic");
+        }
+    },
     
     getPercent: function() {
         return Math.round((SCSoundManager.trackPipedBytes/SCSoundManager.trackTotalBytes)*100);
     },
 
     getPlayedSeconds: function() {
-        return SCSoundManager.getPercent()*SCSoundManager.currentPlayingTrackDuration;
+        return (SCSoundManager.getPercent()/100)*SCSoundManager.currentPlayingTrackDuration;
     },
 
     setPlayerVolume: function(vol) {
@@ -780,7 +827,7 @@ var SCSoundManager = {
         fs.stat(trackPath, function(err, stat) {
             SCSoundManager.trackTotalBytes = stat.size;
             if (err == null) {
-                console.log("file exists, ok w/stat "+JSON.stringify(stat));
+                //console.log("file exists, ok w/stat "+JSON.stringify(stat));
 
                 mp3d(trackPath, (err, duration) => {
                     if (err) {
@@ -790,16 +837,15 @@ var SCSoundManager = {
                         SCSoundManager.currentPlayingTrackDuration = duration;
                         SCSoundManager.currentPlayingTrack = trackObject;
 
-                        var ts = new timedStream();
-                        var c= 0;
-                        ts.on('data', data => {
-                            c+=data.length;
-                            SCSoundManager.trackPipedBytes = c;
-                        })
+                        var ts = new timedStream({
+                            rate: 1000000,
+                            period: 100
+                        }); //initialize timedStream
+                        SCSoundManager.trackPipedBytes = 0;
 
                         var readable = fs.createReadStream(trackPath); //create the read path
                         
-                        var audioOptions = {
+                        var audioOptions = { //set audio options
                             channels: 2,
                             bitDepth: 16,
                             sampleRate: 44100,
@@ -808,33 +854,38 @@ var SCSoundManager = {
                             mode: lame.STEREO
                         };
 
-                        var decoder = new lame.Decoder(audioOptions);
-                        var volumeTweak = new pcmVolume();
+                        var decoder = new lame.Decoder(audioOptions); //initialize decoder
+                        var volumeTweak = new pcmVolume(); //initialize pcm volume changer
+                        decoder.on('data', data => {
+                            SCSoundManager.trackPipedBytes += data.length;
+                        });
 
-                        SCSoundManager.pcmVolumeAdjust = volumeTweak;
-
+                        SCSoundManager.pcmVolumeAdjust = volumeTweak; //set global method so it can be accessed
 
                         SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
 
 
-                        readable.pipe(ts)
-                            .pipe(decoder)
-                            .pipe(volumeTweak)
-                            //.pipe(spk)
-                            //.on('close', () => { console.log("SPK CLOSE!"); this.stop(); }); //pipe stream to MP3 decoder
+                        readable.pipe(ts) //pipe stream to timedStream
+                            .pipe(decoder) //pipe to decoder
+                            .pipe(volumeTweak) //pipe to volumeTweaker
                         
                         var speaker;
                         function resume() {
-                            speaker = new Speaker(audioOptions);
-                            volumeTweak.pipe(speaker);
-                            ts.resumeStream();
+                            console.info("_PLAY");
+
+                            speaker = new Speaker(audioOptions); //setup speaker
+
+                            volumeTweak.pipe(speaker); //setup pipe for volumeTweak
+                            ts.resumeStream(); //resume the stream
                             SCUtils.playingTrack= true;
+
                             return speaker.once('close', function() {
                                 speaker.end();
                                 ts.destroy();
-                                console.log("NEXT SONG REACHED");
+                                SCSoundManager.playingTrack = false;
+                                console.log("_NEXT SONG REACHED");
 
-                                SCUtils.processClientEvent({
+                                SCSoundManager.processClientEvent({
                                     type: "trackForward",
                                     origin: "internal (trackFinished)"
                                 }); //request next track
@@ -845,41 +896,30 @@ var SCSoundManager = {
                         }
 
                         function pause() {
+                            console.info("_PAUSE");
                             SCUtils.playingTrack = false;
                             speaker.removeAllListeners('close');
+                            volumeTweak.unpipe(speaker);
                             ts.pauseStream();
                             return speaker.end();
                         }
 
-                        SCSoundManager.trackControl = {
-                            pauseTrack: pause,
-                            playTrack: resume
+                        SCSoundManager.trackControl = { //set the track control handler
+                            pause: pause,
+                            play: resume
+                        };
+
+                        if (SCUtils.localSoundcloudSettings.autoplayTrack) {
+                            resume(); //start playing track
+                            SCSoundManager.playingTrack = true;
+                        } else {
+                            SCSoundManager.playingTrack = false;
                         }
-
-                        /*var seekBuffer = 0;
-                        volumeTweak.on('data', data => {
-                            seekBuffer+=data.length;
-                            console.log("sbl: "+seekBuffer);
-                        });*/
-
-                        setTimeout( () => {
-                            console.log("PAUSING");
-                            try {
-                                pause();
-                            } catch(e) {
-                                console.error("Error pausing: "+e)
-                            }
-                            setTimeout( () => {
-                                console.log("RESUMING");
-                                resume();
-                            },15000);
-                        },5000);
-                        resume();
 
                     }
                 });
             } else {
-                return console.error("File doesn't exist")
+                return console.error("File doesn't exist");
             }
         })
     }

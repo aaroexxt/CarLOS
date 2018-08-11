@@ -5,7 +5,7 @@
         "node_modules/**/node_modules",
         "/SCCache/**.*"
     ],
-    "watch": ["COSserver.js"],
+    "watch": ["COSserver.js", "soundcloudUtils.js"],
     "e": ["js"],
     "delay": 1000,
     "execMap": {
