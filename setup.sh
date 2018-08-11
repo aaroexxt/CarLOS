@@ -38,15 +38,16 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon speaker lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream;
+sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream;
 sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
+sudo npm install --prefix $cwd --mpg123-backend=openal speaker
 sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools
 sudo npm install --prefix $cwd socket.io@1.7.2;
 sudo npm install -g nodemon;
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;
 sudo pip3 uninstall opencv-python;
-sudo pip3 install tensorflow;
+#sudo pip3 install tensorflow;
 echo "If tensorflow module not found error occurs, delete the python and python3 folders in /usr/local/Cellar and reinstall python and python3 with 'brew install python python3'";
 sudo python3 -m pip install opencv-contrib-python==3.3.0.9; #why do you not work unless i do this???
 sudo python3 -m pip install pyaudio;

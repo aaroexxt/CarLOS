@@ -64,11 +64,9 @@ var fs = require('fs');
 var utils = require('./nodeUtils.js'); //include the utils file
 var soundcloudUtils = require('./soundcloudUtils.js');
 var singleLineLog = require('single-line-log').stdout; //single line logging
-var player = require('play-sound')(opts = {});
 var fetch = require('node-fetch');
 var progress = require('progress-stream');
 var remoteFileSize = require("remote-file-size");
-var term = require('terminal-kit').terminal;
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
@@ -581,7 +579,7 @@ function initSCLoop() {
 					}
 				});
 			}
-			
+
 		}).catch( e => {
 			console.error("Error initializing trackManager: "+e);
 		});
