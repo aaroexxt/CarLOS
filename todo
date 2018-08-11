@@ -43,6 +43,8 @@ use a timed listener to get song playing length on client side instead of bytes 
 
 do opencv processing inside of nodejs server instead of inside python file
 
+use external sound card on rpi with audio device set inside of speaker({}) instance?
+
 
 
 implement track type handling (client vs python)

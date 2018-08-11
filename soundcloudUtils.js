@@ -458,7 +458,7 @@ var SCUtils = {
                                             });
                                         }).then( () => {
                                             tracksLoaded++;
-                                            console.log("Track '"+lpTitle+"' written successfully, overall prog: "+(tracksLoaded/tracksToLoad)*100);
+                                            console.log("Track '"+lpTitle+"' written successfully, overall prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
                                             if (tracksLoaded == tracksToLoad) {
                                                 console.log("Done loading tracks, resolving");
                                                 return resolve();
@@ -475,7 +475,7 @@ var SCUtils = {
                             });
                         } else {
                             tracksLoaded++;
-                            console.log("Track '"+lpTitle+"' found already, prog: "+(tracksLoaded/tracksToLoad)*100);
+                            console.log("Track '"+lpTitle+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
                             if (tracksLoaded == tracksToLoad) {
                                 console.log("Done loading tracks, resolving");
                                 return resolve();
@@ -593,7 +593,7 @@ var SCUtils = {
                         return reject("Error fetching track stream URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' found already, prog: "+(tracksLoaded/tracksToLoad)*100);
+                    console.log("Track '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
                     return resolve();
                 }
             });
@@ -842,6 +842,9 @@ var SCSoundManager = {
                             period: 100
                         }); //initialize timedStream
                         SCSoundManager.trackPipedBytes = 0;
+                        ts.on('data', data => {
+                            SCSoundManager.trackPipedBytes += data.length;
+                        });
 
                         var readable = fs.createReadStream(trackPath); //create the read path
                         
@@ -856,9 +859,6 @@ var SCSoundManager = {
 
                         var decoder = new lame.Decoder(audioOptions); //initialize decoder
                         var volumeTweak = new pcmVolume(); //initialize pcm volume changer
-                        decoder.on('data', data => {
-                            SCSoundManager.trackPipedBytes += data.length;
-                        });
 
                         SCSoundManager.pcmVolumeAdjust = volumeTweak; //set global method so it can be accessed
 
