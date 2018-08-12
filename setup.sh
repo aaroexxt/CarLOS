@@ -38,7 +38,7 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream;
+sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
 sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
 sudo npm install --prefix $cwd --mpg123-backend=openal speaker
 sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools

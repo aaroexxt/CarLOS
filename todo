@@ -41,11 +41,15 @@ GPS+MAGNETOMETER EXT from arduino
 
 use a timed listener to get song playing length on client side instead of bytes through decoder
 
+cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not
+
 do opencv processing inside of nodejs server instead of inside python file
+
+time since forward or backward button pressed to prevent crashing
 
 use external sound card on rpi with audio device set inside of speaker({}) instance?
 
-
+spam filtering which blocks clients sending > 1 request per 0.1 seconds
 
 implement track type handling (client vs python)
 
@@ -81,6 +85,7 @@ server onstartup looks for cache file, if it finds it it sends it to server DONE
 else it requests it and saves the results DONE
 once tracks are loaded, it loads the tracks into mp3 files DONE
 better 404 page DONE (slightly)
+FIX BUG WITH LOOP & TRACKS NOT WRAPPING DONE
 
 
 Portable ideas:

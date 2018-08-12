@@ -81,6 +81,11 @@ var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and
 
 var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler which keeps track of sockets and userPool and can send messages to specific clients
 
+//CONFIGURING WATCHDOG
+
+var watchdog = require('native-watchdog');
+watchdog.start(3000); //will watch process
+
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
 **********************************/
@@ -549,56 +554,73 @@ if (catchErrors) {
 --I10-- SOUNDCLOUD INIT CODE --I10--
 ***********************************/
 
-var timesLeft = soundcloudSettings.initMaxAttempts;
-function initSCLoop() {
-	console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
-	soundcloudUtils.SCUtils.init({
-		soundcloudSettings: soundcloudSettings,
-		username: soundcloudSettings.defaultUsername,
-		cwd: cwd,
-		socketHandler: socketHandler
-	}).then( () => {
-		console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
-		soundcloudUtils.SCSoundManager.init().then( () => {
-			console.log(colors.green("Initialized trackManager successfully!"));
-			soundcloudSettings.soundcloudReady = true;
-
-			for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-				socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
-					"action": "serverDataReady",
-					hasTracks: true,
-					likedTracks: soundcloudSettings.likedTracks,
-					trackList: soundcloudSettings.trackList,
-					settingsData: {
-						currentUser: soundcloudSettings.currentUser,
-						noArtworkUrl: soundcloudSettings.noArtworkUrl,
-						defaultVolume: soundcloudSettings.defaultVolume,
-						volStep: soundcloudSettings.volStep,
-						currentVolume: soundcloudSettings.currentVolume,
-						tracksFromCache: soundcloudSettings.tracksFromCache
-					}
-				});
-			}
-
-		}).catch( e => {
-			console.error("Error initializing trackManager: "+e);
-		});
-	}).catch( err => {
-		timesLeft--;
-		firstRun = true;
-		if (timesLeft > 0) {
-			console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+soundcloudSettings.initErrorDelay+" ms.");
-			setTimeout( () => {
-				initSCLoop();
-			}, soundcloudSettings.initErrorDelay);
-		} else {
-			console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
+function initSoundcloud(username) {
+	return new Promise((mresolve, mreject) => {
+		if (typeof username == "undefined") {
+			username = soundcloudSettings.defaultUsername;
 		}
+		var timesLeft = soundcloudSettings.initMaxAttempts;
+
+		function initSCSlave() {
+			console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
+			soundcloudUtils.SCUtils.init({
+				soundcloudSettings: soundcloudSettings,
+				username: username,
+				cwd: cwd,
+				socketHandler: socketHandler
+			}).then( () => {
+				console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
+				soundcloudUtils.SCSoundManager.init().then( () => {
+					console.log(colors.green("Initialized trackManager successfully!"));
+					soundcloudSettings.soundcloudReady = true;
+
+					for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+						socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+							"action": "serverDataReady",
+							hasTracks: true,
+							likedTracks: soundcloudSettings.likedTracks,
+							trackList: soundcloudSettings.trackList,
+							settingsData: {
+								currentUser: soundcloudSettings.currentUser,
+								noArtworkUrl: soundcloudSettings.noArtworkUrl,
+								defaultVolume: soundcloudSettings.defaultVolume,
+								volStep: soundcloudSettings.volStep,
+								currentVolume: soundcloudSettings.currentVolume,
+								tracksFromCache: soundcloudSettings.tracksFromCache
+							}
+						});
+					}
+
+					mresolve();
+
+				}).catch( e => {
+					console.error("Error initializing trackManager: "+e+". won't restart");
+				});
+			}).catch( err => {
+				timesLeft--;
+				firstRun = true;
+				if (timesLeft > 0) {
+					console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+soundcloudSettings.initErrorDelay+" ms.");
+					setTimeout( () => {
+						initSCSlave();
+					}, soundcloudSettings.initErrorDelay);
+				} else {
+					console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
+					mreject("MaxTries reached");
+				}
+			});
+		}
+		initSCSlave(); //begin first slave
 	});
+
 }
 
 console.info("Starting SC MASTER");
-initSCLoop();
+initSoundcloud().then( () => {
+	console.info("SC INIT OK");
+}).catch( err => {
+	console.error("Error initializing SC: "+err);
+});
 
 /******************************
 --I11-- MISC. INIT CODE --I11--
@@ -815,7 +837,7 @@ socketHandler.update(userPool,sockets);
 								volStep: soundcloudSettings.volStep,
 								currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
 								tracksFromCache: soundcloudSettings.tracksFromCache,
-								playingMusicOnServer: soundcloudSettings.playingMusicOnServer,
+								playMusicOnServer: soundcloudSettings.playMusicOnServer,
 								nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
 								nextTrackLoop: soundcloudSettings.nextTrackLoop,
 								soundcloudReady: soundcloudSettings.soundcloudReady
@@ -837,14 +859,25 @@ socketHandler.update(userPool,sockets);
 						soundcloudUtils.SCSoundManager.processClientEvent({
 							type: data.type,
 							data: data.data,
-							origin: data.origin
+							origin: "external"
 						});
 					} else {
 						console.log("Type undefined sccliuserevent");
 					}
 				} else {
 					console.error("keyObject invalid w/key '"+key+"'");
-					socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientInvalidKeyObject"});
+					socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "SCClientUserEventInvalidKeyObject"});
+				}
+				case "SCClientChangeUser":
+				if (validKey || securityOff) {
+					if (data.newUser) {
+						
+					} else {
+						console.log("NewUser undefined SCClientChangeUser");
+					}
+				} else {
+					console.error("keyObject invalid w/key '"+key+"'");
+					socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "SCClientChangeUserInvalidKeyObject"});
 				}
 				break;
 

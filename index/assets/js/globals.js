@@ -84,7 +84,7 @@ var globals = {
                         <button onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
                         <p>Will toggle output of soundcloud playing to be server audio port or client device. Warning: Needs internet if playing on client device. More stable+tested more on server side.</p>
                         <br>
-                        <p>Currently playing on: `+((globals.music.playingMusicOnServer) ? "server" : "client")+`
+                        <p>Currently playing on: `+((globals.music.playMusicOnServer) ? "server" : "client")+`
                     </center>
                 `,
                 backdrop: false,
@@ -191,7 +191,7 @@ var globals = {
         likedTracks: [],
         trackList: [],
         setListeners: false,
-        playingMusicOnServer: true,
+        playMusicOnServer: true,
 
         oldSettingsData: {},
 
@@ -202,25 +202,32 @@ var globals = {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
                         globals.music.trackList = data.trackList;
-                        globals.music.currentUser = data.currentUser;
-                        globals.music.noArtworkUrl = data.noArtworkUrl;
-                        globals.music.volStep = data.volStep;
-                        globals.music.currentVolume = data.currentVolume;
-                        globals.music.playingMusicOnServer = data.playingMusicOnServer;
-                        globals.music.nextTrackShuffle = data.nextTrackShuffle;
+                        
+                        var sd = data.settingsData;
+                        globals.music.currentUser = sd.currentUser;
+                        globals.music.noArtworkUrl = sd.noArtworkUrl;
+                        globals.music.volStep = sd.volStep;
+                        globals.music.currentVolume = sd.currentVolume;
+                        globals.music.playMusicOnServer = sd.playMusicOnServer;
+                        globals.music.nextTrackShuffle = sd.nextTrackShuffle;
+                        globals.music.soundcloudReady = sd.soundcloudReady;
+                        globals.music.nextTrackLoop = sd.nextTrackLoop;
+                        globals.music.tracksFromCache = sd.tracksFromCache;
+
                         if (globals.music.nextTrackShuffle) {
                             ID("music_shuffleButton").className+=' activeLoopShuffle';
                         }
-                        globals.music.nextTrackLoop = data.nextTrackLoop;
+                        
                         if (globals.music.nextTrackLoop) {
                             ID("music_loopButton").className+=' activeLoopShuffle';
                         }
-                        globals.music.soundcloudReady = data.soundcloudReady;
+                        console.log(globals.music.nextTrackLoop,globals.music.nextTrackShuffle,data)
+                        
                         SC.initialize({
                             client_id: data.clientID
                         });
                         ID("music_trackTitle").innerHTML = "Select a track";
-                        globals.music.tracksFromCache = data.tracksFromCache;
+                        
                         //socket.emit("GET",{action: "clientHasSoundcloudCache", cache: globals.music.likedTracks, cacheLength: globals.music.trackList.length, authkey: globals.authkey});
                         globals.music.musicUI.updateTrackList(globals.music.likedTracks);
                     } else {
@@ -287,7 +294,7 @@ var globals = {
 
         togglePlayerOutput: function() {
             if (globals.music.soundcloudReady) {
-                globals.music.playingMusicOnServer = !globals.music.playingMusicOnServer;
+                globals.music.playMusicOnServer = !globals.music.playMusicOnServer;
                 socket.emit("GET", {action: "SCClientUserEvent", type: "togglePlayerOutput", origin: "client-"+globals.authkey});
             }
         },
