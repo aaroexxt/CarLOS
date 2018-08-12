@@ -26,7 +26,7 @@
         "soundcloudUserdataCacheFile": "SCcache/soundcloudUserdataCache",
         "soundcloudTrackCacheDirectory": "SCcache/tracks",
         "soundcloudCacheExpiryTime": 86400000,
-        "initErrorDelay": 30000,
+        "initErrorDelay": 1000,
         "initMaxAttempts": 3,
         "defaultUsername": "bexterdubs",
         "currentUser": "bexterdubs",

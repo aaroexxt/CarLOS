@@ -574,8 +574,25 @@ function initSoundcloud(username) {
 					console.log(colors.green("Initialized trackManager successfully!"));
 					soundcloudSettings.soundcloudReady = true;
 
-					for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-						socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+					if (username == soundcloudSettings.defaultUsername) { //first init
+						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+								"action": "serverDataReady",
+								hasTracks: true,
+								likedTracks: soundcloudSettings.likedTracks,
+								trackList: soundcloudSettings.trackList,
+								settingsData: {
+									currentUser: soundcloudSettings.currentUser,
+									noArtworkUrl: soundcloudSettings.noArtworkUrl,
+									defaultVolume: soundcloudSettings.defaultVolume,
+									volStep: soundcloudSettings.volStep,
+									currentVolume: soundcloudSettings.currentVolume,
+									tracksFromCache: soundcloudSettings.tracksFromCache
+								}
+							});
+						}
+					} else {
+						socketHandler.socketEmitToWeb('POST', {
 							"action": "serverDataReady",
 							hasTracks: true,
 							likedTracks: soundcloudSettings.likedTracks,
@@ -606,7 +623,20 @@ function initSoundcloud(username) {
 					}, soundcloudSettings.initErrorDelay);
 				} else {
 					console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
-					mreject("MaxTries reached");
+					mreject("MaxTries reached (giving up) with error message: "+err);
+					if (username == soundcloudSettings.defaultUsername) { //first init
+						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+								"action": "serverSoundcloudError",
+								error: "MaxTries reached (giving up) with error message: "+err
+							});
+						}
+					} else {
+						socketHandler.socketEmitToWeb('POST', {
+							"action": "serverSoundcloudError",
+							error: "MaxTries reached (giving up) with error message: "+err
+						});
+					}
 				}
 			});
 		}
@@ -871,7 +901,12 @@ socketHandler.update(userPool,sockets);
 				case "SCClientChangeUser":
 				if (validKey || securityOff) {
 					if (data.newUser) {
-						
+						console.info("Restarting SC MASTER with new user "+data.newUser);
+						initSoundcloud(data.newUser).then( () => {
+							console.info("SC INIT OK");
+						}).catch( err => {
+							console.error("Error initializing SC: "+err);
+						});
 					} else {
 						console.log("NewUser undefined SCClientChangeUser");
 					}

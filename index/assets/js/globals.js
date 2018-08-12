@@ -287,6 +287,11 @@ var globals = {
                     ID("music_trackAuthor").innerHTML = "Loading percent: "+data.percent+" (Loading track: "+data.track+")";
                 });
 
+                socketListener.addPersistentListener("serverSoundcloudError", data => {
+                    console.error("Soundcloud Server Error: "+data.error);
+                    bootbox.alert("Soundcloud Server Error: "+data.error);
+                });
+
             }
 
             socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
@@ -447,7 +452,8 @@ var globals = {
                 bootbox.prompt("New soundcloud user? (Enter nothing if you don't want to change users)",function(user) {
                     if (user != "" && typeof user != "undefined" && user != null) {
                         console.log("Changing soundcloud user to: "+user);
-                        globals.music.init(user); //reinit
+                        socket.emit("GET", {action: "SCClientChangeUser", newUser: user, authkey: globals.authkey});
+                        globals.music.setListeners = false;
                     }
                 });
             }

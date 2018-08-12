@@ -165,6 +165,9 @@ var SCUtils = {
             if (typeof scSettings == "undefined") {
                 return reject("loadTracklist scSettings not specified");
             }
+            if (typeof data.permalink == "undefined" || typeof data.id == "undefined") {
+                return reject("Couldn't find user");
+            }
             console.log(colors.green("Initialized soundcloud with username: "+colors.underline(data.permalink)+" which corresponds to uid: "+colors.underline(data.id)));
             scSettings.maxLikedTracks = data.public_favorites_count;
             scSettings.userID = data.id;
@@ -645,11 +648,9 @@ var SCSoundManager = {
             switch (ev.type) {
                 case "playPause":
                     if (SCSoundManager.playingTrack) {
-                        console.info("PAU")
                         SCSoundManager.trackControl.pause();
                         SCSoundManager.playingTrack = false;
                     } else {
-                        console.info("PLA")
                         SCSoundManager.trackControl.play();
                         SCSoundManager.playingTrack = true;
                     }
