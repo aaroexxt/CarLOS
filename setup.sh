@@ -26,6 +26,7 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install libasound2-dev
     echo "Starting vnc..."
     sudo apt-get update;
+    sudo apt-get install -y avahi-daemon netatalk
     sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
     sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"
 elif [ "$platform" = "mac" ]; then
