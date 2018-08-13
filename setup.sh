@@ -23,7 +23,9 @@ if [ "$platform" = "linux" ]; then
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
     echo "Installing libasound for speaker (linux)...";
-    sudo apt-get install libasound2-dev
+    sudo apt-get install -y libasound2-dev;
+    sudo apt-get install -y libalut-dev;
+    sudo apt-get install -y libopenal1;
     echo "Starting vnc..."
     sudo apt-get update;
     sudo apt-get install -y avahi-daemon netatalk
@@ -39,12 +41,14 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 echo "Installing packages...";
-sudo npm install --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
-sudo npm install --prefix $cwd --unsafe-perm --build-from-source serialport;
-sudo npm install --prefix $cwd --mpg123-backend=openal speaker
-sudo npm install -g --unsafe-perm --build-from-source serialport; # for comand line tools
-sudo npm install --prefix $cwd socket.io@1.7.2;
-sudo npm install -g nodemon;
+sudo npm i -g npm@latest;
+sudo npm install --prefix $cwd --unsafe-perm=true --allow-root request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
+sudo npm install --prefix $cwd --unsafe-perm=true --allow-root --build-from-source serialport;
+sudo npm install --prefix $cwd --mpg123-backend=openal --unsafe-perm=true --allow-root speaker
+sudo npm install -g --unsafe-perm=true --allow-root --build-from-source serialport; # for comand line tools
+sudo npm install --prefix $cwd --unsafe-perm=true --allow-root socket.io@1.7.2;
+sudo npm install -g --unsafe-perm=true --allow-root nodemon;
+echo "Done installing packages.";
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;
 sudo pip3 uninstall opencv-python;

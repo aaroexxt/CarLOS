@@ -64,9 +64,6 @@ var fs = require('fs');
 var utils = require('./nodeUtils.js'); //include the utils file
 var soundcloudUtils = require('./soundcloudUtils.js');
 var singleLineLog = require('single-line-log').stdout; //single line logging
-var fetch = require('node-fetch');
-var progress = require('progress-stream');
-var remoteFileSize = require("remote-file-size");
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
 var catchErrors = false; //enables clean error handling. Only turn off during development
