@@ -43,8 +43,6 @@ cosserver wrapper that is like a watchdog - pings it every few seconds and check
 
 update script that automatically updates (clones into new folder, compares modified date or length and replaces files)
 
-do opencv processing inside of nodejs server instead of inside python file
-
 time since forward or backward button pressed to prevent crashing
 
 use external sound card on rpi with audio device set inside of speaker({}) instance?
@@ -53,6 +51,8 @@ spam filtering which blocks clients sending > 1 request per 0.1 seconds
 
 implement track type handling (client vs python)
 
+linux-like loading (LSB loading... etc (aesthetic))
+
 MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions
     -FM Broadcasting
@@ -60,6 +60,7 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Bluetooth audio
     -Xbee working
     -Oled on RPI to give status
+    -do opencv processing inside of nodejs server instead of inside python file (REQUIRED for rpi)
 
 
 

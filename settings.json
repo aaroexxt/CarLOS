@@ -18,6 +18,7 @@
         "defaultFileDirectory": "/index/COS.html",
         "assetsDirectory": "/index/assets",
         "arduinoBaudRate": 9600,
+        "oledDisplayAddress": "0x3C",
         "serverPort": 80
     },
     "soundcloudSettings": {

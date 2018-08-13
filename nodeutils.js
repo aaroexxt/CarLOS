@@ -412,8 +412,8 @@ function progressBar(options) {
         var str = colors.yellow(options.task)+colors.blue("[");
         var hashStr = "";
         for (var i=0; i<chars; i++) {
-            hashStr+="█";
-            //hashStr+="#";
+            //hashStr+="█";
+            hashStr+="#";
         }
         str+=colors.grey(hashStr);
         if (eta && options.showETA) {

@@ -35,7 +35,7 @@ This descriptor describes the layout of the code in this file.
 2 main phases: Initialization (I1-I9) and Runtime Code (R1-R2)
 	Sub-phase: SocketIO Subsections (R2:S1-R2:S2)
 
-Initialization (9 steps):
+Initialization (12 steps):
 1) Module Initialization: initalizes modules that are required later on
 2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
 3) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
@@ -46,7 +46,8 @@ Initialization (9 steps):
 8) Console Colors: overrides prototypes for console to provide colors in console
 9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
 10) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
-11) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize
+11) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
+12) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize. Also sends information to oled
 
 Runtime Code (2 steps):
 1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
@@ -63,6 +64,8 @@ Runtime Code (2 steps):
 var fs = require('fs');
 var utils = require('./nodeUtils.js'); //include the utils file
 var soundcloudUtils = require('./soundcloudUtils.js');
+var oledDriver = require('./oledDriver.js').driver;
+
 var singleLineLog = require('single-line-log').stdout; //single line logging
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
@@ -166,7 +169,7 @@ process.argv.forEach(function (val, index, array) {
 			var device = json[i].comName;
 			var manufacturer = json[i].manufacturer || "No manufacturer found";
 			console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
-			if (manufacturer.indexOf("Arduino") > -1 || manufacturer.indexOf("arduino") > -1) {
+			if (manufacturer.toLowerCase().indexOf("arduino") > -1) {
 				console.log("Arduino found!");
 				runtimeInformation.arduinoConnected = true;
 				serialDevice = device;
@@ -469,13 +472,6 @@ console.info = function(){
 	}
 }
 
-/*
-console.warn("TESTING WARNING");
-console.warn("TESTING WARNING %s","THIS SHOULD BE APPENDED");
-console.error("TESTING ERR");
-console.error("TESTING ERR %s","THIS SHOULD BE APPENDED");
-*/
-
 /************************************
 --I9-- ERROR AND EXIT HANDLING --I9--
 ************************************/
@@ -484,6 +480,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
 	runtimeInformation.status = "Exiting";
 	sendArduinoCommand("status","Exiting");
+	sendOledCommand("status","Exiting");
 	for (var i=0; i<sockets.length; i++) {
 		sockets[i].socket.emit("pydata","q"); //quit python
 		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
@@ -516,6 +513,7 @@ if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
 		sendArduinoCommand("status","Error");
+		sendOledCommand("status","Error");
 		runtimeInformation.status = "Error";
 		for (var i=0; i<sockets.length; i++) {
 			sockets[i].socket.emit("pydata","q"); //quit python
@@ -649,8 +647,25 @@ initSoundcloud().then( () => {
 	console.error("Error initializing SC: "+err);
 });
 
+/*******************************
+--I11-- OLED Driver Init --I11--
+*******************************/
+
+console.log("Initializing OLED");
+oledDriver.init(runtimeSettings);
+
+var oledUpdateInterval = setInterval(function(){
+	sendOledCommand("uptime",runtimeInformation.uptime);
+	sendOledCommand("status",runtimeInformation.status);
+	sendOledCommand("users",runtimeInformation.users);
+	oledDriver.update();
+});
+function sendOledCommand(command, info) {
+	oledDriver.command(command, info);
+}
+
 /******************************
---I11-- MISC. INIT CODE --I11--
+--I12-- MISC. INIT CODE --I12--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){

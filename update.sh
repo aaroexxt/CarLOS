@@ -30,11 +30,6 @@ update() {
     echo "Downloading temporary CarOS directory...";
     sudo git clone https://github.com/aaroexxt/CarOS.git tempCAROS;
 
-    if [ "$platform" = "linux" ]; then
-        echo "Installing basename";
-        sudo apt-get install -y basename;
-    fi
-
     IFS=$'\n'; set -f #set internal field seperator to fix spaces in filenames
     cd tempCAROS;
     path=""
