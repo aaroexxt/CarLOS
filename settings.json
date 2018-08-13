@@ -30,7 +30,7 @@
         "initMaxAttempts": 3,
         "defaultUsername": "bexterdubs",
         "currentUser": "bexterdubs",
-        "noArtworkUrl": "images/noAlbumArt.png",
+        "noArtworkUrl": "/images/noAlbumArt.png",
         "defaultVolume": 25,
         "currentVolume": 50,
         "autoplayTrack": true,

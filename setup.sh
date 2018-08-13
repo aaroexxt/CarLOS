@@ -42,13 +42,18 @@ elif [ "$platform" = "mac" ]; then
 fi
 echo "Installing packages...";
 sudo npm i -g npm@latest;
-sudo npm install --prefix $cwd --unsafe-perm=true --allow-root request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
-sudo npm install --prefix $cwd --unsafe-perm=true --allow-root --build-from-source serialport;
-sudo npm install --prefix $cwd --mpg123-backend=openal --unsafe-perm=true --allow-root speaker
+sudo npm install --unsafe-perm=true --allow-root --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
+sudo npm install --unsafe-perm=true --allow-root --build-from-source --prefix $cwd serialport;
+if ["$platform" = "mac"]; then
+    sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root --prefix $cwd speaker;
+elif [ "$platform" = "linux"]; then
+    sudo npm install --unsafe-perm=true --allow-root --prefix $cwd speaker;
+fi
 sudo npm install -g --unsafe-perm=true --allow-root --build-from-source serialport; # for comand line tools
-sudo npm install --prefix $cwd --unsafe-perm=true --allow-root socket.io@1.7.2;
+sudo npm install --unsafe-perm=true --allow-root --prefix $cwd socket.io@1.7.2;
 sudo npm install -g --unsafe-perm=true --allow-root nodemon;
 echo "Done installing packages.";
+sudo npm audit fix;
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;
 sudo pip3 uninstall opencv-python;

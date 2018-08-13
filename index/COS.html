@@ -2,22 +2,22 @@
 <html> <!-- manifest="data.appcache" -->
 	<head>
 		<title>C.OS. V1</title>
-		<script src="js/socket.io.js"></script>
-		<script src="js/helpLib.js"></script>
-		<script src="js/utils.js"></script>
-		<script src="js/speaker.js"></script>
-		<script src="js/annyang.js"></script>
-		<script src="js/globals.js"></script>
-		<script src="js/speechkitt.min.js"></script>
-		<script src="js/jquery-3.3.1.min.js"></script>
-		<script src="js/bootbox.min.js"></script>
-		<script src="js/bootstrap.min.js"></script>
-		<script src="js/Chart.min.js"></script>
-		<script src="js/soundcloudSDK-3.3.0.js"></script>
+		<script src="/js/socket.io.js"></script>
+		<script src="/js/helpLib.js"></script>
+		<script src="/js/utils.js"></script>
+		<script src="/js/speaker.js"></script>
+		<script src="/js/annyang.js"></script>
+		<script src="/js/globals.js"></script>
+		<script src="/js/speechkitt.min.js"></script>
+		<script src="/js/jquery-3.3.1.min.js"></script>
+		<script src="/js/bootbox.min.js"></script>
+		<script src="/js/bootstrap.min.js"></script>
+		<script src="/js/Chart.min.js"></script>
+		<script src="/js/soundcloudSDK-3.3.0.js"></script>
 		<!--<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>-->
-		<link rel="stylesheet" type="text/css" media="screen" href="css/style.css">
-		<link rel="stylesheet" type="text/css" media="screen" href="css/bootstrap.min.css">
-		<link rel="shortcut icon" href="favicon.ico" />
+		<link rel="stylesheet" type="text/css" media="screen" href="/css/style.css">
+		<link rel="stylesheet" type="text/css" media="screen" href="/css/bootstrap.min.css">
+		<link rel="shortcut icon" href="/favicon.ico" />
 		<meta charset="UTF-8">
 	</head>
 	<body>
@@ -27,20 +27,20 @@
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; float: left; margin-left: 1%; margin-top: 17px; display: none;" id="intTemp">INT: ?°F</li>
 				<li style="font-size: 14px; font-family: 'Helvetica Neue'; transform: none !important; font-weight: 300">Welcome to CarOS</li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/music.png" width="35" height="35" id="menuButtonMusic" onclick="globals.menu.changeState('music');" class="circle"></img></li>
+				<li><img src="/images/music.png" width="35" height="35" id="menuButtonMusic" onclick="globals.menu.changeState('music');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/browser.png" width="35" height="35" id="menuButtonBrowser" onclick="globals.menu.changeState('browser');" class="circle"></img></li>
+				<li><img src="/images/browser.png" width="35" height="35" id="menuButtonBrowser" onclick="globals.menu.changeState('browser');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/a.png" width="40" height="40" onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){setTimeout(function(){globals.MainPopup.displayMain()},50);});"></img></li>
+				<li><img src="/images/a.png" width="40" height="40" onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){setTimeout(function(){globals.MainPopup.displayMain()},50);});"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/stats.png" width="35" height="35" id="menuButtonStats" onclick="globals.menu.changeState('stats');" class="circle"></img></li>
+				<li><img src="/images/stats.png" width="35" height="35" id="menuButtonStats" onclick="globals.menu.changeState('stats');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="images/map.png" width="35" height="35" id="menuButtonMap" onclick="globals.menu.changeState('map');" class="circle"></img></li>
+				<li><img src="/images/map.png" width="35" height="35" id="menuButtonMap" onclick="globals.menu.changeState('map');" class="circle"></img></li>
 				<li class="menubreaker">|&nbsp;&nbsp;&nbsp;</li>
 				<li class="menuitemnoanim"><p id="time" style="min-width: 150px !important; font-size: 17px; font-family: 'Helvetica Neue';">12:00 AM</p></li> <!-- Does min-width even work? Fix for tmrw-->
 				<li class="menuitemnoanim" id="wifispeed" style="font-size: 14px; transform: none !important; font-family: 'Helvetica Neue'; float: right; margin-right: 1%; margin-top: 20px;">1 MB/S</li>
 				<li class="menuitemnoanim" style="transform: none !important; font-family: 'Helvetica Neue'; float: right; margin-right: 1%; margin-top: 17px;">
-					<img src="images/wifi0.png" width="40" height="27" id="wifilevel"></img>
+					<img src="/images/wifi0.png" width="40" height="27" id="wifilevel"></img>
 				</li>
 			</ul>
 			<div id="mainMap" class="fullScreenMap" style="display: none">
@@ -64,9 +64,9 @@
 				</div>
 			</div>
 			<ul class="menubottom" id="music_bottomMenu" style="display: none;">
-				<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="images/soundcloudAttribution.png"></img></li>
+				<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="/images/soundcloudAttribution.png"></img></li>
 				<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.music.musicUI.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
-				<li class="controlButton" onclick="globals.music.soundManager.changeShuffleState(); if (globals.music.nextTrackShuffle) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_shuffleButton"><img src="images/shuffle.png" width="20px" height="20px"></img></li>
+				<li class="controlButton" onclick="globals.music.soundManager.changeShuffleState(); if (globals.music.nextTrackShuffle) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_shuffleButton"><img src="/images/shuffle.png" width="20px" height="20px"></img></li>
 				<li class="menubreaker">|</li>
 				<li class="controlButton" onclick="globals.music.soundManager.volDown();">Vol -</li>
 				<li class="menubreaker">|</li>
@@ -78,7 +78,7 @@
 				<li class="menubreaker">|</li>
 				<li class="controlButton" onclick="globals.music.soundManager.volUp();">Vol +</li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.music.soundManager.changeLoopState(); if (globals.music.nextTrackLoop) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_loopButton"><img src="images/repeat.png" width="20px" height="20x"></img></li>
+				<li class="controlButton" onclick="globals.music.soundManager.changeLoopState(); if (globals.music.nextTrackLoop) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_loopButton"><img src="/images/repeat.png" width="20px" height="20x"></img></li>
 			</ul>
 			<div id="mainBrowser" class="fullScreen" style="display: none">
 				<gcse:search class="fullScreen" id="gcsescpt">Loading browser...</gcse:search>

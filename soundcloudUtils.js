@@ -491,28 +491,44 @@ var SCUtils = {
 
                 console.log("Checking directory: "+this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+" for unfinished tracks");
                 var unfinishedTracks = [];
-                fs.readdir(this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory, (err, files) => {
-                    if (err) {
-                        return reject("Error checking cache directory for unfinished tracks");
-                    } else {
-                        for (var i=0; i<files.length; i++) {
-                            if (files[i].indexOf("UNFINISHED") > -1) {
-                                unfinishedTracks.push(files[i]);
-
-                                let path = this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+files[i];
-                                fs.unlink(path, err => {
-                                    if (err) {
-                                        console.error("Error unlinking unfinished track at path "+path);
+                var checkedOnce = false;
+                var cachePath = this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory;
+                function checkUnfinishedTracks() {
+                    fs.readdir(cachePath, (err, files) => {
+                        if (err) {
+                            if (checkedOnce) {
+                                return reject("Error checking cache directory for unfinished tracks (folder not found on second attempt)");
+                            } else { //create the dir because it is missing
+                                checkedOnce = true;
+                                fs.mkdir(cachePath, e => {
+                                    if (e) {
+                                        return reject("Error creating folder at path: "+cachePath+", e="+JSON.stringify(e));
+                                    } else {
+                                        checkUnfinishedTracks();
                                     }
                                 })
                             }
+                        } else {
+                            for (var i=0; i<files.length; i++) {
+                                if (files[i].indexOf("UNFINISHED") > -1) {
+                                    unfinishedTracks.push(files[i]);
+
+                                    let path = this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+files[i];
+                                    fs.unlink(path, err => {
+                                        if (err) {
+                                            console.error("Error unlinking unfinished track at path "+path);
+                                        }
+                                    })
+                                }
+                            }
+                            if (unfinishedTracks.length > 0) {
+                                console.log("Found "+unfinishedTracks.length+" unfinished tracks, deleted");
+                            }
+                            loadTrackIndex(0); //start track loading (recursive)
                         }
-                        if (unfinishedTracks.length > 0) {
-                            console.log("Found "+unfinishedTracks.length+" unfinished tracks, deleted");
-                        }
-                        loadTrackIndex(0); //start track loading (recursive)
-                    }
-                });
+                    });
+                }
+                checkUnfinishedTracks();
 
             } else {
                 return reject("likedTracks undefined or no tracks");

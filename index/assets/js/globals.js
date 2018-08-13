@@ -10,7 +10,7 @@ var globals = {
             globals.MainPopup.dialogObject = bootbox.dialog({
                 message: `
                     <hr class="asep">
-                    <img class="asep" src="images/a.png">
+                    <img class="asep" src="/images/a.png">
                     <center>
                         <h2>Information</h2>
                         <p>Frontend Version: `+globals.runtimeInformation.frontendVersion+`
@@ -24,7 +24,7 @@ var globals = {
                         <br>
                         <h3>Car Stats</h3>
                     </center>
-                    <img src="images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
+                    <img src="/images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
                     <div style="float: left; margin-left: 1%;">
                         <p style="font-size: 18px">
                             Car Odometer: `+globals.runtimeInformation.odometer+`mi
@@ -78,7 +78,7 @@ var globals = {
             globals.MainPopup.dialogObject = bootbox.dialog({
                 message: `
                     <hr class="asep">
-                    <img class="asep" src="images/a.png">
+                    <img class="asep" src="/images/a.png">
                     <center>
                         <h2>Advanced Settings</h2>
                         <button onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
@@ -182,7 +182,7 @@ var globals = {
     },
     music: {
         
-        noArtworkUrl: "images/noAlbumArt.png",
+        noArtworkUrl: "/images/noAlbumArt.png",
         nextTrackShuffle: false,
         nextTrackLoop: false,
         soundcloudReady: false,
@@ -338,7 +338,7 @@ var globals = {
                     }
                 }).catch(function(){
                     console.error("Error playing track with id ("+track.id+"): ",arguments);
-                    ID("music_trackArt").src = "images/errorLoadingTrack.png";
+                    ID("music_trackArt").src = "/images/errorLoadingTrack.png";
                 });
             },
             playTrackRequested: function(track) {
@@ -542,7 +542,7 @@ var globals = {
                 console.error("[MAPS] Client browser does not support geolocation.");
             }
         },
-        defaultCarImagePath: "images/carinverted.png",
+        defaultCarImagePath: "/images/carinverted.png",
         defaultCarImageWidth: 100, //used to be 50
         defaultCarImageHeight: 33.125, //used to be 50
         getImageBounds: function(path, callback) {
@@ -612,7 +612,7 @@ var globals = {
         var position = 0;
         var direction = 1;
         var seek = setInterval(function(){
-            wifiIndicator.src = "images/wifiL"+position+".png";
+            wifiIndicator.src = "/images/wifiL"+position+".png";
             position+= direction;
             if (position > 3 || position < 1) {
                 direction*=-1;
@@ -622,19 +622,19 @@ var globals = {
         wifiPromise.then(function(speed) {
             clearInterval(seek);
             if (speed > 10) {
-                wifiIndicator.src = "images/wifi5.png";
+                wifiIndicator.src = "/images/wifi5.png";
             } else if (speed > 5) {
-                wifiIndicator.src = "images/wifi4.png";
+                wifiIndicator.src = "/images/wifi4.png";
             } else if (speed > 2) {
-                wifiIndicator.src = "images/wifi3.png";
+                wifiIndicator.src = "/images/wifi3.png";
             } else if (speed > 1) {
-                wifiIndicator.src = "images/wifi2.png";
+                wifiIndicator.src = "/images/wifi2.png";
             } else {
-                wifiIndicator.src = "images/wifi1.png";
+                wifiIndicator.src = "/images/wifi1.png";
             }
         }, function(err) {
             clearInterval(seek);
-            wifiIndicator.src = "images/wifiE.png";
+            wifiIndicator.src = "/images/wifiE.png";
         })
         setTimeout(function(){
             globals.initWifiIndicator(id);
@@ -845,8 +845,8 @@ var login = {
             }
         }
     },200),
-    imageCheckPath: "images/check.png",
-    imageNoCheckPath: "images/nocheck.png",
+    imageCheckPath: "/images/check.png",
+    imageNoCheckPath: "/images/nocheck.png",
     imageWidth: 16,
     imageHeight: 16,
     passcodeUpdate: function(){
