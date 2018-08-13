@@ -48,7 +48,7 @@ update() {
     recursivesize $path
     unset IFS; set +f
 
-    #sudo rm -R "$cwd/tempCAROS";
+    sudo rm -R "$cwd/tempCAROS";
 }
 
 function recursivesize() {
@@ -70,21 +70,20 @@ function recursivesize() {
 
 
         if [ "$sizeTemporary" != "$sizeCurrent" ]; then
-            if [[ $sizeTemporary = *".git"* ]]; then
-                echo "git file found"
-            else
+            ignoreSequence=".git"
+            if ! [[ $file =~ $ignoreSequence ]]; then #make sure files aren't github files
                 if [ "$sizeCurrent" = "" ]; then
-                    echo "DELETED CLIENT DIR: $rawFN"
+                    echo "Found directory that client has deleted: $rawFN"
                 else
                     echo && echo && echo
-                    echo "Github size:"$sizeTemporary", CurrentDir size:"$sizeCurrent
+                    echo "Github filesize: "$sizeTemporary", CurrentDir filesizesize: "$sizeCurrent
                     read -p "File $rawFN doesn't match github file. Would you like to replace this file? [y/N]" </dev/tty response
                     case "$response" in
                         [yY][eE][sS]|[yY]) 
-                            echo "REPLACED";
+                            echo "Replacing file"; sudo rm $rawFN; sudo cp $file $rawFN; #will delete original file, then copy new
                             ;;
                         *)
-                            echo "NOT REPLACED";
+                            echo "Won't replace file.";
                             ;;
                     esac
                 fi
