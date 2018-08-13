@@ -42,7 +42,7 @@ elif [ "$platform" = "mac" ]; then
 fi
 echo "Installing packages...";
 sudo npm i -g npm@latest;
-sudo npm install --unsafe-perm=true --allow-root --prefix $cwd request browserify watchify async debug child-process brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
+sudo npm install --unsafe-perm=true --allow-root --prefix $cwd brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --prefix $cwd serialport;
 if ["$platform" = "mac"]; then
     sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root --prefix $cwd speaker;
@@ -56,11 +56,56 @@ echo "Done installing packages.";
 sudo npm audit fix;
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;
-sudo pip3 uninstall opencv-python;
+#below code attempts to build opencv from source
+'if [ "$platform" = "mac" ]; then
+    echo "Installing opencv with pip";
+    sudo pip3 uninstall opencv-python;
+elif [ "$platform" = "linux" ]; then
+    echo "Building OpenCV from source.";
+    echo "Downloading OpenCV files";
+    sudo apt-get install -y build-essential cmake pkg-config libjpeg-dev libtiff5-dev libjasper-dev libpng12-dev libavcodec-dev libavformat-dev libswscale-dev libv4l-dev libxvidcore-dev libx264-dev libgtk2.0-dev libgtk-3-dev libatlas-base-dev gfortran python2.7-dev python3-dev cmake;
+    cd ~
+    sudo wget -O opencv.zip https://github.com/Itseez/opencv/archive/3.3.0.zip
+    sudo unzip opencv.zip
+    sudo wget -O opencv_contrib.zip https://github.com/Itseez/opencv_contrib/archive/3.3.0.zip
+    sudo unzip opencv_contrib.zip
+    cd ~/opencv-3.3.0/
+    sudo mkdir build
+    cd build
+    echo "Setting up build";
+    sudo cmake -D CMAKE_BUILD_TYPE=RELEASE \
+        -D CMAKE_INSTALL_PREFIX=/usr/local \
+        -D INSTALL_PYTHON_EXAMPLES=ON \
+        -D OPENCV_EXTRA_MODULES_PATH=~/opencv_contrib-3.3.0/modules \
+        -D BUILD_EXAMPLES=ON ..
+
+    echo "Changing swap memory size...";
+    sudo sed -i -e 's/100/1024/g' /etc/dphys-swapfile
+    sudo /etc/init.d/dphys-swapfile stop
+    sudo /etc/init.d/dphys-swapfile start
+
+    echo "Compiling opencv. This can take > 1 hour.";
+    sudo make -j4
+
+    echo "Installing compiled build.";
+    sudo make install
+    sudo ldconfig
+
+    echo "Renaming opencv python compiled file so it is usable...";
+    cd /usr/local/lib/python3.5/site-packages/
+    sudo mv cv2.cpython-35m-arm-linux-gnueabihf.so cv2.so
+
+    echo "Changing swap memory size back to defaults...";
+    sudo sed -i -e 's/1024/100/g' /etc/dphys-swapfile
+    sudo /etc/init.d/dphys-swapfile stop
+    sudo /etc/init.d/dphys-swapfile start
+fi'
+echo "Patching nodeutils...";
+sudo mv nodeutils.js nodeUtils.js || echo "Couldn't move nodeUtils; is in the right location?";
 #sudo pip3 install tensorflow;
 echo "If tensorflow module not found error occurs, delete the python and python3 folders in /usr/local/Cellar and reinstall python and python3 with 'brew install python python3'";
 sudo python3 -m pip install opencv-contrib-python==3.3.0.9; #why do you not work unless i do this???
-sudo python3 -m pip install pyaudio;
+#sudo python3 -m pip install pyaudio;
 #if this doesn't work, https://stackoverflow.com/questions/44363066/error-cannot-find-module-lib-utils-unsupported-js-while-using-ionic
 #sudo rm -R /usr/local/lib/node_modules/npm; brew uninstall --force --ignore-dependencies node; brew install node;
 echo "Done :)";

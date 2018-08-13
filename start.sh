@@ -223,7 +223,8 @@ if [ "$launchpython" = "true" ]; then
     echo "";
     echo "Starting python script in a new window.";
     if [[ $platform == 'linux' ]]; then
-       gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; gksudo -m \"Please provide permission to run python\" python3 $pythondir;" || echo "Error starting python script; run 'sudo python3 $pythondir' to start it."
+       gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; gksudo -m \"Please provide permission to run python\" python3 $pythondir;" || lxterminal --command="sudo python3 "$pythondir &
+       # || echo "Error starting python script; run 'sudo python3 $pythondir' to start it.";
        #xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
     elif [[ $platform == 'mac' ]]; then
         osascript -e 'tell application "Terminal"

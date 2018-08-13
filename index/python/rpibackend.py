@@ -10,7 +10,7 @@ from time import sleep
 from socketIO_client import SocketIO, LoggingNamespace
 import logging
 from datetime import datetime
-from multiprocessing.pool import Pool
+#from multiprocessing.pool import Pool
 import cv2
 import numpy as np
 import argparse#LFKJHDLKFJHDKLJFJKDOTHIS!!!<<<

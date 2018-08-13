@@ -39,9 +39,9 @@ better favicon
 
 GPS+MAGNETOMETER EXT from arduino
 
-use a timed listener to get song playing length on client side instead of bytes through decoder
-
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not
+
+update script that automatically updates (clones into new folder, compares modified date or length and replaces files)
 
 do opencv processing inside of nodejs server instead of inside python file
 
@@ -52,6 +52,14 @@ use external sound card on rpi with audio device set inside of speaker({}) insta
 spam filtering which blocks clients sending > 1 request per 0.1 seconds
 
 implement track type handling (client vs python)
+
+MAJ REQUIRED FEATURES BEFORE RELEASE:
+    -Navigation with turn-by-turn directions
+    -FM Broadcasting
+    -Piezo status info
+    -Bluetooth audio
+    -Xbee working
+    -Oled on RPI to give status
 
 
 
@@ -86,6 +94,7 @@ else it requests it and saves the results DONE
 once tracks are loaded, it loads the tracks into mp3 files DONE
 better 404 page DONE (slightly)
 FIX BUG WITH LOOP & TRACKS NOT WRAPPING DONE
+use a timed listener to get song playing length on client side instead of bytes through decoder DONE
 
 
 Portable ideas:
