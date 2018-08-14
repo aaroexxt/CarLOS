@@ -20,6 +20,7 @@ var SCUtils = {
     CWD: undefined,
     failedToLoadTracksFirstRun: true,
     extSocketHandler: undefined,
+    debugMode: false,
     track401Offset: 0, //offset to keep track of tracks that load as 401 and to subtract length
 
     /************************
@@ -136,17 +137,17 @@ var SCUtils = {
                 return reject("saveUserdataCache scSettings not specified");
             }
             if (typeof data !== "undefined") {
-                    var writeableCache = { //no expiry because userData shouldn't change
-                        cache: data
+                var writeableCache = { //no expiry because userData shouldn't change
+                    cache: data
+                }
+                var toWrite = JSON.stringify(writeableCache);
+                fs.writeFile(SCUtils.CWD+"/"+scSettings.soundcloudUserdataCacheFile+"-"+data.permalink+".json", toWrite, function(err) {
+                    if (err != null) {
+                        return reject("Error writing SC UserdataCache file: "+err);
+                    } else {
+                        return resolve();
                     }
-                    var toWrite = JSON.stringify(writeableCache);
-                    fs.writeFile(SCUtils.CWD+"/"+scSettings.soundcloudUserdataCacheFile+"-"+data.permalink+".json", toWrite, function(err) {
-                        if (err != null) {
-                            return reject("Error writing SC UserdataCache file: "+err);
-                        } else {
-                            return resolve();
-                        }
-                    });
+                });
             } else {
                 return reject("saveCache data property not specified")
             }
@@ -478,7 +479,9 @@ var SCUtils = {
                             });
                         } else {
                             tracksLoaded++;
-                            console.log("Track '"+lpTitle+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                            if (SCUtils.debugMode) {
+                                console.log("Track '"+lpTitle+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                            }
                             if (tracksLoaded == tracksToLoad) {
                                 console.log("Done loading tracks, resolving");
                                 return resolve();

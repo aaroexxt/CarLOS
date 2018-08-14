@@ -22,7 +22,8 @@
         "oledUpdateTime": "1000",
         "cvTrainingImagesPath": "index/python/opencv/training-data",
         "runningOnRPI": false,
-        "serverPort": 80
+        "serverPort": 80,
+        "minimumCVConfidence": 40
     },
     "soundcloudSettings": {
         "clientID": "3425f0db5f4339b4edbef6afeeb23264",

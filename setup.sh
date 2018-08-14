@@ -45,21 +45,23 @@ elif [ "$platform" = "mac" ]; then
     brew remove portaudio;
     brew install portaudio;
 fi
+
 echo "Installing packages...";
 sudo npm i -g npm@latest;
 cd $cwd;
 sudo npm install --unsafe-perm=true --allow-root brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
 sudo npm install --unsafe-perm=true --allow-root --build-from-source serialport;
+sudo npm install --unsafe-perm=true --allow-root socket.io@1.7.2;
+sudo npm install --unsafe-perm=true --allow-root rpi-oled;
+sudo npm install --unsafe-perm=true --allow-root nodemon;
+
 if ["$platform" = "mac"]; then
     sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root speaker;
 elif [ "$platform" = "linux"]; then
     sudo npm install --unsafe-perm=true --allow-root speaker;
     sudo npm install --unsafe-perm=true --allow-root rpi-oled oled-font-5x7;
 fi
-sudo npm install -g --unsafe-perm=true --allow-root --build-from-source serialport; # for comand line tools
-sudo npm install --unsafe-perm=true --allow-root socket.io@1.7.2;
-sudo npm install -g --unsafe-perm=true --allow-root rpi-oled; #for command line tools
-sudo npm install -g --unsafe-perm=true --allow-root nodemon; #for command line tools
+
 echo "Done installing packages.";
 echo "Changing permissions on downloaded folder";
 sudo chmod 777 -R $cwd;

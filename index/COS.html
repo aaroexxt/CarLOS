@@ -249,13 +249,12 @@
 				var queue = data.queue;
 				var labels = data.labels;
 				var confidences = data.confidences;
-				var rects = data.rects;
 				var approved = data.approved;
 				var attempt = data.attemptNumber;
 				var totalAttempts = data.totalAttempts;
 				console.log("opencv pic queue: "+queue);
 				console.log("ihavequeues: "+JSON.stringify(globals.openCVQueue));
-				console.log("rects: "+JSON.stringify(rects)+"\nconfidences: "+JSON.stringify(confidences)+"\nlabels: "+JSON.stringify(labels)+"\napproved: "+approved);
+				console.log("confidences: "+JSON.stringify(confidences)+"\nlabels: "+JSON.stringify(labels)+"\napproved: "+approved);
 				console.log("recieved opencv buffer");
 				//console.log(buffer);
 				if (globals.openCVQueue.indexOf(String(queue)) !== -1) {

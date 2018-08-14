@@ -654,20 +654,15 @@ initSoundcloud().then( () => {
 console.log("Initializing OpenCV");
 var cv = require('opencv4nodejs'); //require opencv
 const classifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_ALT2);
+const lbphRecognizer = new cv.LBPHFaceRecognizer();
 
 const getFaceImage = (grayImg) => {
   	const faceRects = classifier.detectMultiScale(grayImg).objects;
   	if (!faceRects.length) {
-		console.error('failed to detect faces');
-    	return null;
+		return null;
   	}
   	return grayImg.getRegion(faceRects[0]);
 };
-
-const logAndReturn = function(val) {
-	console.log(JSON.stringify(val));
-	return val;
-}
 
 var cvBP = cwd+"/"+runtimeSettings.cvTrainingImagesPath;
 var trainingUsers;
@@ -678,12 +673,18 @@ try {
 	trainingUsers = [];
 }
 console.log("Userdata files found: "+JSON.stringify(trainingUsers));
-var CV_USERS = [];
-var CV_IDS = [];
+
+var finalFaces = [];
+var finalLabels = [];
+var labelMappings = [];
+
 for (var i=0; i<trainingUsers.length; i++) {
 	if (trainingUsers[i].substring(0,1) == ".") {
 		continue;
 	} else if (trainingUsers[i].substring(0,1).toLowerCase() == "u") {
+		var userLabel = trainingUsers[i].substring(1,2);
+		labelMappings[Number(userLabel)] = String(trainingUsers[i]).split(",")[1];
+
 		var sbjPath = cvBP+"/"+trainingUsers[i]; //get subject path
 		var imgFiles;
 		try {
@@ -696,29 +697,84 @@ for (var i=0; i<trainingUsers.length; i++) {
 			console.warn("ImageFiles length for user "+trainingUsers[i]+" is 0, skipping user");
 			continue;
 		} else {
-			const images = imgFiles
-			.map(file => sbjPath+"/"+imgFiles[i]) //get absolute path
-			.map(filePath => cv.imread(filePath)) //read image
-			.map(image => logAndReturn(image))
-			.map(img => img.bgrToGray()) //convert to grey
-			.map(getFaceImage) //detect & extract face
-			.reduce( (result, element) => { //remove null images (couldn't find face)
-				if (typeof element == "undefined" || element === null) {
-					console.warn("Element "+JSON.stringify(element)+" is null when processing user "+trainingUsers[i]);
-				} else {
-					result.push(element);
-				}
-				return result;
-			}, [])
-			.map(faceImg => faceImg.resize(80, 80))
-			.map(image => logAndReturn(image))
+			var imagePaths = imgFiles
+			.map(file => sbjPath+"/"+file) //get absolute path
 
-			console.log("FINAL IMAGES: "+JSON.stringify(images));
+			for (var j=0; j<imagePaths.length; j++) {
+				//console.log("Reading from imPath: "+imagePaths[i]);
+				if (typeof imagePaths[j] !== "undefined" && imagePaths[j].indexOf("undefined") < 0) {
+					try{
+						var img = cv.imread(imagePaths[j]) //read image
+						img = img.bgrToGray(); //cvt to grey
+						img = getFaceImage(img); //get the face image
+						if (typeof img == "undefined" || img === null) {
+							console.error("ImageData [i="+j+"] is null, no face found");
+						} else {
+							img = img.resize(80, 80); //resize to common size
+							finalFaces.push(img);
+							finalLabels.push(Number(userLabel));
+						}
+					} catch(e) {
+						console.error("Failed to read from image path: "+imagePaths[j]);
+					}
+				} else {
+					console.error("ImagePaths i"+j+" is undefined or contains undefined");
+				}
+			}
+
+			console.log(imagePaths.length+" images found for user: "+trainingUsers[i]);
+
+			//console.log("FINAL IMAGES: "+JSON.stringify(images));
 		}
-		console.log("Image files found: "+JSON.stringify(imgFiles));
 	} else {
 		console.warn("Found invalid OpenCV dir "+trainingUsers[i]+" in training folder");
 	}
+}
+
+console.info("Training LBPH recognizer");
+lbphRecognizer.train(finalFaces, finalLabels);
+
+const predictFaceFromPath = (path) => {
+	return new Promise( (resolve, reject) => {
+		try {
+			var image = cv.imread(path);
+			predictFaceFromData(image).then( dat => {
+				return resolve(dat);
+			}).catch(err => {
+				return reject(err);
+			})
+		} catch(e) {
+			return reject("Error loading opencv img from path "+path);
+		}
+	});
+}
+
+const predictFaceFromData = (data) => {
+	return new Promise( (resolve, reject) => {
+		if (typeof data == "undefined") {
+			return reject("Data is undefined")
+		}
+		data.bgrToGrayAsync().then( grayImg => {
+			var faceImage = getFaceImage(grayImg);
+
+			if (typeof faceImage == "undefined" || faceImage === null) {
+				return reject("Parsed faceimage is null; was a face detected?");
+			} else {
+				faceImage = faceImage.resize(80,80);
+				var result = lbphRecognizer.predict(faceImage);
+				var face = labelMappings[result.label];
+				console.log('predicted: %s, confidence: %s', face, result.confidence);
+				if (result.confidence > runtimeSettings.minimumCVConfidence) {
+					resolve([face, result.confidence]);
+				} else {
+					console.error("Confidence of prediction is too low ("+result.confidence+")");
+					return reject("Confidence is too low");
+				}
+			}
+		}).catch( e => {
+			return reject("Error converting opencv image to gray: "+e)
+		})
+	});
 }
 
 /*******************************
@@ -1004,46 +1060,43 @@ io.on('connection', function (socket) { //on connection
 									var raw = data.raw;
 									raw = raw.replace(/^data:image\/\w+;base64,/, "");
 									var imageBuffer = new Buffer(raw, 'base64');
-									var path = pyimgbasepath+"in/image"+pyimgnum+".png";
 
 									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
+									const currentImgNum = pyimgnum;
 
 									keyObject.properties.allowOpenCV = false;
 
-									fs.writeFile(path, b, function(err) {
-										if (err) {
-											console.error("Error writing opencv image file");
-										}
-									});
-
 									const image = cv.imdecode(imageBuffer); //decode the buffer
-									
-									const options = {
-									    // minSize: new cv.Size(40, 40),
-									    // scaleFactor: 1.2,
-									    scaleFactor: 1.1,
-									    minNeighbors: 10
-									};
 
-									image.bgrToGrayAsync()
-									.then(grayImg => classifier.detectMultiScaleAsync(grayImg, options))
-									.then((res) => {
-										const { objects, numDetections } = res;
-										console.log("Got obj from opencv: "+JSON.stringify(objects)+", nD "+JSON.stringify(numDetections))
-										if (numDetections > 0) {
-											objects.forEach((rect, i) => {
-												const thickness = numDetections[i] < numDetectionsTh ? 1 : 2;
-												drawBlueRect(image, rect, { thickness });
-											});
+									var maxVidAttempts = runtimeSettings.maxVideoAttempts;
+									var vidAttempt = keyObject.properties.videoAttemptNumber;
+									
+									predictFaceFromData(image).then( result => {
+										var face = result[0];
+										var confidence = result[1];
+
+										keyObject.properties.allowOpenCV = true;
+
+										for (var j=0; j<runtimeSettings.faces.length; j++) {
+											console.log("label "+face+", face "+runtimeSettings.faces[j])
+											if (face === runtimeSettings.faces[j]) {
+												keyObject.properties.approved = true;
+												console.log("modified key "+key+" with approved attrib");
+												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+												break;
+											} else {
+												keyObject.properties.videoAttemptNumber += 1;
+												vidAttempt += 1;
+												console.log("modified key "+key+" with attempt attrib");
+												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+												break;
+											}
 										}
+									}).catch( err => {
+										keyObject.properties.allowOpenCV = true;
+										console.error("Error predicting image: "+err);
+										socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVBackendServerError ("+err+")"});
 									})
-									if (securityOff) {
-										socketHandler.socketEmitToAll("pydata","i:"+pyimgnum) //Sync imagenum variable
-										socketHandler.socketEmitToAll("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
-									} else {
-										socketHandler.socketEmitToPython("pydata","i:"+pyimgnum) //Sync imagenum variable
-										socketHandler.socketEmitToPython("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition
-									}
 									/*socketHandler.socketListenToAll(("opencvresp:"+pyimgnum), function (data) {
 										console.log("data from opencv "+JSON.stringify(data));
 									});*/
@@ -1062,7 +1115,7 @@ io.on('connection', function (socket) { //on connection
 							}
 						}
 					} else {
-						console.error("keyObject invalid w/key '"+key+"'");
+						console.error("keyObject invalid on opencv w/key '"+key+"'");
 						socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientInvalidKeyObject"});
 					}
 					//console.log(raw)
@@ -1075,81 +1128,6 @@ io.on('connection', function (socket) { //on connection
 					fs.writeFile(pyimgbasepath+"in/image"+pyimgnum+".jpg",c,"binary",function(err) {
 						console.log("write error?: "+err)
 					})*/
-				break;
-				case "login-opencvresponse":
-					if (typeof data == "undefined") {
-						console.log("dat opencv response undefined!!! uhoh");
-					} else {
-						var dat = data.data;
-						var innum = dat.imgnum;
-						var pathout = dat.path;
-						var pykey = dat.key;
-						if (innum == "error" || path == "error") {
-							console.error("Some internal python error ocurred :(");
-							socketHandler.socketEmitToKey(pykey,"POST",{action: "processingError", error: "OpenCVBackendServerError"});
-						} else {
-							var conf = dat.confidences.split(",");
-							var labels = dat.labels.split(",");
-							var rects = dat.rects.split(",[");
-							var maxVidAttempts = runtimeSettings.maxVideoAttempts;
-							var vidAttempt = -1;
-							var pykeyObject = userPool.findKey(pykey);
-							if (pykeyObject == null) {
-								console.error("PyKey "+pykey+" not found in userPoolDB. Was request made before server restart?");
-								socketHandler.socketEmitToID(track.id,"POST",{action: "processingError", error: "OpenCVClientMissingKey, key:"+pykey});
-							} else if (typeof pykeyObject.properties.videoAttemptNumber !== "number") {
-								socketHandler.socketEmitToKey(pykey,"POST",{action: "processingError", error: "OpenCVClientKeyMissingVidAttemptProperty"});
-								console.error("VidAttempt not valid on key "+pykey);
-							} else {
-								vidAttempt = pykeyObject.properties.videoAttemptNumber;
-								//console.log("checked key "+pykey+" for prop vidAttempt");
-								//console.log(conf,labels,rects,pykey)
-								for (var i=0; i<rects.length; i++) { //fix removal of colons
-									if (rects[i] !== "") {
-										if (rects[i].substring(0,1) !== "[") { //fix if not containing starter bracket
-											rects[i] = "["+rects[i];
-										}
-										//console.log("rectsi "+rects[i])
-										rects[i] = JSON.parse(rects[i]); //parse the data
-									}
-								}
-								fs.unlink(pyimgbasepath+"/in/image"+innum+".png",function(err){
-									if (err) {
-										console.error("Error removing OpenCV file: "+err);
-									}
-								})
-								//console.log("pathout "+pathout);
-								fs.readFile(pathout, function(err, buf) {
-									if (buf) {
-										var approved = false;
-										for (var i=0; i<labels.length; i++) {
-											for (var j=0; j<runtimeSettings.faces.length; j++) {
-												console.log("label "+labels[i]+", face "+runtimeSettings.faces[j])
-												if (labels[i] === runtimeSettings.faces[j]) {
-													approved = true;
-												}
-											}
-										}
-										if (approved) {
-											pykeyObject.properties.approved = true;
-											console.log("modified key "+pykey+" with approved attrib")
-										} else {
-											pykeyObject.properties.videoAttemptNumber += 1;
-											vidAttempt += 1;
-											console.log("modified key "+pykey+" with attempt attrib")
-										}
-										socketHandler.socketEmitToKey(pykey, "POST", {action: 'login-opencvdata', queue: innum, buffer: buf.toString('base64'), confidences: conf, labels: labels, rects: rects, approved: approved, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-										pykeyObject.properties.allowOpenCV = true; //reallow sending opencv because processing is completed
-										fs.unlink(pathout, function(err) {
-											console.log("Error removing sent img?: "+err);
-										})
-									} else {
-										console.error("Buffer was undefined when attempting to read from pathout returned from python.")
-									}
-								})
-							}
-						}
-					}
 				break;
 				case "login-passcodeready":
 					if (securityOff) {console.warn("WARNING: passcode security protections are OFF");}

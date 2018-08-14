@@ -719,6 +719,7 @@ var login = {
     usingVideo: true,
     passcodeTracker: " ",
     approvedLogin: function(){
+        return;
         ID("login").className += " fadeout";
         ID("loading").style.display = "none";
         try {
@@ -1001,8 +1002,7 @@ var login = {
             console.error("Speech not defined; annyang is active however")
         }
     }, initializeOnceAuthkeyValid: function(){
-        login.approvedLogin();
-        setTimeout(()=>{login.approvedLogin()},2000);
+        //setTimeout(()=>{login.approvedLogin()},2000);
         globals.music.init(globals.music.defaultUsername);
         globals.menu.changeState(globals.defaultApp);
     }
