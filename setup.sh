@@ -48,11 +48,10 @@ fi
 
 echo "Installing packages...";
 sudo npm i -g npm@latest;
-cd $cwd;
+cd ~;
 sudo npm install --unsafe-perm=true --allow-root brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
 sudo npm install --unsafe-perm=true --allow-root --build-from-source serialport;
 sudo npm install --unsafe-perm=true --allow-root socket.io@1.7.2;
-sudo npm install --unsafe-perm=true --allow-root rpi-oled;
 sudo npm install --unsafe-perm=true --allow-root nodemon;
 
 if ["$platform" = "mac"]; then
