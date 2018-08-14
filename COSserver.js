@@ -654,12 +654,26 @@ initSoundcloud().then( () => {
 console.log("Initializing OLED");
 oledDriver.init(runtimeSettings);
 
+var counter = 0;
+var prevBurnInMode = false;
 var oledUpdateInterval = setInterval(function(){
-	sendOledCommand("uptime",runtimeInformation.uptime);
-	sendOledCommand("status",runtimeInformation.status);
-	sendOledCommand("users",runtimeInformation.users);
-	oledDriver.update();
-});
+	if (!prevBurnInMode) {
+		sendOledCommand("uptime",runtimeInformation.uptime);
+		sendOledCommand("status",runtimeInformation.status);
+		sendOledCommand("users",runtimeInformation.users);
+		oledDriver.update();
+	}
+
+	counter++;
+	if (counter > 60) {
+		prevBurnInMode = true;
+		oledDriver.preventBurnin();
+	} else if (counter > 63) {
+		prevBurnInMode = false;
+		counter = 0; //reset counter
+	}
+},runtimeSettings.oledUpdateTime);
+
 function sendOledCommand(command, info) {
 	oledDriver.command(command, info);
 }

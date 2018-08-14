@@ -103,6 +103,21 @@ var RPIStatusOled = {
             info = "?";
         }
         rso.commandList[command] = String(info);
+    },
+    preventBurnin: function() {
+        rso.oledObject.clearDisplay();
+        setTimeout( () => {
+            var buf = [];
+            for (var i=0; i<rso.options.width; i++) {
+                for (var j=0; j<rso.options.height; j++) {
+                    buf.push(i, j, rso.defaultColor);
+                }
+            }
+            rso.oledObject.drawPixel(buf);
+            setTimeout( () => {
+                rso.oledObject.clearDisplay();
+            },1000);
+        },1000);
     }
 }
 exports.driver = RPIStatusOled;

@@ -27,6 +27,7 @@ confirm() {
 }
 
 update() {
+    sudo rm -R "$cwd/tempCAROS" || echo "No CarOS directory found; not deleting"
     echo "Downloading temporary CarOS directory...";
     sudo git clone https://github.com/aaroexxt/CarOS.git tempCAROS;
 

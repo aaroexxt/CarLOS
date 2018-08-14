@@ -19,6 +19,7 @@
         "assetsDirectory": "/index/assets",
         "arduinoBaudRate": 9600,
         "oledDisplayAddress": "0x3C",
+        "oledUpdateTime": "1000",
         "serverPort": 80
     },
     "soundcloudSettings": {
