@@ -99,8 +99,8 @@ var SCUtils = {
                 return reject("loadUserdataCache scSettins not specified");
             }
             var cf = scSettings.soundcloudUserdataCacheFile;
-            console.log("Retreiving soundcloudUserdataCache from '"+this.CWD+"/"+cf+"-"+username+".json'");
-            fs.readFile(this.CWD+"/"+cf+"-"+username+".json", function(err, data) { //include userID so caches are user specific
+            console.log("Retreiving soundcloudUserdataCache from '"+SCUtils.CWD+"/"+cf+"-"+username+".json'");
+            fs.readFile(SCUtils.CWD+"/"+cf+"-"+username+".json", function(err, data) { //include userID so caches are user specific
                 if (err) {
                     return reject("No soundcloud userdata cache file found");
                 } else {
@@ -111,7 +111,7 @@ var SCUtils = {
                             console.log("Valid soundcloud userdata cache file found; resolving");
                             return resolve(scCache.cache);
                         } else {
-                            fs.unlink(this.CWD+"/"+cf+"-"+username+".json",function(err) {
+                            fs.unlink(SCUtils.CWD+"/"+cf+"-"+username+".json",function(err) {
                                 if (err != null) {
                                     console.error("Error unlinking invalid soundcloud cache");
                                 }
@@ -140,7 +140,7 @@ var SCUtils = {
                         cache: data
                     }
                     var toWrite = JSON.stringify(writeableCache);
-                    fs.writeFile(this.CWD+"/"+scSettings.soundcloudUserdataCacheFile+"-"+data.permalink+".json", toWrite, function(err) {
+                    fs.writeFile(SCUtils.CWD+"/"+scSettings.soundcloudUserdataCacheFile+"-"+data.permalink+".json", toWrite, function(err) {
                         if (err != null) {
                             return reject("Error writing SC UserdataCache file: "+err);
                         } else {
@@ -258,7 +258,7 @@ var SCUtils = {
                         cache: likedTracks
                     }
                     var toWrite = JSON.stringify(writeableCache);
-                    fs.writeFile(this.CWD+"/"+scSettings.soundcloudTrackCacheFile+"-"+userID+".json", toWrite, function(err) {
+                    fs.writeFile(SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheFile+"-"+userID+".json", toWrite, function(err) {
                         if (err != null) {
                             return reject("Error writing SC TrackCache file: "+err);
                         } else {
@@ -288,7 +288,7 @@ var SCUtils = {
             }
             var cf = scSettings.soundcloudTrackCacheFile;
             console.log("Retreiving soundcloudCache from '"+cf+"-"+userID+".json'");
-            fs.readFile(this.CWD+"/"+cf+"-"+userID+".json", function(err, data) { //include userID so caches are user specific
+            fs.readFile(SCUtils.CWD+"/"+cf+"-"+userID+".json", function(err, data) { //include userID so caches are user specific
                 if (err) {
                     return reject("No soundcloud cache file found");
                 } else {
@@ -304,7 +304,7 @@ var SCUtils = {
                             console.log("Valid soundcloud cache file found; resolving");
                             return resolve(scCache);
                         } else { //aww it's expired
-                            fs.unlink(this.CWD+"/"+cf+"-"+userID+".json",function(err) {
+                            fs.unlink(SCUtils.CWD+"/"+cf+"-"+userID+".json",function(err) {
                                 if (err != null) {
                                     console.error("Error unlinking expired soundcloud cache");
                                 }
@@ -312,7 +312,7 @@ var SCUtils = {
                             return reject("Soundcloud cache is expired; deleting");
                         }
                     } else {
-                        fs.unlink(this.CWD+"/"+cf+"-"+userID+".json",function(err) {
+                        fs.unlink(SCUtils.CWD+"/"+cf+"-"+userID+".json",function(err) {
                             if (err != null) {
                                 console.error("Error unlinking invalid soundcloud cache");
                             }
@@ -489,10 +489,10 @@ var SCUtils = {
                     });
                 }
 
-                console.log("Checking directory: "+this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+" for unfinished tracks");
+                console.log("Checking directory: "+SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+" for unfinished tracks");
                 var unfinishedTracks = [];
                 var checkedOnce = false;
-                var cachePath = this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory;
+                var cachePath = SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory;
                 function checkUnfinishedTracks() {
                     fs.readdir(cachePath, (err, files) => {
                         if (err) {
@@ -513,7 +513,7 @@ var SCUtils = {
                                 if (files[i].indexOf("UNFINISHED") > -1) {
                                     unfinishedTracks.push(files[i]);
 
-                                    let path = this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+files[i];
+                                    let path = SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+files[i];
                                     fs.unlink(path, err => {
                                         if (err) {
                                             console.error("Error unlinking unfinished track at path "+path);
@@ -553,8 +553,8 @@ var SCUtils = {
 
             //todo delete unfinished tracks
 
-            var unfinTrackPath = (this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");
-            var trackPath = (this.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
+            var unfinTrackPath = (SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+"-UNFINISHED.mp3");
+            var trackPath = (SCUtils.CWD+"/"+scSettings.soundcloudTrackCacheDirectory+"/"+"track-"+trackID+".mp3");
             //console.log("Checking if track exists at path "+trackPath);
             fs.readFile(trackPath, (err, data) => {
                 if (err) {

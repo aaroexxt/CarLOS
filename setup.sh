@@ -56,6 +56,8 @@ sudo npm install --unsafe-perm=true --allow-root --prefix $cwd socket.io@1.7.2;
 sudo npm install -g --unsafe-perm=true --allow-root rpi-oled; #for command line tools
 sudo npm install -g --unsafe-perm=true --allow-root nodemon; #for command line tools
 echo "Done installing packages.";
+echo "Changing permissions on downloaded folder";
+sudo chmod 777 -R $cwd;
 sudo npm audit fix;
 sudo pip3 install numpy;
 sudo pip3 install socketIO-client;

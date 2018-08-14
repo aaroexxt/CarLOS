@@ -60,11 +60,11 @@ function recursivesize() {
         removeTempDir=$(echo $sliceCWD | sed 's,^[^/]*/,,' | sed 's,^[^/]*/,,') #slice twice to get rid of trailing slash and then dir
         rawFN="$cwd/$removeTempDir"
             
-        sizeTemporary=`stat -f%z $file` #tem
-        sizeCurrent=`(stat -f%z $rawFN)`
+        sizeTemporary=`wc -c < $file` #tem
+        sizeCurrent=`wc -c < $rawFN`
 
 
-        if [ "$sizeTemporary" != "$sizeCurrent" ]; then
+        if [ "$sizeTemporary" -ne "$sizeCurrent" ]; then
             ignoreSequence=".git"
             if ! [[ $file =~ $ignoreSequence ]]; then #make sure files aren't github files
                 if [ "$sizeCurrent" = "" ]; then

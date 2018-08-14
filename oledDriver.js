@@ -16,21 +16,13 @@ var RPIStatusOled = {
     oledObject: undefined,
     init: function(settings) {
         var rso = RPIStatusOled;
-        function decimalToHexString(number)
-        {
-          if (number < 0)
-          {
-            number = 0xFFFFFFFF + number + 1;
-          }
-
-          return number.toString(16).toUpperCase();
-        }
-        rso.options.address = decimalToHexString(Number(settings.oledDisplayAddres));
+        console.log("OLED initialized with I2C address: "+settings.oledDisplayAddress);
+        rso.options.address = Number(settings.oledDisplayAddress);
         rso.oledObject = new oled(rso.options);
 
-        oled.turnOnDisplay();
-        oled.clearDisplay();
-        oled.dimDisplay(false);
+        rso.oledObject.turnOnDisplay();
+        rso.oledObject.clearDisplay();
+        rso.oledObject.dimDisplay(false);
 
         rso.writeText("Initialized OLED", {
             style: "centerUnderline",
@@ -39,41 +31,41 @@ var RPIStatusOled = {
     },
     writeText: function(text, options) {
         var rso = RPIStatusOled;
-        if (text) {
+        if (typeof text !== "undefined") {
             if (options.clearDisplay) {
-                oled.clearDisplay();
+                rso.oledObject.clearDisplay();
             }
             if (options.style == "center") {
-                if (options.y) {
+                if (typeof options.y !== "undefined") {
                     var txtSizePX = (text.length*rso.textSize.width);
                     var remainingSpace = (rso.options.width-txtSizePX);
-                    oled.setCursor(remainingSpace/2, options.y);
-                    oled.writeString(font, rso.defaultColor, text);
+                    rso.oledObject.setCursor(remainingSpace/2, options.y);
+                    rso.oledObject.writeString(font, rso.defaultColor, text);
                 } else {
                     return console.error("OLED WriteText center called with no YPos");
                 }
             } else if (options.style == "underline") {
-                if (options.y && options.x) {
-                    oled.setCursor(options.x,options.y);
-                    oled.writeString(font, rso.defaultColor, text);
-                    oled.drawLine(options.x, options.y+1, options.x+(text.length*rso.textSize.width), options.y+1, rso.defaultColor);
+                if (typeof options.y !== "undefined" && typeof options.x !== "undefined") {
+                    rso.oledObject.setCursor(options.x,options.y);
+                    rso.oledObject.writeString(font, rso.defaultColor, text);
+                    rso.oledObject.drawLine(options.x, options.y+rso.textSize.height+1, options.x+(text.length*rso.textSize.width), options.y+rso.textSize.height+1, rso.defaultColor);
                 } else {
                     return console.error("OLED WriteText underline called with no X or Ypos");
                 }
             } else if (options.style == "centerUnderline") {
-                if (options.y) {
+                if (typeof options.y !== "undefined") {
                     var txtSizePX = (text.length*rso.textSize.width);
                     var remainingSpace = (rso.options.width-txtSizePX);
-                    oled.setCursor(remainingSpace/2, options.y);
-                    oled.writeString(font, rso.defaultColor, text);
-                    oled.drawLine(remainingSpace/2, options.y+1, (remainingSpace/2)+txtSizePX, options.y+1, rso.defaultColor);
+                    rso.oledObject.setCursor(remainingSpace/2, options.y);
+                    rso.oledObject.writeString(font, rso.defaultColor, text);
+                    rso.oledObject.drawLine(remainingSpace/2, options.y+rso.textSize.height+1, (remainingSpace/2)+txtSizePX, options.y+rso.textSize.height+1, rso.defaultColor);
                 } else {
                     return console.error("OLED WriteText underlinecenter called with no YPos");
                 }
             } else {
-                if (options.x && options.y) {
-                    oled.setCursor(options.x, options.y);
-                    oled.writeString(font, rso.defaultColor, text);
+                if (typeof options.x !== "undefined" && typeof options.y !== "undefined") {
+                    rso.oledObject.setCursor(options.x, options.y);
+                    rso.oledObject.writeString(font, rso.defaultColor, text);
                 } else {
                     return console.error("OLED Writetext regular called with no X or YPow")
                 }
@@ -81,17 +73,17 @@ var RPIStatusOled = {
         } else {
             return console.error("OLED WriteText called with no text");
         }
-    }
+    },
     update: function() {
         var rso = RPIStatusOled;
         var yPos = 1;
-        var yIncrement = 11;
+        var yIncrement = 15;
         var commandKeys = Object.keys(rso.commandList);
 
-        oled.clearDisplay();
+        rso.oledObject.clearDisplay();
 
         for (var i=0; i<commandKeys.length; i++) {
-            var titleWidth = (commandKeys[i].length+2)*rso.textSize.width; //width plus colon and space
+            var titleWidth = (commandKeys[i].length)*rso.textSize.width; //width plus colon and space
             rso.writeText(commandKeys[i]+": ", {
                 style: "underline",
                 x: 0,
@@ -99,7 +91,7 @@ var RPIStatusOled = {
             });
             rso.writeText(rso.commandList[commandKeys[i]], {
                 style: "regular",
-                x: titleWidth,
+                x: titleWidth+(2*rso.textSize.width),
                 y: yPos
             })
             yPos+=yIncrement;
@@ -107,7 +99,10 @@ var RPIStatusOled = {
     },
     command: function(command, info) {
         var rso = RPIStatusOled;
-        rso.commandList.command = info;
+        if (typeof info == "undefined") {
+            info = "?";
+        }
+        rso.commandList[command] = String(info);
     }
 }
 exports.driver = RPIStatusOled;
