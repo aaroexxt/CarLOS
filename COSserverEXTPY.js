@@ -46,9 +46,8 @@ Initialization (12 steps):
 8) Console Colors: overrides prototypes for console to provide colors in console
 9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
 10) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
-11) OpenCV Init Code: Initializes and trains OpenCV model for facial recognition
-12) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
-13) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize. Also sends information to oled
+11) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
+12) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize. Also sends information to oled
 
 Runtime Code (2 steps):
 1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
@@ -84,7 +83,7 @@ var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler w
 //CONFIGURING WATCHDOG
 
 var watchdog = require('native-watchdog');
-watchdog.start(30000); //will watch process
+watchdog.start(3000); //will watch process
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
@@ -648,81 +647,7 @@ initSoundcloud().then( () => {
 });
 
 /*******************************
---I11-- OpenCV Init Code --I11--
-*******************************/
-
-console.log("Initializing OpenCV");
-var cv = require('opencv4nodejs'); //require opencv
-const classifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_ALT2);
-
-const getFaceImage = (grayImg) => {
-  	const faceRects = classifier.detectMultiScale(grayImg).objects;
-  	if (!faceRects.length) {
-		console.error('failed to detect faces');
-    	return null;
-  	}
-  	return grayImg.getRegion(faceRects[0]);
-};
-
-const logAndReturn = function(val) {
-	console.log(JSON.stringify(val));
-	return val;
-}
-
-var cvBP = cwd+"/"+runtimeSettings.cvTrainingImagesPath;
-var trainingUsers;
-try {
-	trainingUsers = fs.readdirSync(cvBP);
-} catch(e) {
-	console.error("Error getting openCV files from directory "+cvBP);
-	trainingUsers = [];
-}
-console.log("Userdata files found: "+JSON.stringify(trainingUsers));
-var CV_USERS = [];
-var CV_IDS = [];
-for (var i=0; i<trainingUsers.length; i++) {
-	if (trainingUsers[i].substring(0,1) == ".") {
-		continue;
-	} else if (trainingUsers[i].substring(0,1).toLowerCase() == "u") {
-		var sbjPath = cvBP+"/"+trainingUsers[i]; //get subject path
-		var imgFiles;
-		try {
-			imgFiles = fs.readdirSync(sbjPath);
-		} catch(e) {
-			console.error("Error getting user image files from directory "+sbjPath+" (subject "+imgFiles[i]+")");
-			continue;
-		}
-		if (imgFiles.length == 0) {
-			console.warn("ImageFiles length for user "+trainingUsers[i]+" is 0, skipping user");
-			continue;
-		} else {
-			const images = imgFiles
-			.map(file => sbjPath+"/"+imgFiles[i]) //get absolute path
-			.map(filePath => cv.imread(filePath)) //read image
-			.map(image => logAndReturn(image))
-			.map(img => img.bgrToGray()) //convert to grey
-			.map(getFaceImage) //detect & extract face
-			.reduce( (result, element) => { //remove null images (couldn't find face)
-				if (typeof element == "undefined" || element === null) {
-					console.warn("Element "+JSON.stringify(element)+" is null when processing user "+trainingUsers[i]);
-				} else {
-					result.push(element);
-				}
-				return result;
-			}, [])
-			.map(faceImg => faceImg.resize(80, 80))
-			.map(image => logAndReturn(image))
-
-			console.log("FINAL IMAGES: "+JSON.stringify(images));
-		}
-		console.log("Image files found: "+JSON.stringify(imgFiles));
-	} else {
-		console.warn("Found invalid OpenCV dir "+trainingUsers[i]+" in training folder");
-	}
-}
-
-/*******************************
---I12-- OLED Driver Init --I12--
+--I11-- OLED Driver Init --I11--
 *******************************/
 
 console.log("Initializing OLED");
@@ -761,7 +686,7 @@ if (runtimeSettings.runningOnRPI) {
 }
 
 /******************************
---I13-- MISC. INIT CODE --I13--
+--I12-- MISC. INIT CODE --I12--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){
@@ -856,28 +781,63 @@ io.on('connection', function (socket) { //on connection
 	socket.on('initweb', function (data) { //set up listener for web intialization
 		track.status = "connected";
 		track.type = "client";
-		var myauth = new userPool.key(); //create new key
-		myauth.properties.approved = false; //set approved parameter
-		myauth.properties.videoAttemptNumber = 1; //video login attempt number
-		myauth.properties.passcodeAttemptNumber = 1; //passcode login attempt number
-		myauth.properties.socketID = socket.id; //socket id attached to key
-		myauth.properties.allowOpenCV = true; //allow opencv to happen with key
-		//console.log(myauth);
-		myauth.init();
-		track.authkey = myauth;
-		//console.log("emitting to id: "+socket.id)
-		socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
-			authkey: myauth.key,
-			runtimeInformation: runtimeInformation
-		});
-
-		if (cv) {
-			runtimeInformation.pythonConnected = true;
-		} else {
-			console.error("Error: cv module not found");
-		}
+		initweb(data,socket,socketHandler,track);
 	});
-	socketHandler.update(userPool,sockets);
+	socket.on('initpython', function (data) { //set up listener for python initialization
+		initpython(data,socket,socketHandler,track);
+		track.status = "connected";
+		track.type = "python";
+		runtimeInformation.pythonConnected = true;
+		socket.on('disconnect', function (data) { //we know that it is the python socket, setup listener to emit pydisconnect
+			console.log("PYDISCONNECT")
+			sockets[socketid].status = "disconnected";
+			socketHandler.socketEmitToAll('pydisconnect',{});
+			runtimeInformation.pythonConnected = false;
+		})
+	});
+socketHandler.update(userPool,sockets);
+	function initpython(data,socket,socketHandler,track) {
+		//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
+		if (securityOff) {
+			console.warn("WARNING: Python security is OFF")
+			socketHandler.socketEmitToAll('pycwd', cwd); //emit cwd
+		} else {
+			socketHandler.socketEmitToPython('pycwd', cwd); //check if python script is running
+		}
+		socketHandler.socketEmitToWeb('webready', {data: "ready?"}); //check if there is a web browser connected
+		socketHandler.socketListenToAll('webok', function (data) { //if there is, send data
+			//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
+			socketHandler.socketEmitToWeb('webdata',{data: "SEND!"});
+		});
+	}
+	function initweb(data,socket,socketHandler,track) {
+		//console.log("RECV SOCKET INIT WEB "+JSON.stringify(data));
+		if (securityOff) {
+			console.warn("WARNING: Python security is OFF")
+			socketHandler.socketEmitToAll('pyready', {data: "ready?"}); //emit cwd
+		} else {
+			socketHandler.socketEmitToPython('pyready', {data: "ready?"}); //check if python script is running
+		}
+		socketHandler.socketListenToAll('pyok', function (data) { //if it is, go ahead and send data//authorize
+			var myauth = new userPool.key();
+			myauth.properties.approved = false; //set approved parameter
+			myauth.properties.videoAttemptNumber = 1; //video login attempt number
+			myauth.properties.passcodeAttemptNumber = 1; //passcode login attempt number
+			myauth.properties.socketID = socket.id; //socket id attached to key
+			myauth.properties.allowOpenCV = true; //allow opencv to happen with key
+			//console.log(myauth);
+			myauth.init();
+			track.authkey = myauth;
+			//console.log("RECV SOCKET INIT PYTHON "+JSON.stringify(data));
+			//console.log("emitting to id: "+socket.id)
+			socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
+				authkey: myauth.key,
+				runtimeInformation: runtimeInformation
+			});
+
+			runtimeInformation.pythonConnected = true;
+		});
+	}
 
 	/**********************************
 	--R2:S2-- ACTION HANDLERS --R2:S2--
@@ -1003,40 +963,16 @@ io.on('connection', function (socket) { //on connection
 									//console.log("recv imgdata");
 									var raw = data.raw;
 									raw = raw.replace(/^data:image\/\w+;base64,/, "");
-									var imageBuffer = new Buffer(raw, 'base64');
+									var b = new Buffer(raw, 'base64');
 									var path = pyimgbasepath+"in/image"+pyimgnum+".png";
-
-									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
-
-									keyObject.properties.allowOpenCV = false;
-
 									fs.writeFile(path, b, function(err) {
 										if (err) {
 											console.error("Error writing opencv image file");
 										}
 									});
-
-									const image = cv.imdecode(imageBuffer); //decode the buffer
-									
-									const options = {
-									    // minSize: new cv.Size(40, 40),
-									    // scaleFactor: 1.2,
-									    scaleFactor: 1.1,
-									    minNeighbors: 10
-									};
-
-									image.bgrToGrayAsync()
-									.then(grayImg => classifier.detectMultiScaleAsync(grayImg, options))
-									.then((res) => {
-										const { objects, numDetections } = res;
-										console.log("Got obj from opencv: "+JSON.stringify(objects)+", nD "+JSON.stringify(numDetections))
-										if (numDetections > 0) {
-											objects.forEach((rect, i) => {
-												const thickness = numDetections[i] < numDetectionsTh ? 1 : 2;
-												drawBlueRect(image, rect, { thickness });
-											});
-										}
-									})
+									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
+									//console.log("Sending to opencv");
+									keyObject.properties.allowOpenCV = false;
 									if (securityOff) {
 										socketHandler.socketEmitToAll("pydata","i:"+pyimgnum) //Sync imagenum variable
 										socketHandler.socketEmitToAll("pydata","o:"+path+","+key); //send with 'o' flag to tell python that it's face recognition

@@ -59,7 +59,7 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Piezo status info
     -Bluetooth audio
     -Xbee working
-    -Oled on RPI to give status
+    -Oled on RPI to give status DONE
     -do opencv processing inside of nodejs server instead of inside python file (REQUIRED for rpi)
 
 

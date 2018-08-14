@@ -20,6 +20,8 @@
         "arduinoBaudRate": 9600,
         "oledDisplayAddress": "0x3C",
         "oledUpdateTime": "1000",
+        "cvTrainingImagesPath": "index/python/opencv/training-data",
+        "runningOnRPI": false,
         "serverPort": 80
     },
     "soundcloudSettings": {

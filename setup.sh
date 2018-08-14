@@ -19,13 +19,16 @@ if [ "$platform" = "linux" ]; then
     echo "Installing node (linux)...";
     curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
     sudo apt-get install -y nodejs;
-    sudo apt-get install -y gcc g++ make;
+    sudo apt-get install -y gcc g++ make cmake;
     echo "Installing python and pip (linux)...";
     sudo apt-get install -y python python3 python-pip python3-pip;
     echo "Installing libasound for speaker (linux)...";
     sudo apt-get install -y libasound2-dev;
     sudo apt-get install -y libalut-dev;
     sudo apt-get install -y libopenal1;
+    sudo apt-get install -y libx11-dev
+    sudo apt-get install -y libpng-dev;
+    sudo apt-get install -y libopenblas-dev;
     echo "Installing I2C utils...";
     sudo apt-get install -y python-imaging python-smbus i2c-tools
     echo "Starting vnc..."
@@ -44,15 +47,17 @@ elif [ "$platform" = "mac" ]; then
 fi
 echo "Installing packages...";
 sudo npm i -g npm@latest;
-sudo npm install --unsafe-perm=true --allow-root --prefix $cwd brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog rpi-oled oled-font-5x7;
-sudo npm install --unsafe-perm=true --allow-root --build-from-source --prefix $cwd serialport;
+cd $cwd;
+sudo npm install --unsafe-perm=true --allow-root brain.js window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog;
+sudo npm install --unsafe-perm=true --allow-root --build-from-source serialport;
 if ["$platform" = "mac"]; then
-    sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root --prefix $cwd speaker;
+    sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root speaker;
 elif [ "$platform" = "linux"]; then
-    sudo npm install --unsafe-perm=true --allow-root --prefix $cwd speaker;
+    sudo npm install --unsafe-perm=true --allow-root speaker;
+    sudo npm install --unsafe-perm=true --allow-root rpi-oled oled-font-5x7;
 fi
 sudo npm install -g --unsafe-perm=true --allow-root --build-from-source serialport; # for comand line tools
-sudo npm install --unsafe-perm=true --allow-root --prefix $cwd socket.io@1.7.2;
+sudo npm install --unsafe-perm=true --allow-root socket.io@1.7.2;
 sudo npm install -g --unsafe-perm=true --allow-root rpi-oled; #for command line tools
 sudo npm install -g --unsafe-perm=true --allow-root nodemon; #for command line tools
 echo "Done installing packages.";

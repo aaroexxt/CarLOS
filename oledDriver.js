@@ -105,15 +105,17 @@ var RPIStatusOled = {
         rso.commandList[command] = String(info);
     },
     preventBurnin: function() {
+        var rso = RPIStatusOled;
         rso.oledObject.clearDisplay();
         setTimeout( () => {
             var buf = [];
             for (var i=0; i<rso.options.width; i++) {
                 for (var j=0; j<rso.options.height; j++) {
-                    buf.push(i, j, rso.defaultColor);
+                    buf.push([i, j, rso.defaultColor]);
                 }
             }
             rso.oledObject.drawPixel(buf);
+            rso.oledObject.update();
             setTimeout( () => {
                 rso.oledObject.clearDisplay();
             },1000);

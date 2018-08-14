@@ -197,12 +197,6 @@
 				socket.emit('webok', {data: "ok"});
 			});
 
-			socket.on('pydisconnect', function (data) {
-				console.log("Python disconnect");
-				login.readySteps.pythonConnected = false;
-				globals.runtimeInformation.pythonConnected = false;
-			});
-
 			socket.on('disconnect', function (data) {
 				globals.disconnected = true;
 				console.log("nodejs disconnect");

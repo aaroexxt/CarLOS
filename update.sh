@@ -44,6 +44,8 @@ update() {
     recursivesize $path
     unset IFS; set +f
 
+    echo "Changing permissions on downloaded folder";
+    sudo chmod 777 -R $cwd;
     sudo rm -R "$cwd/tempCAROS";
 }
 
