@@ -719,7 +719,6 @@ var login = {
     usingVideo: true,
     passcodeTracker: " ",
     approvedLogin: function(){
-        return;
         ID("login").className += " fadeout";
         ID("loading").style.display = "none";
         try {
@@ -859,9 +858,29 @@ var login = {
             zoom: globals.map.defaultZoom,
             center: globals.map.locations.burlingame,
             gestureHandling: globals.map.defaultMapGestureHandling,
-            styles: (globals.map.grayScaleEnabled)?[{featureType:"landscape",stylers:[{saturation:-100},{lightness:65},{visibility:"on"}]},{featureType:"poi",stylers:[{saturation:-100},{lightness:51},{visibility:"simplified"}]},{featureType:"road.highway",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"road.arterial",stylers:[{saturation:-100},{lightness:30},{visibility:"on"}]},{featureType:"road.local",stylers:[{saturation:-100},{lightness:40},{visibility:"on"}]},{featureType:"transit",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"administrative.province",stylers:[{visibility:"off"}]/**/},{featureType:"administrative.locality",stylers:[{visibility:"off"}]},{featureType:"administrative.neighborhood",stylers:[{visibility:"on"}]/**/},{featureType:"water",elementType:"labels",stylers:[{visibility:"on"},{lightness:-25},{saturation:-100}]},{featureType:"water",elementType:"geometry",stylers:[{hue:"#ffff00"},{lightness:-25},{saturation:-97}]}]:[],
-            mapTypeId: 'hybrid'
+            mapTypeId: "OSM", //openstreetmap
+            mapTypeControl: false,
+            streetViewControl: false
+            //styles: (globals.map.grayScaleEnabled)?[{featureType:"landscape",stylers:[{saturation:-100},{lightness:65},{visibility:"on"}]},{featureType:"poi",stylers:[{saturation:-100},{lightness:51},{visibility:"simplified"}]},{featureType:"road.highway",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"road.arterial",stylers:[{saturation:-100},{lightness:30},{visibility:"on"}]},{featureType:"road.local",stylers:[{saturation:-100},{lightness:40},{visibility:"on"}]},{featureType:"transit",stylers:[{saturation:-100},{visibility:"simplified"}]},{featureType:"administrative.province",stylers:[{visibility:"off"}]/**/},{featureType:"administrative.locality",stylers:[{visibility:"off"}]},{featureType:"administrative.neighborhood",stylers:[{visibility:"on"}]/**/},{featureType:"water",elementType:"labels",stylers:[{visibility:"on"},{lightness:-25},{saturation:-100}]},{featureType:"water",elementType:"geometry",stylers:[{hue:"#ffff00"},{lightness:-25},{saturation:-97}]}]:[],
+            //mapTypeId: 'hybrid'
         });
+        globals.map.mapReference.mapTypes.set("OSM", new google.maps.ImageMapType({
+            getTileUrl: function(coord, zoom) {
+                // "Wrap" x (longitude) at 180th meridian properly
+                // NB: Don't touch coord.x: because coord param is by reference, and changing its x property breaks something in Google's lib
+                var tilesPerGlobe = 1 << zoom;
+                var x = coord.x % tilesPerGlobe;
+                if (x < 0) {
+                    x = tilesPerGlobe+x;
+                }
+                // Wrap y (latitude) in a like manner if you want to enable vertical infinite scrolling
+
+                return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
+            },
+            tileSize: new google.maps.Size(256, 256),
+            name: "OpenStreetMap",
+            maxZoom: 18
+        }));
         login.readySteps.internetConnected = true; //if it errors it will error b4 this so that internet won't be set
 
         globals.map.createMarker({ //create burlingame marker

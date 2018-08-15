@@ -1095,6 +1095,9 @@ io.on('connection', function (socket) { //on connection
 										}
 									}).catch( err => {
 										keyObject.properties.allowOpenCV = true;
+										keyObject.properties.videoAttemptNumber += 1;
+										vidAttempt += 1;
+										console.log("modified key "+key+" with attempt attrib");
 										console.error("Error predicting image: "+err);
 										socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVBackendServerError ("+err+")"});
 									})
