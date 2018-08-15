@@ -83,15 +83,20 @@ var RPIStatusOled = {
         rso.oledObject.clearDisplay();
 
         for (var i=0; i<commandKeys.length; i++) {
-            var titleWidth = (commandKeys[i].length)*rso.textSize.width; //width plus colon and space
-            rso.writeText(commandKeys[i]+": ", {
+            var title = commandKeys[i];
+            if (typeof title == "string") {
+                title = title.substring(0,1).toUpperCase()+title.substring(1,title.length);
+            }
+            var titleWidth = (String(title).length)*rso.textSize.width; //width plus colon and space
+            rso.writeText(title+": ", {
                 style: "underline",
                 x: 0,
                 y: yPos
             });
+
             rso.writeText(rso.commandList[commandKeys[i]], {
                 style: "regular",
-                x: titleWidth+(2*rso.textSize.width),
+                x: titleWidth+(4*rso.textSize.width),
                 y: yPos
             })
             yPos+=yIncrement;
@@ -105,6 +110,7 @@ var RPIStatusOled = {
         rso.commandList[command] = String(info);
     },
     preventBurnin: function() {
+        return; //disable bcs it's buggy
         var rso = RPIStatusOled;
         rso.oledObject.clearDisplay();
         setTimeout( () => {

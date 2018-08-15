@@ -13,6 +13,21 @@ elif [[ "$unamestr" == 'Darwin' ]]; then
 fi
 echo "Platform: $platform, unamestr $unamestr";
 
+askIfDif="true"
+
+while getopts :a option
+do
+    case "$option" in
+    a)
+         echo "-a flag passed, will automatically delete all files found to be not matching. (won't ask)"; askIfDif="false";
+         ;;
+    *)
+        echo "Hmm, an invalid option was received."
+        echo ""
+        ;;
+        esac
+done
+
 confirm() {
     # call with a prompt string or use a default
     read -r -p "${1:-Are you sure? [y/N]} " response
@@ -75,15 +90,21 @@ function recursivesize() {
                 else
                     echo && echo && echo
                     echo "Github filesize: "$sizeTemporary", CurrentDir filesizesize: "$sizeCurrent
-                    read -p "File $rawFN doesn't match github file. Would you like to replace this file? [y/N]" </dev/tty response
-                    case "$response" in
-                        [yY][eE][sS]|[yY]) 
-                            echo "Replacing file"; sudo rm $rawFN; sudo cp $file $rawFN; #will delete original file, then copy new
-                            ;;
-                        *)
-                            echo "Won't replace file.";
-                            ;;
-                    esac
+                    if [ "$askIfDif" = "true" ]; then
+                        read -p "File $rawFN doesn't match github file. Would you like to replace this file? [y/N]" </dev/tty response
+                        case "$response" in
+                            [yY][eE][sS]|[yY]) 
+                                echo "Replacing file"; sudo rm $rawFN; sudo cp $file $rawFN; #will delete original file, then copy new
+                                ;;
+                            *)
+                                echo "Won't replace file.";
+                                ;;
+                        esac
+                    else
+                        echo "File $rawFN doesn't match; autoreplacing.";
+                        sudo rm $rawFN;
+                        sudo cp $file $rawFN
+                    fi
                 fi
             fi
             

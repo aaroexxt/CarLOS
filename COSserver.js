@@ -84,7 +84,7 @@ var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler w
 //CONFIGURING WATCHDOG
 
 var watchdog = require('native-watchdog');
-watchdog.start(30000); //will watch process
+watchdog.start(60000); //will watch process
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--

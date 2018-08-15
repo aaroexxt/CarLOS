@@ -55,7 +55,9 @@ linux-like loading (LSB loading... etc (aesthetic))
 
 MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions
+    -Working directions (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Developer%20FAQ%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Developer_FAQ) and (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Google%20Maps%20Example%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Google_Maps_Example)
     -FM Broadcasting
+    -Legacy mode with python
     -Piezo status info
     -Bluetooth audio
     -Xbee working
@@ -63,13 +65,9 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
     -do opencv processing inside of nodejs server instead of inside python file (REQUIRED for rpi)
 
 
-
-
-
-
-changescuser now has to go to server
-
 retry button on client side
+
+put frame data on image opencv
 
 
 
@@ -96,6 +94,7 @@ once tracks are loaded, it loads the tracks into mp3 files DONE
 better 404 page DONE (slightly)
 FIX BUG WITH LOOP & TRACKS NOT WRAPPING DONE
 use a timed listener to get song playing length on client side instead of bytes through decoder DONE
+changescuser now has to go to server DONE
 
 
 Portable ideas:
