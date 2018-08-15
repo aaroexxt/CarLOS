@@ -110,18 +110,10 @@ var RPIStatusOled = {
         rso.commandList[command] = String(info);
     },
     preventBurnin: function() {
-        return; //disable bcs it's buggy
         var rso = RPIStatusOled;
         rso.oledObject.clearDisplay();
         setTimeout( () => {
-            var buf = [];
-            for (var i=0; i<rso.options.width; i++) {
-                for (var j=0; j<rso.options.height; j++) {
-                    buf.push([i, j, rso.defaultColor]);
-                }
-            }
-            rso.oledObject.drawPixel(buf);
-            rso.oledObject.update();
+            rso.oledObject.fillRect(0, 0, rso.options.width, rso.options.height, rso.defaultColor);
             setTimeout( () => {
                 rso.oledObject.clearDisplay();
             },1000);

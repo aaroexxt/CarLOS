@@ -782,12 +782,13 @@ const predictFaceFromData = (data) => {
 *******************************/
 
 console.log("Initializing OLED");
+var burninCounter = 0;
+var preventBurnInMode = false;
+
 if (runtimeSettings.runningOnRPI) {
 	var oledDriver = require('./oledDriver.js').driver;
 	oledDriver.init(runtimeSettings);
 
-	var burninCounter = 0;
-	var preventBurnInMode = false;
 	var oledUpdateInterval = setInterval(function(){
 		if (!preventBurnInMode) {
 			sendOledCommand("uptime",runtimeInformation.uptime);
@@ -800,7 +801,7 @@ if (runtimeSettings.runningOnRPI) {
 		if (burninCounter > 60) {
 			preventBurnInMode = true;
 			oledDriver.preventBurnin();
-		} else if (burninCounter > 63) {
+		} else if (burninCounter > 62) {
 			preventBurnInMode = false;
 			burninCounter = 0; //reset counter
 		}
