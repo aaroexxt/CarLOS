@@ -83,6 +83,10 @@ http://www.chartjs.org/docs/latest/getting-started/
 
 data logging
 
+loglevels for console.log, warn and error
+
+constantly scan for invalid authkeys to prevent tampering
+
 
 DONE stuff:
 

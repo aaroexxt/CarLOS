@@ -19,6 +19,7 @@
         "defaultDataDirectory": "/data",
         "defaultClientFile": "COS.html",
         "assetsDirectory": "/index/assets",
+        "logLevel": 4,
         "arduinoBaudRate": 9600,
         "oledDisplayAddress": "0x3C",
         "oledUpdateTime": "1000",

@@ -1,3 +1,12 @@
+/*
+* soundcloud.js by Aaron Becker
+* A wrapper around the web soundcloud api that is capable of caching tracks & userdata locally
+*
+* Dedicated to Marc Perkel
+*
+* Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
+*/
+
 //Utils dependencies
 const fetch = require('node-fetch');
 const progress = require('progress-stream');
@@ -8,7 +17,6 @@ const fs = require('fs');
 
 //SoundManager dependencies
 const Speaker = require("speaker");
-const speaker = new Speaker();
 const lame = require("lame");
 const pcmVolume = require("pcm-volume");
 const mp3d = require('mp3-duration');

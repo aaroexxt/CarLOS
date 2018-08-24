@@ -1,12 +1,12 @@
 /*
-* fileserve.js by Aaron Becker
+* COSserver.js by Aaron Becker
 * CarOS Node.JS Server
 *
 * Dedicated to Marc Perkel
 */
 
 /*
- * Copyright (c) 2018 Aaron Becker
+ * Copyright (c) 2018 Aaron Becker <aaron.becker.developer@gmail.com>
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -441,45 +441,68 @@ var colors = require('colors');
 const originalWarn = console.warn;
 const originalErr = console.error;
 const originalInfo = console.info;
+const originalLog = console.log;
 
-console.warn = function(){
-	if (arguments.length > 1) {
-		var firstArg = arguments[0];
-		var restArgs = [];
-		for (var i=1; i<arguments.length; i++) {
-			restArgs.push(arguments[i]);
-		}
-		originalWarn(colors.yellow.underline(firstArg),restArgs);
-	} else {
-		originalWarn(colors.yellow.underline(arguments[0]));
-	}
+if (runtimeSettings.logLevel < 4) {
+	originalLog(colors.cyan("Overriding console.log because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.log = function(){};
 }
 
-console.error = function(){
-	if (arguments.length > 1) {
-		var firstArg = arguments[0];
-		var restArgs = [];
-		for (var i=1; i<arguments.length; i++) {
-			restArgs.push(arguments[i]);
+if (runtimeSettings.logLevel >= 3) {
+	console.info = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalInfo(colors.blue.underline(firstArg),restArgs);
+		} else {
+			originalInfo(colors.blue.underline(arguments[0]));
 		}
-		originalErr(colors.red.underline(firstArg),restArgs);
-	} else {
-		originalErr(colors.red.underline(arguments[0]));
 	}
+} else {
+	originalLog(colors.cyan("Overriding console.info because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.info = function(){};
 }
 
-console.info = function(){
-	if (arguments.length > 1) {
-		var firstArg = arguments[0];
-		var restArgs = [];
-		for (var i=1; i<arguments.length; i++) {
-			restArgs.push(arguments[i]);
+if (runtimeSettings.logLevel >= 2) {
+	console.warn = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalWarn(colors.yellow.underline(firstArg),restArgs);
+		} else {
+			originalWarn(colors.yellow.underline(arguments[0]));
 		}
-		originalInfo(colors.blue.underline(firstArg),restArgs);
-	} else {
-		originalInfo(colors.blue.underline(arguments[0]));
 	}
+} else {
+	originalLog(colors.cyan("Overriding console.warn because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.warn = function(){}; //redir to empty function
 }
+
+if (runtimeSettings.logLevel >= 1) {
+	console.error = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalErr(colors.red.underline(firstArg),restArgs);
+		} else {
+			originalErr(colors.red.underline(arguments[0]));
+		}
+	}
+} else {
+	originalLog(colors.cyan("Overriding console.error because logLevel="+runtimeSettings.logLevel+" is too low"));
+	originalWarn(colors.yellow.underline("[WARNING] No logging enabled, will not show any more messages. You might want to disable this to logLevel=1 because you won't see any errors"));
+	console.error = function(){}; //redir to empty function
+}
+
 
 /************************************
 --I9-- ERROR AND EXIT HANDLING --I9--

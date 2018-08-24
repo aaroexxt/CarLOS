@@ -1,3 +1,12 @@
+/*
+* utils.js by Aaron Becker
+* Utilities for the main server, including a socket handler, and a user database
+*
+* Dedicated to Marc Perkel
+*
+* Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
+*/
+
 //TODO move all socket functions to outside socket handler so they can't be modified
 
 var sanitizeData = false;
@@ -7,6 +16,7 @@ function authPool(authTimeout) { //class to represent authkeys
         authTimeout = 3600000; //1hr?
     }
     this.auth_keys = [];
+    this.blackListedAuthKeys = [];
     this.authTimeout = authTimeout;
     var _this = this;
     this.key = function() {
@@ -23,11 +33,15 @@ function authPool(authTimeout) { //class to represent authkeys
                 console.error("[NODE_UTILS] AuthkeyDB overflow, resetting (SHOULD NOT HAPPEN)");
                 _this.auth_keys = [];
             }
+            if (_this.blackListedAuthKeys.length > 1000) { //set hardcoded limit for authkey max to prevent DDOS attacks or other similar attacks
+                console.error("[NODE_UTILS] BlackListedAuthkeyDB overflow, resetting (SHOULD NOT HAPPEN)");
+                _this.blackListedAuthKeys = [];
+            }
             _this.auth_keys.push(this); //need the _this refrence because "this" changes to refrence key not authPool
         }
         this.is_valid = function(){
             this.update(); //update
-            if (this.lastaccessed-this.timestamp < _this.authTimeout) {
+            if (this.lastaccessed-this.timestamp < _this.authTimeout && _this.blackListedAuthKeys.indexOf(this.key) < 0) {
                 return true;
             } else {
                 return false;
@@ -40,12 +54,17 @@ function authPool(authTimeout) { //class to represent authkeys
     this.validateKey = function(key) {
         var ok = false;
         //console.log("[NODE_UTILS] authkeys: "+JSON.stringify(_this.auth_keys));
-        for (var i=0; i<_this.auth_keys.length; i++) {
-            if (_this.auth_keys[i].key == key) {
-                if (_this.auth_keys[i].is_valid()) {
-                    ok = true;
-                } else {
-                    console.log("[NODE_UTILS] Found invalid authkey, timeout")
+        if (_this.blackListedAuthKeys.indexOf(key) > -1) {
+            ok = false;
+        } else {
+            for (var i=0; i<_this.auth_keys.length; i++) {
+                if (_this.auth_keys[i].key == key) {
+                    if (_this.auth_keys[i].is_valid()) {
+                        ok = true;
+                    } else {
+                        console.log("[NODE_UTILS] Found invalid authkey='"+_this.auth_keys[i].key+"', flagging it");
+                        _this.blackListedAuthKeys.push(_this.auth_keys[i].key);
+                    }
                 }
             }
         }
@@ -82,24 +101,6 @@ var socketHandler = function(uPool,sPool){ //socket functions
     }
     this.uPool = uPool;
     this.sPool = sPool;
-    this.socketEmitToPython = function(name,data){
-        if (this.validateUsers(this.uPool) && this.validateSockets(this.sPool)) {
-            if (this.validateData([name,data])) {
-                var sanitized = this.sanitizeData([name,data]);
-                name = sanitized[0];
-                data = sanitized[1];
-                for (var i=0; i<this.sPool.length; i++) {
-                    if (this.sPool[i].type == "python") {
-                        this.sPool[i].socket.emit(name, data);
-                    }
-                }
-            } else {
-                console.error("[UTILS] Data passed into emitToPython is invalid")
-            }
-        } else {
-            console.error("[UTILS] userPool or socketPool invalid in socketHandler emitToPython")
-        }
-    }
     this.socketEmitToWeb = function(name,data){
         if (this.validateUsers(this.uPool) && this.validateSockets(this.sPool)) {
             if (this.validateData([name,data])) {
@@ -108,7 +109,13 @@ var socketHandler = function(uPool,sPool){ //socket functions
                 data = sanitized[1];
                 for (var i=0; i<this.sPool.length; i++) {
                     if (this.sPool[i].type == "client") {
-                        this.sPool[i].socket.emit(name, data);
+                        if (this.sPool[i].authkey) {
+                            if (this.validateNonBlacklistedKey(this.sPool[i].authkey,this.uPool)) {
+                                this.sPool[i].socket.emit(name, data);
+                            }
+                        } else {
+                            console.error("[NODE_UTILS] SPool emitToWeb i="+i+" has no valid authkey");
+                        }
                     }
                 }
             } else {
@@ -121,27 +128,30 @@ var socketHandler = function(uPool,sPool){ //socket functions
     this.socketEmitToKey = function(key,name,data){ //not finished
         if (this.validateUsers(this.uPool) && this.validateSockets(this.sPool)) {
             if (this.validateData([key,name,data])) {
-                var sanitized = this.sanitizeData([key,name,data]);
-                key = sanitized[0];
-                name = sanitized[1];
-                data = sanitized[2];
-                var keyObj = uPool.findKey(key);
-                if (keyObj == null || typeof keyObj == "undefined") {
-                    console.error("keyObj undefined");
-                    return;
-                } else {
-                    if (typeof keyObj.properties.socketID === "undefined") {
-                        console.error("keyObj socketID undefined");
+                if (this.validateNonBlacklistedKey(key, this.uPool)) {
+                    var sanitized = this.sanitizeData([key,name,data]);
+                    key = sanitized[0];
+                    name = sanitized[1];
+                    data = sanitized[2];
+                    var keyObj = uPool.findKey(key);
+                    if (keyObj == null || typeof keyObj == "undefined") {
+                        console.error("[NODE_UTILS] keyObj in socketEmitToKey undefined; flagging to ignore");
+                        this.uPool.blackListedAuthKeys.push(key);
                         return;
                     } else {
-                        for (var i=0; i<this.sPool.length; i++) {
-                            if (this.sPool[i].id == keyObj.properties.socketID) {
-                                this.sPool[i].socket.emit(name, data);
-                                console.log("[UTILS] key found for socket ID "+keyObj.properties.socketID);
+                        if (typeof keyObj.properties.socketID === "undefined") {
+                            console.error("[NODE_UTILS] keyObj socketID undefined; is it malformed?");
+                            return;
+                        } else {
+                            for (var i=0; i<this.sPool.length; i++) {
+                                if (this.sPool[i].id == keyObj.properties.socketID) {
+                                    this.sPool[i].socket.emit(name, data);
+                                    //console.log("[UTILS] key found for socket ID "+keyObj.properties.socketID);
+                                }
                             }
                         }
                     }
-                }
+                } //blacklisted key, so don't output
             }
         }
     }
@@ -155,7 +165,13 @@ var socketHandler = function(uPool,sPool){ //socket functions
                 var found = false;
                 for (var i=0; i<this.sPool.length; i++) {
                     if (this.sPool[i].id == id) {
-                        this.sPool[i].socket.emit(name, data);
+                        if (this.sPool[i].authkey) {
+                            if (this.validateNonBlacklistedKey(this.sPool[i].authkey,this.uPool)) {
+                                this.sPool[i].socket.emit(name, data);
+                            }
+                        } else {
+                            console.error("[NODE_UTILS] SPool emitToID i="+i+" has no valid authkey");
+                        }
                         found = true;
                         //console.log("Found SOCKETID and sending now");
                     }
@@ -177,7 +193,14 @@ var socketHandler = function(uPool,sPool){ //socket functions
                 name = sanitized[0];
                 data = sanitized[1];
                 for (var i=0; i<this.sPool.length; i++) {
-                    this.sPool[i].socket.emit(name, data);
+                    found = true;
+                    if (this.sPool[i].authkey) {
+                        if (this.validateNonBlacklistedKey(this.sPool[i].authkey,this.uPool)) {
+                            this.sPool[i].socket.emit(name, data);
+                        }
+                    } else {
+                        console.error("[NODE_UTILS] SPool emitToAll i="+i+" has no valid authkey");
+                    }
                 }
             } else {
                 console.error("[UTILS] Data passed into emitToAll is invalid")
@@ -193,7 +216,13 @@ var socketHandler = function(uPool,sPool){ //socket functions
                 ev = sanitized[0];
                 callback = sanitized[1];
                 for (var i=0; i<this.sPool.length; i++) {
-                    this.sPool[i].socket.on(ev, callback);
+                    if (this.sPool[i].authkey) {
+                        if (this.validateNonBlacklistedKey(this.sPool[i].authkey,this.uPool)) {
+                            this.sPool[i].socket.on(ev, callback);
+                        }
+                    } else {
+                        console.error("[NODE_UTILS] SPool listenToAll i="+i+" has no valid authkey");
+                    }
                 }
             } else {
                 console.error("[UTILS] Data passed into listenToAll is invalid")
@@ -205,16 +234,38 @@ var socketHandler = function(uPool,sPool){ //socket functions
     //non socket functions
     this.validateUsers = function(uPool){ //don't pass in any fake lists, complete check
         var bad = false;
-        for (var i=0; i<uPool.length; i++) {
-            if (typeof uPool[i] == "undefined") {
+        for (var i=0; i<uPool.auth_keys.length; i++) {
+            if (typeof uPool.auth_keys[i] == "undefined") {
                 bad = true;
-                console.log("upool und")
-            } else if (!uPool[i].hasOwnProperty("key")) {
+                console.error("[NODE_UTILS] validateUsers upool i"+i+" undefined");
+            } else if (!uPool.auth_keys[i].hasOwnProperty("key")) {
                 bad = true;
-                console.log("missing key")
-            } else if (!uPool[i].hasOwnProperty("is_valid")) {
+                console.error("[NODE_UTILS] validateUsers upool i"+i+" missing key property");
+            } else if (!uPool.auth_keys[i].hasOwnProperty("is_valid")) {
                 bad = true;
-                console.log("missing valid")
+                console.error("[NODE_UTILS] validateUsers upool i"+i+" missing is_valid property");
+            }
+        }
+        return !bad;
+    }
+    this.validateNonBlacklistedKey = function(key,uPool) {
+        if (typeof uPool == "undefined") {
+            console.error("[NODE_UTILS] Validate NBKey uPool undefined");
+            return false
+        }
+        var bad = false;
+        for (var i=0; i<uPool.auth_keys.length; i++) {
+            if (typeof uPool.auth_keys[i] == "undefined") {
+                bad = true;
+                console.error("[NODE_UTILS] validateNBKey upool i"+i+" undefined");
+            } else if (!uPool.auth_keys[i].hasOwnProperty("key")) {
+                bad = true;
+                console.error("[NODE_UTILS] validateNBKey upool i"+i+" missing key property");
+            } else if (!uPool.auth_keys[i].hasOwnProperty("is_valid")) {
+                bad = true;
+                console.error("[NODE_UTILS] validateNBKey upool i"+i+" missing is_valid property");
+            } else if (uPool.blackListedAuthKeys.indexOf(uPool.auth_keys[i].key) > -1) {
+                bad = true; //found invalid key
             }
         }
         return !bad;
@@ -224,9 +275,9 @@ var socketHandler = function(uPool,sPool){ //socket functions
         for (var i=0; i<sPool.length; i++) {
             if (typeof sPool[i] == "undefined") {
                 bad = true;
-                console.log("spool i invund")
+                console.error("[NODE_UTILS] sPool i="+i+" undefined");
             } else if (!sPool[i].hasOwnProperty("socket") || !sPool[i].hasOwnProperty("status") || !sPool[i].hasOwnProperty("id") || !sPool[i].hasOwnProperty("type") || !sPool[i].hasOwnProperty("handler")) {
-                console.log("missing prop")
+                console.error("[NODE_UTILS] sPool i="+i+" missing essential property");
                 bad = true;
             }
         }
@@ -236,7 +287,7 @@ var socketHandler = function(uPool,sPool){ //socket functions
         var bad = false;
         for (var i=0; i<data.length; i++) {
             if (typeof data[i] == "undefined") { //add data rules here
-                console.error("data undefined validateData")
+                console.error("[NODE_UTILS] data undefined validateData")
                 bad = true;
             }
         }
@@ -246,7 +297,7 @@ var socketHandler = function(uPool,sPool){ //socket functions
         if (sanitizeData) {
             for (var i=0; i<data.length; i++) {
                 if (typeof data[i] == "undefined") {
-                    console.error("data i undefined")
+                    console.error("[NODE_UTILS] sanitizeData data i="+i+" undefined")
                 } else {
                     try {
                         if (typeof data[i] == "object") {
@@ -255,7 +306,7 @@ var socketHandler = function(uPool,sPool){ //socket functions
                             data[i] = data[i].replace(/[^a-z0-9áéíóúñü{}:" \.,_-]/gim,"").trim();
                         }
                     } catch(e) {
-                        console.error("sanitizeData failed, data may be bad")
+                        console.error("[NODE_UTILS] sanitizeData failed, data may be bad")
                     }
                     
                 }

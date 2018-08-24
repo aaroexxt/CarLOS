@@ -1,3 +1,12 @@
+/*
+* oled.js by Aaron Becker
+* External OLED driver wrapper for Raspberry Pi
+*
+* Dedicated to Marc Perkel
+*
+* Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
+*/
+
 //CarOS OledDriver
 var oled = require('rpi-oled'); //req the library
 var font = require('oled-font-5x7'); //req the font

@@ -1,3 +1,12 @@
+/*
+* speechMatcher.js by Aaron Becker
+* Training and utilities for neural network speech matching algorithm
+*
+* Dedicated to Marc Perkel
+*
+* Lancaster stemming algorithm attributed to unknown author
+*/
+
 var STOP = -1;
 var INTACT = 0;
 var CONTINUE = 1;

@@ -1,4 +1,13 @@
 /*
+* speechParser.js by Aaron Becker
+* Parses and evaluates speech data into categories using neural network
+*
+* Dedicated to Marc Perkel
+*
+* Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
+*/
+
+/*
 Voices:
 En-Gb normal
 Veena with low rate/pitch for computery-sounding voice
