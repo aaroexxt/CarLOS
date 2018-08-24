@@ -15,7 +15,9 @@
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
         "faviconDirectory": "/index/assets/images/favicon.ico",
-        "defaultFileDirectory": "/index/COS.html",
+        "defaultFileDirectory": "/index",
+        "defaultDataDirectory": "/data",
+        "defaultClientFile": "COS.html",
         "assetsDirectory": "/index/assets",
         "arduinoBaudRate": 9600,
         "oledDisplayAddress": "0x3C",
@@ -56,6 +58,7 @@
         "requestTimeout": 21000,
         "soundcloudReady": false,
         "playMusicOnServer": true,
-        "waitingClients": []
+        "waitingClients": [],
+        "minInteractionWaitTime": 1000
     }
 }

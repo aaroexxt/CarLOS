@@ -2,7 +2,7 @@
 const fetch = require('node-fetch');
 const progress = require('progress-stream');
 const remoteFileSize = require("remote-file-size");
-const utils = require("./nodeUtils.js");
+const utils = require("./utils.js");
 const colors = require("colors");
 const fs = require('fs');
 
@@ -634,6 +634,8 @@ var SCSoundManager = {
     currentPlayingTrackDuration: 0,
     currentPlayingTrackPlayed: 0,
     trackTimeInterval: 0,
+    canInteractTrack: true,
+    canInteractTrackTimeout: 0,
 
     trackControl: {
         play: function(){},
@@ -664,94 +666,107 @@ var SCSoundManager = {
     processClientEvent: function(ev) {
         if (ev && ev.type) {
             console.log("[SCSoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
-            switch (ev.type) {
-                case "playPause":
-                    if (SCSoundManager.playingTrack) {
-                        SCSoundManager.trackControl.pause();
-                        SCSoundManager.playingTrack = false;
-                    } else {
-                        SCSoundManager.trackControl.play();
-                        SCSoundManager.playingTrack = true;
-                    }
-                    break;
-                case "volumeUp":
-                    if (SCSoundManager.currentVolume+SCUtils.localSoundcloudSettings.volStep <= 100) { //ik that it will go > 100 but it is clamped by setplayervolume
-                        SCSoundManager.currentVolume+=SCUtils.localSoundcloudSettings.volStep;
-                        SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
-                    }
-                    break;
-                case "volumeDown":
-                    if (SCSoundManager.currentVolume-SCUtils.localSoundcloudSettings.volStep > 0) {
-                        SCSoundManager.currentVolume-=SCUtils.localSoundcloudSettings.volStep;
-                        SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
-                    }
-                    break;
-                case "trackForward":
-                    if (SCUtils.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) {
-                        console.info("Track looping");
-                        SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[SCSoundManager.currentPlayingTrack.index]); //replay
-                    } else {
-                        if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
-                            var ind = Math.round(Math.random()*(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset));
-                            if (ind == SCSoundManager.currentPlayingTrack.index) { //is track so add one
-                                ind++;
-                                if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) { //lol very random chance that it wrapped over
-                                    ind = 0;
-                                }
-                            }
-                            SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+            if (SCSoundManager.canInteractTrack || ev.type.indexOf("volume") > -1 || ev.type.indexOf("changeTrack") > -1 || ev.type == "togglePlayerOutput") {
+                
+                if (ev.type.indexOf("volume") == -1 && ev.type.indexOf("changeTrack") == -1 && ev.type != "togglePlayerOutput") { //vol changetrackstate and toggleoutput no limits
+                    SCSoundManager.canInteractTrack = false;
+                    clearTimeout(SCSoundManager.canInteractTrackTimeout);
+                    SCSoundManager.canInteractTrackTimeout = setTimeout(function(){
+                        SCSoundManager.canInteractTrack = true;
+                    }, SCUtils.localSoundcloudSettings.minInteractionWaitTime);
+                }
+
+                switch (ev.type) {
+                    case "playPause":
+                        if (SCSoundManager.playingTrack) {
+                            SCSoundManager.trackControl.pause();
+                            SCSoundManager.playingTrack = false;
                         } else {
-                            var ind = SCSoundManager.currentPlayingTrack.index+1;
-                            if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) {
-                                ind = 0; //go to first track
-                            }
-                            //console.info("NOIND OVERFLOW (ind="+ind+", len="+(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)+")");
-                            SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                            SCSoundManager.trackControl.play();
+                            SCSoundManager.playingTrack = true;
                         }
-                    }
-                    break;
-                case "trackBackward":
-                    var ind = SCSoundManager.currentPlayingTrack.index-1;
-                    if (ind < 0) {
-                        ind = SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset-1; //go to last track
-                    }
-                    SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
-                    break;
-                case "clientLocalTrackFinished":
-                    SCSoundManager.processClientEvent({
-                        type: "trackForward",
-                        origin: "internal (client local track finished)"
-                    });
-                    break;
-                case "clientTrackSelected":
-                    if (ev.data) {
-                        var trackID = ev.data.trackID;
-                        SCSoundManager.lookupTrackByID(trackID).then( trackData => {
-                            SCSoundManager.playTrackLogic(trackData);
-                        }).catch( err => {
-                            console.error("Error looking up track with id "+trackID+": "+err);
-                        })
-                        
-                    } else {
-                        console.error("ClientTrackSelected event fired but no data provided");
-                    }
-                    break;
-                case "changeTrackLoopState":
-                    SCUtils.localSoundcloudSettings.nextTrackLoop = !SCUtils.localSoundcloudSettings.nextTrackLoop;
-                    break;
-                case "changeTrackShuffleState":
-                    SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
-                    break;
-                case "togglePlayerOutput":
-                    SCUtils.localSoundcloudSettings.playMusicOnServer = !SCUtils.localSoundcloudSettings.playMusicOnServer;
-                    console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
-                    break;
-                default:
-                    console.error("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
-                    break;
+                        break;
+                    case "volumeUp":
+                        if (SCSoundManager.currentVolume+SCUtils.localSoundcloudSettings.volStep <= 100) { //ik that it will go > 100 but it is clamped by setplayervolume
+                            SCSoundManager.currentVolume+=SCUtils.localSoundcloudSettings.volStep;
+                            SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
+                        }
+                        break;
+                    case "volumeDown":
+                        if (SCSoundManager.currentVolume-SCUtils.localSoundcloudSettings.volStep > 0) {
+                            SCSoundManager.currentVolume-=SCUtils.localSoundcloudSettings.volStep;
+                            SCSoundManager.setPlayerVolume(SCSoundManager.currentVolume);
+                        }
+                        break;
+                    case "trackForward":
+                        if (SCUtils.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) {
+                            console.info("Track looping");
+                            SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[SCSoundManager.currentPlayingTrack.index]); //replay
+                        } else {
+                            if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
+                                var ind = Math.round(Math.random()*(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset));
+                                if (ind == SCSoundManager.currentPlayingTrack.index) { //is track so add one
+                                    ind++;
+                                    if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) { //lol very random chance that it wrapped over
+                                        ind = 0;
+                                    }
+                                }
+                                SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                            } else {
+                                var ind = SCSoundManager.currentPlayingTrack.index+1;
+                                if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) {
+                                    ind = 0; //go to first track
+                                }
+                                //console.info("NOIND OVERFLOW (ind="+ind+", len="+(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)+")");
+                                SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                            }
+                        }
+                        break;
+                    case "trackBackward":
+                        var ind = SCSoundManager.currentPlayingTrack.index-1;
+                        if (ind < 0) {
+                            ind = SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset-1; //go to last track
+                        }
+                        SCSoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                        break;
+                    case "clientLocalTrackFinished":
+                        SCSoundManager.processClientEvent({
+                            type: "trackForward",
+                            origin: "internal (client local track finished)"
+                        });
+                        break;
+                    case "clientTrackSelected":
+                        if (ev.data) {
+                            var trackID = ev.data.trackID;
+                            SCSoundManager.lookupTrackByID(trackID).then( trackData => {
+                                SCSoundManager.playTrackLogic(trackData);
+                            }).catch( err => {
+                                console.error("Error looking up track with id "+trackID+": "+err);
+                            })
+                            
+                        } else {
+                            console.error("ClientTrackSelected event fired but no data provided");
+                        }
+                        break;
+                    case "changeTrackLoopState":
+                        SCUtils.localSoundcloudSettings.nextTrackLoop = !SCUtils.localSoundcloudSettings.nextTrackLoop;
+                        break;
+                    case "changeTrackShuffleState":
+                        SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
+                        break;
+                    case "togglePlayerOutput":
+                        SCUtils.localSoundcloudSettings.playMusicOnServer = !SCUtils.localSoundcloudSettings.playMusicOnServer;
+                        console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
+                        break;
+                    default:
+                        console.error("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
+                        break;
+                }
+            } else {
+                console.warn("SCSoundManager cannot process event because the minimum time between events has not elapsed")
             }
         } else {
-            console.error("SCSoundmanager proc cliEv called with no event or invalid");
+            console.error("SCSoundManager proc cliEv called with no event or invalid");
         }
     },
 
@@ -797,6 +812,7 @@ var SCSoundManager = {
                             percent: SCSoundManager.getPercent(),
                             playedSeconds: ps,
                             timeStamp: utils.formatHHMMSS(ps),
+                            playing: SCSoundManager.playingTrack,
                             settingsData: {
                                 currentUser: SCUtils.localSoundcloudSettings.currentUser,
                                 currentVolume: SCSoundManager.currentVolume,

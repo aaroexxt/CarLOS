@@ -53,6 +53,10 @@ implement track type handling (client vs python)
 
 linux-like loading (LSB loading... etc (aesthetic))
 
+search tracks
+
+sc user which has only goodtracks
+
 MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions
     -Working directions (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Developer%20FAQ%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Developer_FAQ) and (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Google%20Maps%20Example%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Google_Maps_Example)
@@ -69,7 +73,15 @@ retry button on client side
 
 put frame data on image opencv
 
+finish fixing cleaning directories (ESSENTIAL)
 
+node-festival for speech generation, or tacotron?
+
+chartjs accelerometer data, "blackbox" data
+https://www.chartjs.org/docs/latest/developers/updates.html
+http://www.chartjs.org/docs/latest/getting-started/
+
+data logging
 
 
 DONE stuff:

@@ -19,6 +19,9 @@ if [[ $(id -u) -ne 0 ]]
 fi
 #trap 'abort' 0;
 
+#programsettings (hardcoded)
+pythonCompatibilityMode="false"; #sets whether to open or check for the python compatibility (older versions of server)
+
 #program variables
 openpage="false";
 newscript="false";
@@ -27,7 +30,7 @@ nodebackground="false";
 usenodemon="false";
 newpython="false";
 debugval="";
-launchpython="true";
+launchpython="true"; #only works if pythoncompatibility mode is set to true
 
 printtitle="true";
 cwd=$(pwd)
@@ -185,24 +188,10 @@ else
     fi
 fi
 
-pythondir="";
-if [ "$launchpython" = "true" ]; then
-    if [ "$newpython" = "true" ]; then
-        while true; do
-            echo ""; read -r -p "What python file would you like to use (enter path)? : " ans;
-                echo "Testing file: $ans...";
-                if [ ! -e "$ans" ]; then
-                    echo "File '$ans' invalid. Please try again.";
-                else
-                    echo "File '$ans' does exist!";
-                    pythondir=$ans;
-                    break;
-                fi
-        done
-    else
-        echo "Checking if default python file is valid ($defaultpython)...";
-        if [ ! -e "$defaultpython" ]; then
-            echo "File '$defaultpython' is invalid. Please enter a valid python directory file.";
+if [ "$pythonCompatibilityMode" = "true" ]; then
+    pythondir="";
+    if [ "$launchpython" = "true" ]; then
+        if [ "$newpython" = "true" ]; then
             while true; do
                 echo ""; read -r -p "What python file would you like to use (enter path)? : " ans;
                     echo "Testing file: $ans...";
@@ -215,25 +204,44 @@ if [ "$launchpython" = "true" ]; then
                     fi
             done
         else
-            echo "Python file '$defaultpython' exists. Proceeding...";
-            pythondir="$defaultpython";
+            echo "Checking if default python file is valid ($defaultpython)...";
+            if [ ! -e "$defaultpython" ]; then
+                echo "File '$defaultpython' is invalid. Please enter a valid python directory file.";
+                while true; do
+                    echo ""; read -r -p "What python file would you like to use (enter path)? : " ans;
+                        echo "Testing file: $ans...";
+                        if [ ! -e "$ans" ]; then
+                            echo "File '$ans' invalid. Please try again.";
+                        else
+                            echo "File '$ans' does exist!";
+                            pythondir=$ans;
+                            break;
+                        fi
+                done
+            else
+                echo "Python file '$defaultpython' exists. Proceeding...";
+                pythondir="$defaultpython";
+            fi
+        fi
+
+        echo "";
+        echo "Starting python script in a new window.";
+        if [[ $platform == 'linux' ]]; then
+           gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; gksudo -m \"Please provide permission to run python\" python3 $pythondir;" || lxterminal --command="sudo python3 "$pythondir &
+           # || echo "Error starting python script; run 'sudo python3 $pythondir' to start it.";
+           #xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
+        elif [[ $platform == 'mac' ]]; then
+            osascript -e 'tell application "Terminal"
+                do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; exit;"
+            end tell'
+            #lower script closes window manually, upper one justs exits
+            #do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\"; exit;"
         fi
     fi
-
-    echo "";
-    echo "Starting python script in a new window.";
-    if [[ $platform == 'linux' ]]; then
-       gnome-terminal -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || xterm -e "echo \"Starting python script in this window...\"; gksudo -m \"Please provide permission to run python\" python3 $pythondir;" || lxterminal --command="sudo python3 "$pythondir &
-       # || echo "Error starting python script; run 'sudo python3 $pythondir' to start it.";
-       #xterm -e "echo \"Starting python script in this window...\"; sudo python3 "$pythondir"; exit" || echo "Failed to start terminal...";
-    elif [[ $platform == 'mac' ]]; then
-        osascript -e 'tell application "Terminal"
-            do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; exit;"
-        end tell'
-        #lower script closes window manually, upper one justs exits
-        #do script "echo \"Starting python script in this window...\"; echo -n -e \"\\033]0;BackendPython\\007\"; sudo python3 '$pythondir'; echo \"Exiting terminal...\"; osascript -e \"tell application \\\"Terminal\\\" to close (every window whose name contains \\\"BackendPython\\\")\"; exit;"
-    fi
+else
+    echo "Skipping python initialization; compatibility mode is turned off (enable in sourcecode)";
 fi
+
 #script that reads and prints dir from command, used below
 : '
 array=(`ls`)
@@ -333,6 +341,10 @@ fi
 echo "FOUND DEVICE?: find type: $foundDevice, devicename $device"
 
 echo "";
+echo "Killing previous node processes...";
+sudo killall node;
+echo "Killing previous inspector processes...";
+sudo kill $(sudo lsof -t -i:9229) || echo "No processes found";
 echo "Starting node server with file...";
 echo "Full node path: '$nodedir'";
 cdloc="$(echo $nodedir | rev | cut -d'/' -f2- | rev)";

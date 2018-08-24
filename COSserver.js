@@ -63,8 +63,7 @@ Runtime Code (2 steps):
 **********************************/
 
 var fs = require('fs');
-var utils = require('./nodeUtils.js'); //include the utils file
-var soundcloudUtils = require('./soundcloudUtils.js');
+var utils = require('./drivers/utils.js'); //include the utils file
 
 var singleLineLog = require('single-line-log').stdout; //single line logging
 
@@ -73,6 +72,7 @@ var catchErrors = false; //enables clean error handling. Only turn off during de
 var displayAuthkeyValidMessages = false;
 
 var cwd = __dirname;
+process.title = "CarOS V1";
 var sockets = [];
 var pyimgnum = 0; //python image counter
 var pyimgbasepath = cwd+"/index/tmpimgs/";
@@ -86,6 +86,14 @@ var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler w
 var watchdog = require('native-watchdog');
 watchdog.start(60000); //will watch process
 
+//CONFIGURING TOOBUSY
+var toobusy = require('toobusy-js');
+var tooBusyLatestLag;
+toobusy.onLag(function(currentLag) {
+  console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
+  tooBusyLatestLag = currentLag;
+});
+
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
 **********************************/
@@ -94,7 +102,8 @@ var runtimeSettings = {
 	faces: "",
 	passes: "",
 	maxVideoAttempts: "",
-	maxPasscodeAttempts: ""
+	maxPasscodeAttempts: "",
+	defaultDataDirectory: "/data"
 }; //holds settings like maximum passcode tries
 var runtimeInformation = {
 	frontendVersion: "?",
@@ -114,7 +123,7 @@ var soundcloudSettings = {
 }
 
 try {
-	var settingsData = fs.readFileSync(cwd+"/settings.json");
+	var settingsData = fs.readFileSync(cwd+runtimeSettings.defaultDataDirectory+"/settings.json");
 } catch(e) {
 	console.error("[FATAL] Error reading info/settings file");
 	throw "[FATAL] Error reading info/settings file";
@@ -303,7 +312,7 @@ function sendArduinoCommand(command,value) {
 --I5-- DATA FILE PARSERS --I5--
 ******************************/
 
-fs.readFile(cwd+"/responses.json", function(err,data){
+fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading responses file");
 		throw "[FATAL] Error reading responses file";
@@ -320,7 +329,7 @@ fs.readFile(cwd+"/responses.json", function(err,data){
 	}
 });
 
-fs.readFile(cwd+"/commandGroup.json", function(err,data){
+fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commandGroup.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading commandGroup file");
 		throw "[FATAL] Error reading commandGroup file";
@@ -346,7 +355,7 @@ fs.readFile(cwd+"/commandGroup.json", function(err,data){
 	}
 });
 
-fs.readFile(cwd+"/commands.json", function(err,data){
+fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading commands file");
 		throw "[FATAL] Error reading commands file";
@@ -391,8 +400,8 @@ fs.readFile(cwd+"/commands.json", function(err,data){
 --I6-- NEURAL NETWORK SETUP --I6--
 *********************************/
 
-var speechParser = require('./speechParser.js'); //include speech parsing file
-var neuralMatcher = require('./speechMatcher.js'); //include the speech matching file
+var speechParser = require('./drivers/speechParser.js'); //include speech parsing file
+var neuralMatcher = require('./drivers/speechMatcher.js'); //include the speech matching file
 neuralMatcher.algorithm.stemmer = neuralMatcher.stemmer;
 var brain = require("brain.js");
 var speechClassifierNet = new brain.NeuralNetwork(); //make the net
@@ -548,6 +557,7 @@ if (catchErrors) {
 /***********************************
 --I10-- SOUNDCLOUD INIT CODE --I10--
 ***********************************/
+var soundcloudUtils = require('./drivers/soundcloud.js');
 
 function initSoundcloud(username) {
 	return new Promise((mresolve, mreject) => {
@@ -758,7 +768,7 @@ const predictFaceFromData = (data) => {
 			var faceImage = getFaceImage(grayImg);
 
 			if (typeof faceImage == "undefined" || faceImage === null) {
-				return reject("Parsed faceimage is null; was a face detected?");
+				return resolve(false); //"Parsed faceimage is null; was a face detected?"
 			} else {
 				faceImage = faceImage.resize(80,80);
 				var result = lbphRecognizer.predict(faceImage);
@@ -860,6 +870,15 @@ app.use(serveFavicon(cwd+runtimeSettings.faviconDirectory)); //serve favicon
 
 app.use(express.static(cwd+runtimeSettings.assetsDirectory)); //define a static directory
 
+app.use(function(req, res, next) {
+  if (toobusy()) {
+    res.send(503, "Server is busy, cannot complete your request at this time. (Latency: "+tooBusyLatestLag+")");
+    res.end();
+  } else {
+    next();
+  }
+});
+
 app.get("/client", function(req, res) { //COS main route
 	var done = finalHandler(req, res, {
 		onerror: function(err) {
@@ -867,7 +886,7 @@ app.get("/client", function(req, res) { //COS main route
 		}
 	});
 
-	fs.readFile(cwd+runtimeSettings.defaultFileDirectory, function (err, buf) {
+	fs.readFile(cwd+runtimeSettings.defaultFileDirectory+"/"+runtimeSettings.defaultClientFile, function (err, buf) {
 		if (err) {
 			return done(err);
 		} else {
@@ -1028,6 +1047,8 @@ io.on('connection', function (socket) { //on connection
 					console.error("keyObject invalid w/key '"+key+"'");
 					socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "SCClientUserEventInvalidKeyObject"});
 				}
+				break;
+
 				case "SCClientChangeUser":
 				if (validKey || securityOff) {
 					if (data.newUser) {
@@ -1073,26 +1094,40 @@ io.on('connection', function (socket) { //on connection
 									var vidAttempt = keyObject.properties.videoAttemptNumber;
 									
 									predictFaceFromData(image).then( result => {
-										var face = result[0];
-										var confidence = result[1];
+										if (result == false) {
+											keyObject.properties.allowOpenCV = true;
+											keyObject.properties.videoAttemptNumber += 1;
+											vidAttempt += 1;
 
-										keyObject.properties.allowOpenCV = true;
+											console.log("modified key "+key+" with attempt attrib (no face found)");
+											socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+										} else {
 
-										for (var j=0; j<runtimeSettings.faces.length; j++) {
-											console.log("label "+face+", face "+runtimeSettings.faces[j])
-											if (face === runtimeSettings.faces[j]) {
+											var face = result[0];
+											var confidence = result[1];
+
+											keyObject.properties.allowOpenCV = true;
+
+											var foundFace = false;
+											for (var j=0; j<runtimeSettings.faces.length; j++) {
+												console.log("label "+face+", face "+runtimeSettings.faces[j])
+												if (face === runtimeSettings.faces[j]) {
+													foundFace = true;
+													break;
+												}
+											}
+											if (foundFace) {
 												keyObject.properties.approved = true;
 												console.log("modified key "+key+" with approved attrib");
 												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-												break;
 											} else {
 												keyObject.properties.videoAttemptNumber += 1;
 												vidAttempt += 1;
-												console.log("modified key "+key+" with attempt attrib");
+												console.log("modified key "+key+" with attempt attrib (face found not approved)");
 												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-												break;
 											}
 										}
+
 									}).catch( err => {
 										keyObject.properties.allowOpenCV = true;
 										keyObject.properties.videoAttemptNumber += 1;
