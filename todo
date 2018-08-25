@@ -35,21 +35,13 @@ username cache
 
 load balancing
 
-better favicon
+better favicon (the a is lame)
 
 GPS+MAGNETOMETER EXT from arduino
-
-cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not
-
-update script that automatically updates (clones into new folder, compares modified date or length and replaces files)
-
-time since forward or backward button pressed to prevent crashing
 
 use external sound card on rpi with audio device set inside of speaker({}) instance?
 
 spam filtering which blocks clients sending > 1 request per 0.1 seconds
-
-implement track type handling (client vs python)
 
 linux-like loading (LSB loading... etc (aesthetic))
 
@@ -61,19 +53,19 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions
     -Working directions (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Developer%20FAQ%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Developer_FAQ) and (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Google%20Maps%20Example%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Google_Maps_Example)
     -FM Broadcasting
-    -Legacy mode with python
+    -Legacy mode with python NOPE
     -Piezo status info
     -Bluetooth audio
     -Xbee working
     -Oled on RPI to give status DONE
-    -do opencv processing inside of nodejs server instead of inside python file (REQUIRED for rpi)
+    -do opencv processing inside of nodejs server instead of inside python file (REQUIRED for rpi) DONE
 
 
 retry button on client side
 
-put frame data on image opencv
+progressbar.js for nice loading bar when client loads and for tracks
 
-finish fixing cleaning directories (ESSENTIAL)
+put frame data on image opencv
 
 node-festival for speech generation, or tacotron?
 
@@ -82,8 +74,6 @@ https://www.chartjs.org/docs/latest/developers/updates.html
 http://www.chartjs.org/docs/latest/getting-started/
 
 data logging
-
-loglevels for console.log, warn and error
 
 constantly scan for invalid authkeys to prevent tampering
 
@@ -111,6 +101,18 @@ better 404 page DONE (slightly)
 FIX BUG WITH LOOP & TRACKS NOT WRAPPING DONE
 use a timed listener to get song playing length on client side instead of bytes through decoder DONE
 changescuser now has to go to server DONE
+
+finish fixing cleaning directories (ESSENTIAL) DONE
+
+cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
+
+update script that automatically updates (clones into new folder, compares modified date or length and replaces files) DONE
+
+time since forward or backward button pressed to prevent crashing DONE
+
+implement track type handling (client vs python) UNNEEDED, python is gone now
+
+loglevels for console.log, warn and error DONE
 
 
 Portable ideas:

@@ -34,9 +34,9 @@ launchpython="true"; #only works if pythoncompatibility mode is set to true
 
 printtitle="true";
 cwd=$(pwd)
-defaultroot="$cwd/index";
+defaultroot="$cwd/app";
 defaultscript="$cwd/COSserver.js";
-defaultpython="$cwd/index/python/rpibackend.py";
+defaultpython="$cwd/pythonDevelopment/python/rpibackend.py";
 
 port="80";
 

@@ -75,7 +75,6 @@ var cwd = __dirname;
 process.title = "CarOS V1";
 var sockets = [];
 var pyimgnum = 0; //python image counter
-var pyimgbasepath = cwd+"/index/tmpimgs/";
 
 var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and users
 
@@ -90,8 +89,9 @@ watchdog.start(60000); //will watch process
 var toobusy = require('toobusy-js');
 var tooBusyLatestLag;
 toobusy.onLag(function(currentLag) {
-  console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
-  tooBusyLatestLag = currentLag;
+	currentLag = Math.round(currentLag);
+	console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
+	tooBusyLatestLag = currentLag;
 });
 
 /**********************************
@@ -518,23 +518,6 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 		sockets[i].socket.emit("disconnect","");
 	}
-	console.log("Unlinking OpenCV image files...");
-	for (var i=pyimgnum; i>=0; i--) {
-		var path = pyimgbasepath+"in/image"+i+".png";
-		console.log("Removing image file (in): "+path);
-		fs.unlink(path,function (err) {
-			if (err) {
-				console.error("Error removing OpenCV file: "+err);
-			}
-		})
-		var path = pyimgbasepath+"out/image"+i+".jpg";
-		console.log("Removing image file (out): "+path);
-		fs.unlink(path,function (err) {
-			if (err) {
-				console.error("Error removing OpenCV file: "+err);
-			}
-		})
-	}
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
@@ -551,23 +534,6 @@ if (catchErrors) {
 			sockets[i].socket.emit("pydata","q"); //quit python
 			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 			sockets[i].socket.emit("disconnect","");
-		}
-		console.log("Unlinking OpenCV image files...");
-		for (var i=pyimgnum; i>=0; i--) {
-			var path = pyimgbasepath+"in/image"+i+".png";
-			console.log("Removing image file (in): "+path);
-			fs.unlink(path,function (err) {
-				if (err) {
-					console.error("Error removing OpenCV file: "+err);
-				}
-			});
-			var path = pyimgbasepath+"out/image"+i+".jpg";
-			console.log("Removing image file (out): "+path);
-			fs.unlink(path,function (err) {
-				if (err) {
-					console.error("Error removing OpenCV file: "+err);
-				}
-			});
 		}
 		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
 		console.log("Exiting in 1500ms (waiting for sockets to send...)");
@@ -683,132 +649,18 @@ initSoundcloud().then( () => {
 /*******************************
 --I11-- OpenCV Init Code --I11--
 *******************************/
+const cv = require('opencv4nodejs'); //require opencv
+var openCVReady = false;
 
 console.log("Initializing OpenCV");
-var cv = require('opencv4nodejs'); //require opencv
-const classifier = new cv.CascadeClassifier(cv.HAAR_FRONTALFACE_ALT2);
-const lbphRecognizer = new cv.LBPHFaceRecognizer();
-
-const getFaceImage = (grayImg) => {
-  	const faceRects = classifier.detectMultiScale(grayImg).objects;
-  	if (!faceRects.length) {
-		return null;
-  	}
-  	return grayImg.getRegion(faceRects[0]);
-};
-
-var cvBP = cwd+"/"+runtimeSettings.cvTrainingImagesPath;
-var trainingUsers;
-try {
-	trainingUsers = fs.readdirSync(cvBP);
-} catch(e) {
-	console.error("Error getting openCV files from directory "+cvBP);
-	trainingUsers = [];
-}
-console.log("Userdata files found: "+JSON.stringify(trainingUsers));
-
-var finalFaces = [];
-var finalLabels = [];
-var labelMappings = [];
-
-for (var i=0; i<trainingUsers.length; i++) {
-	if (trainingUsers[i].substring(0,1) == ".") {
-		continue;
-	} else if (trainingUsers[i].substring(0,1).toLowerCase() == "u") {
-		var userLabel = trainingUsers[i].substring(1,2);
-		labelMappings[Number(userLabel)] = String(trainingUsers[i]).split(",")[1];
-
-		var sbjPath = cvBP+"/"+trainingUsers[i]; //get subject path
-		var imgFiles;
-		try {
-			imgFiles = fs.readdirSync(sbjPath);
-		} catch(e) {
-			console.error("Error getting user image files from directory "+sbjPath+" (subject "+imgFiles[i]+")");
-			continue;
-		}
-		if (imgFiles.length == 0) {
-			console.warn("ImageFiles length for user "+trainingUsers[i]+" is 0, skipping user");
-			continue;
-		} else {
-			var imagePaths = imgFiles
-			.map(file => sbjPath+"/"+file) //get absolute path
-
-			for (var j=0; j<imagePaths.length; j++) {
-				//console.log("Reading from imPath: "+imagePaths[i]);
-				if (typeof imagePaths[j] !== "undefined" && imagePaths[j].indexOf("undefined") < 0) {
-					try{
-						var img = cv.imread(imagePaths[j]) //read image
-						img = img.bgrToGray(); //cvt to grey
-						img = getFaceImage(img); //get the face image
-						if (typeof img == "undefined" || img === null) {
-							console.error("ImageData [i="+j+"] is null, no face found");
-						} else {
-							img = img.resize(80, 80); //resize to common size
-							finalFaces.push(img);
-							finalLabels.push(Number(userLabel));
-						}
-					} catch(e) {
-						console.error("Failed to read from image path: "+imagePaths[j]);
-					}
-				} else {
-					console.error("ImagePaths i"+j+" is undefined or contains undefined");
-				}
-			}
-
-			console.log(imagePaths.length+" images found for user: "+trainingUsers[i]);
-
-			//console.log("FINAL IMAGES: "+JSON.stringify(images));
-		}
-	} else {
-		console.warn("Found invalid OpenCV dir "+trainingUsers[i]+" in training folder");
-	}
-}
-
-console.info("Training LBPH recognizer");
-lbphRecognizer.train(finalFaces, finalLabels);
-
-const predictFaceFromPath = (path) => {
-	return new Promise( (resolve, reject) => {
-		try {
-			var image = cv.imread(path);
-			predictFaceFromData(image).then( dat => {
-				return resolve(dat);
-			}).catch(err => {
-				return reject(err);
-			})
-		} catch(e) {
-			return reject("Error loading opencv img from path "+path);
-		}
-	});
-}
-
-const predictFaceFromData = (data) => {
-	return new Promise( (resolve, reject) => {
-		if (typeof data == "undefined") {
-			return reject("Data is undefined")
-		}
-		data.bgrToGrayAsync().then( grayImg => {
-			var faceImage = getFaceImage(grayImg);
-
-			if (typeof faceImage == "undefined" || faceImage === null) {
-				return resolve(false); //"Parsed faceimage is null; was a face detected?"
-			} else {
-				faceImage = faceImage.resize(80,80);
-				var result = lbphRecognizer.predict(faceImage);
-				var face = labelMappings[result.label];
-				console.log('predicted: %s, confidence: %s', face, result.confidence);
-				if (result.confidence > runtimeSettings.minimumCVConfidence) {
-					resolve([face, result.confidence]);
-				} else {
-					console.error("Confidence of prediction is too low ("+result.confidence+")");
-					return reject("Confidence is too low");
-				}
-			}
-		}).catch( e => {
-			return reject("Error converting opencv image to gray: "+e)
-		})
-	});
-}
+const cvUtils = require('./drivers/openCV.js').CVUtils;
+cvUtils.init(cwd, runtimeSettings).then( () => {
+	console.info("CV INIT OK");
+	openCVReady = true; //set ready flag
+}).catch( err => {
+	console.error("Error initializing OpenCV: "+err);
+	openCVReady = false;
+}); //initialize (async)
 
 /*******************************
 --I12-- OLED Driver Init --I12--
@@ -819,7 +671,7 @@ var burninCounter = 0;
 var preventBurnInMode = false;
 
 if (runtimeSettings.runningOnRPI) {
-	var oledDriver = require('./oledDriver.js').driver;
+	const oledDriver = require('./drivers/oled.js').driver;
 	oledDriver.init(runtimeSettings);
 
 	var oledUpdateInterval = setInterval(function(){
@@ -974,6 +826,7 @@ io.on('connection', function (socket) { //on connection
 			runtimeInformation.pythonConnected = true;
 		} else {
 			console.error("Error: cv module not found");
+			throw "FATAL: cv module not found :(";
 		}
 	});
 	socketHandler.update(userPool,sockets);
@@ -1100,72 +953,77 @@ io.on('connection', function (socket) { //on connection
 							socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientVideoAttemptPropertyUndefined"});
 						} else {
 							if ((validKey || securityOff) && keyObject.properties.videoAttemptNumber < runtimeSettings.maxVideoAttempts) {
-								if (keyObject.properties.allowOpenCV) {
-									//console.log("recv imgdata");
-									var raw = data.raw;
-									raw = raw.replace(/^data:image\/\w+;base64,/, "");
-									var imageBuffer = new Buffer(raw, 'base64');
+								if (openCVReady) {
+									if (keyObject.properties.allowOpenCV) {
+										//console.log("recv imgdata");
+										var raw = data.raw;
+										raw = raw.replace(/^data:image\/\w+;base64,/, "");
+										var imageBuffer = new Buffer(raw, 'base64');
 
-									socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
-									const currentImgNum = pyimgnum;
+										socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
+										const currentImgNum = pyimgnum;
 
-									keyObject.properties.allowOpenCV = false;
+										keyObject.properties.allowOpenCV = false;
 
-									const image = cv.imdecode(imageBuffer); //decode the buffer
+										const image = cv.imdecode(imageBuffer); //decode the buffer
 
-									var maxVidAttempts = runtimeSettings.maxVideoAttempts;
-									var vidAttempt = keyObject.properties.videoAttemptNumber;
-									
-									predictFaceFromData(image).then( result => {
-										if (result == false) {
+										var maxVidAttempts = runtimeSettings.maxVideoAttempts;
+										var vidAttempt = keyObject.properties.videoAttemptNumber;
+										
+										cvUtils.predictFaceFromData(image).then( result => {
+											if (result == false) {
+												keyObject.properties.allowOpenCV = true;
+												keyObject.properties.videoAttemptNumber += 1;
+												vidAttempt += 1;
+
+												console.log("modified key "+key+" with attempt attrib (no face found)");
+												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+											} else {
+
+												var face = result[0];
+												var confidence = result[1];
+
+												keyObject.properties.allowOpenCV = true;
+
+												var foundFace = false;
+												for (var j=0; j<runtimeSettings.faces.length; j++) {
+													console.log("label "+face+", face "+runtimeSettings.faces[j])
+													if (face === runtimeSettings.faces[j]) {
+														foundFace = true;
+														break;
+													}
+												}
+												if (foundFace) {
+													keyObject.properties.approved = true;
+													console.log("modified key "+key+" with approved attrib");
+													socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+												} else {
+													keyObject.properties.videoAttemptNumber += 1;
+													vidAttempt += 1;
+													console.log("modified key "+key+" with attempt attrib (face found not approved)");
+													socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+												}
+											}
+
+										}).catch( err => {
 											keyObject.properties.allowOpenCV = true;
 											keyObject.properties.videoAttemptNumber += 1;
 											vidAttempt += 1;
-
-											console.log("modified key "+key+" with attempt attrib (no face found)");
-											socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-										} else {
-
-											var face = result[0];
-											var confidence = result[1];
-
-											keyObject.properties.allowOpenCV = true;
-
-											var foundFace = false;
-											for (var j=0; j<runtimeSettings.faces.length; j++) {
-												console.log("label "+face+", face "+runtimeSettings.faces[j])
-												if (face === runtimeSettings.faces[j]) {
-													foundFace = true;
-													break;
-												}
-											}
-											if (foundFace) {
-												keyObject.properties.approved = true;
-												console.log("modified key "+key+" with approved attrib");
-												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-											} else {
-												keyObject.properties.videoAttemptNumber += 1;
-												vidAttempt += 1;
-												console.log("modified key "+key+" with attempt attrib (face found not approved)");
-												socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-											}
-										}
-
-									}).catch( err => {
-										keyObject.properties.allowOpenCV = true;
-										keyObject.properties.videoAttemptNumber += 1;
-										vidAttempt += 1;
-										console.log("modified key "+key+" with attempt attrib");
-										console.error("Error predicting image: "+err);
-										socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVBackendServerError ("+err+")"});
-									})
-									/*socketHandler.socketListenToAll(("opencvresp:"+pyimgnum), function (data) {
-										console.log("data from opencv "+JSON.stringify(data));
-									});*/
-									pyimgnum++;
+											console.log("modified key "+key+" with attempt attrib");
+											console.error("Error predicting image: "+err);
+											socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVBackendServerError ("+err+")"});
+										})
+										/*socketHandler.socketListenToAll(("opencvresp:"+pyimgnum), function (data) {
+											console.log("data from opencv "+JSON.stringify(data));
+										});*/
+										pyimgnum++;
+									} else {
+										console.log("no response recieved yet from opencv, client sending too fast??");
+										socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientResponseNotAttainedFromPrevRequest", longerror: "Python response from previous request has not been attained, waiting."});
+									}
 								} else {
-									console.log("no response recieved yet from opencv, client sending too fast??");
-									socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientResponseNotAttainedFromPrevRequest", longerror: "Python response from previous request has not been attained, waiting."});
+									console.log("Request recieved from client for opencv; but it is not ready yet");
+									socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVNotReady (try again soon)", longerror: "OpenCV is not ready yet :("});
 								}
 							} else {
 								console.log("Client invalid for opencv processing");
