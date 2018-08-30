@@ -63,6 +63,8 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
 
 retry button on client side
 
+electron framework?
+
 progressbar.js for nice loading bar when client loads and for tracks
 
 put frame data on image opencv

@@ -61,7 +61,9 @@ Runtime Code (2 steps):
 /**********************************
 --I1-- MODULE INITIALIZATION --I1--
 **********************************/
-
+setTimeout( () => {
+	console.log(JSON.stringify(require('electron')));
+},5000);
 var fs = require('fs');
 var utils = require('./drivers/utils.js'); //include the utils file
 
