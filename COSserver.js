@@ -520,6 +520,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 		sockets[i].socket.emit("disconnect","");
 	}
+	watchdog.exit();
 	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
@@ -539,6 +540,7 @@ if (catchErrors) {
 		}
 		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
 		console.log("Exiting in 1500ms (waiting for sockets to send...)");
+		watchdog.exit();
 		setTimeout(function(){
 			process.exit(); //exit completely
 		},1500); //give some time for sockets to send
