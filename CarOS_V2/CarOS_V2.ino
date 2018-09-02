@@ -6,7 +6,7 @@
 #include <Adafruit_GPS.h> // gps
 
 //DEBUG MODE
-#define DEBUG_MODE false
+#define DEBUGMODE false
 
 #define TCAADDR 0x70 //i2c address for i2c multiplexer
 #define GPSHardSerial Serial1
@@ -15,6 +15,7 @@
 #define RADIORESETPIN 21
 #define LIGHTTADDR 1
 #define LIGHTADDR 0
+#define Pi 3.14159;
 
 Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(1); //accel sensor
 Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(2); //mag sensor
@@ -41,7 +42,6 @@ int sendConnectInterval = 1000;
 unsigned long maxTimeBeforeConnect = 300000; //max time before connect is 5 minutes
 
 String serverUptime, serverStatus, serverUsers = "";
-String oldStatus, oldUsers, oldUptime = "";
 
 
 void tcaselect(uint8_t i) {
@@ -61,6 +61,22 @@ void debugPrint(char *s) {
   if (DEBUGMODE) {
     Serial.print(s);
   }
+}
+
+void sendCommand(String command, String *value, uint8_t valueLen) {
+  valueLen = (valueLen/sizeof(String));
+  Serial.print(command);
+  if (valueLen > 0) {
+    Serial.print(commandValueChar);
+    for (int i=0; i<valueLen; i++) {
+      Serial.print(*value);
+      *value++;
+      if (valueLen > 1 && (i < (valueLen-1))) {
+        Serial.print(","); //print comma
+      }
+    }
+  }
+  Serial.print(commandSplitChar);
 }
 
 void displaySensorDetailsAccel(void)
@@ -111,7 +127,7 @@ void setup()
     while (!Serial);     // will pause Zero, Leonardo, etc until serial console opens
   #endif
   Serial.begin(115200);
-  Serial.println("ALLSENSOR Test"); Serial.println("");
+  debugPrintln("ALLSENSOR Test"); debugPrintln("");
   
   /* Initialise the 1st sensor */
   debugPrintln("Selecting accel");
@@ -209,7 +225,7 @@ void setup()
 
   // Ask for firmware version
   GPSHardSerial.println(PMTK_Q_RELEASE);
-  Serial.println("Started GPS");
+  debugPrintln("Started GPS");
   
 }
  
@@ -263,14 +279,109 @@ void loop()
          command.toLowerCase(); //conv command to lowercase
 
 
-        if (command == "lcd") {
-            lastCommandTime = millis()+(timeBeforeStatScreen-3000); //display for 3 seconds
-        } else if (command == "uptime") {
+        if (command == "uptime") {
              serverUptime = value;
         } else if (command == "status") {
              serverStatus = value;
         } else if (command == "users") {
              serverUsers = value;
+        } else if (command == "sensorstatus") {
+          String values[] = {"OTEMP=true", "ITEMP=true", ("ACCEL="+String(accelConnected)), ("MAG="+String(magConnected)), ("TSL1="+String(tsl1Connected)), ("TSL2="+String(tsl2Connected)), ("RADIO="+String(radioConnected))};
+          sendCommand("SENSORSTATUS", values,sizeof(values));
+        } else if (command == "sensorupdate") {
+          if (tsl1Connected) { //is the light sensor connected?
+            tcaselect(LIGHTADDR);
+            sensors_event_t ts1event;
+            tsl1.getEvent(&ts1event);
+            if (ts1event.light) {
+              String values[] = {String(ts1event.light)};
+              sendCommand("TSL1DATA",values,sizeof(values));
+              if (DEBUGMODE) {
+                Serial.print(ts1event.light); Serial.println(" lux1");
+              }
+            } else {
+              sendCommand("TSL1OVERLOAD",{},0);
+              if (DEBUGMODE) {
+                Serial.println("tsl1 sensor overload");
+              }
+            }
+          }
+        
+          if (tsl2Connected) {
+            tcaselect(LIGHTTADDR);
+            sensors_event_t ts2event;
+            tsl2.getEvent(&ts2event);
+            if (ts2event.light) {
+              String values[] = {String(ts2event.light)};
+              sendCommand("TSL2DATA",values,sizeof(values));
+              if (DEBUGMODE) {
+                Serial.print(ts2event.light); Serial.println(" lux2");
+              }
+            } else {
+              sendCommand("TSL2OVERLOAD",{},0);
+              if (DEBUGMODE) {
+                Serial.println("tsl2 sensor overload");
+              }
+            }
+          }
+        
+          if (accelConnected || magConnected) {
+            tcaselect(ACCELADDR);
+            if (accelConnected) {
+              sensors_event_t accelevent;
+              accel.getEvent(&accelevent);
+
+              String values[] = {("X="+String(accelevent.acceleration.x)), ("Y="+String(accelevent.acceleration.y)), ("Z="+String(accelevent.acceleration.z))};
+              sendCommand("ACCELDATA",values,sizeof(values));
+              if (DEBUGMODE) {
+                Serial.print("X: "); Serial.print(accelevent.acceleration.x); Serial.print("  ");
+                Serial.print("Y: "); Serial.print(accelevent.acceleration.y); Serial.print("  ");
+                Serial.print("Z: "); Serial.print(accelevent.acceleration.z); Serial.print("  ");Serial.println("m/s^2 ");
+              }
+            }
+            if (magConnected) {
+              sensors_event_t magevent;
+              mag.getEvent(&magevent);
+
+              float heading = (atan2(magevent.magnetic.y,magevent.magnetic.x) * 180) / Pi;
+              if (heading < 0)
+              {
+                heading = 360 + heading;
+              }
+
+              String values[] = {("X="+String(magevent.magnetic.x)), ("Y="+String(magevent.magnetic.y)), ("Z="+String(magevent.magnetic.z)), ("HEADING="+String(heading))};
+              sendCommand("MAGDATA",values,sizeof(values));
+              
+              if (DEBUGMODE) {
+                Serial.print("X: "); Serial.print(magevent.magnetic.x); Serial.print("  ");
+                Serial.print("Y: "); Serial.print(magevent.magnetic.y); Serial.print("  ");
+                Serial.print("Z: "); Serial.print(magevent.magnetic.z); Serial.print("  ");Serial.println("uT");
+                Serial.print("Heading: "); Serial.println(heading);
+              }
+            }
+          }
+        
+          if (GPS.fix) {
+            String values[] = {("LAT="+String(GPS.latitude)), ("LNG="+String(GPS.longitude)), ("SPEED="+String(GPS.speed)), ("ANGLE="+String(GPS.angle)), ("ALTITUDE="+String(GPS.altitude)), ("SAT="+String(GPS.satellites)), ("FIX="+String(GPS.fix)), ("FIXQUAL="+String(GPS.fixquality))};
+            sendCommand("GPSDATA",values,sizeof(values));
+              if (DEBUGMODE) {
+                Serial.print("Location: ");
+                Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
+                Serial.print(", ");
+                Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
+                Serial.print("Speed (knots): "); Serial.println(GPS.speed);
+                Serial.print("Angle: "); Serial.println(GPS.angle);
+                Serial.print("Altitude: "); Serial.println(GPS.altitude);
+                Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
+              }
+          } else {
+            String values[] = {("FIX="+String(GPS.fix)), ("FIXQUAL="+String(GPS.fixquality))};
+            sendCommand("GPSDATA",values,sizeof(values));
+            if (DEBUGMODE) {
+              Serial.print("Fix: "); Serial.print((int)GPS.fix);
+              Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
+            }
+          }
         } else {
           Serial.print("UNC|"+command+";");
         }
@@ -281,64 +392,14 @@ void loop()
       }
     }
   }
-
-  
-  if (tsl1Connected) {
-    tcaselect(LIGHTADDR);
-    sensors_event_t ts1event;
-    tsl1.getEvent(&ts1event);
-    if (ts1event.light) {
-      Serial.print(ts1event.light); Serial.println(" lux1");
-    } else {
-      Serial.println("tsl1 sensor overload");
-    }
-  }
-
-  if (tsl2Connected) {
-    tcaselect(LIGHTTADDR);
-    sensors_event_t ts2event;
-    tsl2.getEvent(&ts2event);
-    if (ts2event.light) {
-      Serial.print(ts2event.light); Serial.println(" lux2");
-    } else {
-      Serial.println("Sensor overload");
-    }
-  }
-
-  if (accelConnected || magConnected) {
-    tcaselect(ACCELADDR);
-    if (accelConnected) {
-      
-    }
-    if (magConnected) {
-      sensors_event_t magevent;
-      mag.getEvent(&magevent);
-      /* Display the results (magnetic vector values are in micro-Tesla (uT)) */
-      Serial.print("X: "); Serial.print(magevent.magnetic.x); Serial.print("  ");
-      Serial.print("Y: "); Serial.print(magevent.magnetic.y); Serial.print("  ");
-      Serial.print("Z: "); Serial.print(magevent.magnetic.z); Serial.print("  ");Serial.println("uT");
-    }
-  }
   
   char c = GPS.read(); //read from gps
   if (GPS.newNMEAreceived()) {
-    Serial.println(GPS.lastNMEA());
-    if (GPS.parse(GPS.lastNMEA())) {
-      if (GPS.fix) {
-        Serial.print("Location: ");
-        Serial.print(GPS.latitude, 4); Serial.print(GPS.lat);
-        Serial.print(", ");
-        Serial.print(GPS.longitude, 4); Serial.println(GPS.lon);
-        Serial.print("Speed (knots): "); Serial.println(GPS.speed);
-        Serial.print("Angle: "); Serial.println(GPS.angle);
-        Serial.print("Altitude: "); Serial.println(GPS.altitude);
-        Serial.print("Satellites: "); Serial.println((int)GPS.satellites);
-      } else {
-        Serial.print("Fix: "); Serial.print((int)GPS.fix);
-        Serial.print(" quality: "); Serial.println((int)GPS.fixquality);
-      }
+    if (DEBUGMODE) {
+      Serial.print("GPS lastNMEA: ");
+      Serial.println(GPS.lastNMEA());
     }
+      
+    GPS.parse(GPS.lastNMEA()); //parse it
   }
-  
-  delay(250);
 }

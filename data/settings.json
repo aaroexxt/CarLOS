@@ -20,7 +20,7 @@
         "defaultClientFile": "COS.html",
         "assetsDirectory": "/app/assets",
         "logLevel": 4,
-        "arduinoBaudRate": 9600,
+        "arduinoBaudRate": 115200,
         "oledDisplayAddress": "0x3C",
         "oledUpdateTime": "1000",
         "cvTrainingImagesPath": "data/CVTrainingData",
