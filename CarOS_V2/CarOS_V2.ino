@@ -304,7 +304,7 @@ void loop()
             sensors_event_t ts1event;
             tsl1.getEvent(&ts1event);
             if (ts1event.light) {
-              String values[] = {String(ts1event.light)};
+              String values[] = {"LIGHT="+String(ts1event.light)};
               sendCommand("TSL1DATA",values,sizeof(values));
               if (DEBUGMODE) {
                 Serial.print(ts1event.light); Serial.println(" lux1");
@@ -322,7 +322,7 @@ void loop()
             sensors_event_t ts2event;
             tsl2.getEvent(&ts2event);
             if (ts2event.light) {
-              String values[] = {String(ts2event.light)};
+              String values[] = {"LIGHT="+String(ts2event.light)};
               sendCommand("TSL2DATA",values,sizeof(values));
               if (DEBUGMODE) {
                 Serial.print(ts2event.light); Serial.println(" lux2");

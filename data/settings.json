@@ -4,8 +4,6 @@
         "backendVersion": 1,
         "heartbeatMS": 60000,
         "odometer": 0,
-        "outsideTemp": "?",
-        "insideTemp": "?",
         "dynamicMusicMenu": true
     },
     "settings": {

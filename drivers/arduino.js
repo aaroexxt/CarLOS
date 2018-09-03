@@ -20,6 +20,8 @@ var arduinoUtilities = {
     extSettings: {},
     extInformation: {},
 
+    sensorOverloaded: false,
+
     init: function(eRuntimeSettings, eRuntimeInformation) {
         return new Promise((resolve, reject) => {
             if (typeof eRuntimeSettings == "undefined") {
@@ -99,7 +101,7 @@ var arduinoUtilities = {
         switch(command) {
             //CONNECTION COMMANDS
             case "AOK": //arduino tells server that it is ok
-                arduino.write("SOK"); //tell arduino that server is ready
+                arduinoUtilities.sendCommand("SOK"); //tell arduino that server is ready
                 break;
             case "CONN": //arduino tells server that it is connected
                 console.log("Arduino is connected :)");
@@ -113,36 +115,100 @@ var arduinoUtilities = {
                 break;
             //SENSOR CONNECTION COMMANDS
             case "SENSORSTATUS": //arduino has sensor status information
-                console.log("Arduino sensor status: "+value);
-                arduinoUtilities.processCommandValues(value);
+                if (arduinoUtilities.debugMode) {
+                    console.log("Arduino sensor status: "+value);
+                }
+                var sensorStatus = arduinoUtilities.processCommandValues(value);
+                if (typeof sensorStatus == "undefined" || Object.keys(sensorStatus).length == 0) {
+                    console.warn("Arduino sent undefined sensorstatus");
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorStatus = sensorStatus;
+                }
                 break;
             case "TSL1DATA": //temp 1 data
+                if (arduinoUtilities.debugMode) {
+                    console.log("TSL1 Data: "+value);
+                }
+                var lightValue = arduinoUtilities.processCommandValues(value);
+                if (typeof lightValue.LIGHT == "undefined") {
+                    console.warn("Arduino sent light value that is undefined");
+                    arduinoUtilities.extInformation.arduinoSensorData.tsl1Lux = "?";
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorData.tsl1Lux = Number(lightValue.LIGHT);
+                }
                 break;
             case "TSL1OVERLOAD":
+                if (arduinoUtilities.debugMode) {
+                    console.warn("TSL1 Overload detected");
+                }
+                arduinoUtilities.sensorOverloaded = true;
                 break;
             case "TSL2DATA":
+                if (arduinoUtilities.debugMode) {
+                    console.log("TSL2 Data: "+value);
+                }
+                var lightValue = arduinoUtilities.processCommandValues(value);
+                if (typeof lightValue.LIGHT == "undefined") {
+                    console.warn("Arduino sent light value that is undefined");
+                    arduinoUtilities.extInformation.arduinoSensorData.tsl2Lux = "?";
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorData.tsl2Lux = Number(lightValue.LIGHT);
+                }
                 break;
             case "TSL2OVERLOAD":
+                if (arduinoUtilities.debugMode) {
+                    console.warn("TSL2 Overload detected");
+                }
+                arduinoUtilities.sensorOverloaded = true;
                 break;
             case "ACCELDATA":
+                if (arduinoUtilities.debugMode) {
+                    console.log("Accel Data: "+value);
+                }
+                var accelValue = arduinoUtilities.processCommandValues(value);
+                if (typeof accelValue.X == "undefined" || typeof accelValue.Y == "undefined" || typeof accelValue.Z == "undefined") {
+                    console.warn("Arduino send accel value that is undefined");
+                    arduinoUtilities.extInformation.arduinoSensorData.accelValues = {X: "?",Y: "?", Z: "?"};
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorData.accelValues = {X: Number(accelValue.X), Y: Number(accelValue.Y), Z: Number(accelValue.Z)};
+                }
                 break;
             case "MAGDATA":
+                if (arduinoUtilities.debugMode) {
+                    console.log("Mag Data: "+value);
+                }
+                var magValue = arduinoUtilities.processCommandValues(value);
+                if (typeof magValue.X == "undefined" || typeof magValue.Y == "undefined" || typeof magValue.Z == "undefined" || typeof magValue.HEADING == "undefined") {
+                    console.warn("Arduino send mag value that is undefined");
+                    arduinoUtilities.extInformation.arduinoSensorData.magValues = {X: "?",Y: "?",Z: "?"};
+                    arduinoUtilities.extInformation.arduinoSensorData.magHeading = "?";
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorData.magValues = {X: Number(magValue.X), Y: Number(magValue.Y), Z: Number(magValue.Z)};
+                    arduinoUtilities.extInformation.arduinoSensorData.magHeading = Number(magValue.HEADING);
+                }
                 break;
             case "TEMPDATA":
+                if (arduinoUtilities.debugMode) {
+                    console.log("Temperature Data: "+value);
+                }
+                var tempValue = arduinoUtilities.processCommandValues(value);
+                if (typeof tempValue.OTEMP == "undefined" || typeof tempValue.ITEMP == "undefined") {
+                    console.warn("Arduino sent temperature value (inside or outside) that is undefined");
+                    arduinoUtilities.extInformation.arduinoSensorData.outsideTemp = "?";
+                    arduinoUtilities.extInformation.arduinoSensorData.insideTemp = "?";
+                } else {
+                    arduinoUtilities.extInformation.arduinoSensorData.outsideTemp = Number(tempValue.OTEMP);
+                    arduinoUtilities.extInformation.arduinoSensorData.insideTemp = Number(tempValue.ITEMP);
+                }
                 break;
             case "GPSDATA":
-                break;
-            case "OTEMP": //arduino reports outside temperature
                 if (arduinoUtilities.debugMode) {
-                    console.log("Outside arduino temp report "+value);
+                    console.log("GPS Data: "+value);
                 }
-                runtimeInformation.outsideTemp = Number(value);
-                break;
-            case "ITEMP": //arduino reports inside temperature
-                if (arduinoUtilities.debugMode) {
-                    console.log("Inside arduino temp report "+value);
-                }
-                runtimeInformation.insideTemp = Number(value);
+                var gpsValue = arduinoUtilities.processCommandValues(value);
+                for (var i=0; i<10; i++) {console.log("GPS DOES NOT WORK YET, FINISH THIS!!!");}
+                /*if (typeof gpsValue.FIX)
+                arduinoUtilities.extInformation.arduinoSensorData.*/
                 break;
             case "CARCOMM": //yee it's a car command! work on this later ;)
                 break;
@@ -155,8 +221,31 @@ var arduinoUtilities = {
         }
     },
 
+    processCommandValues: function(values) {
+        var split = values.split(",");
+        var polished = {};
+        for (var i=0; i<split.length; i++) {
+            var furtherSplit = split[i].split("="); //split by equal sign
+            if (furtherSplit.length == 1) {
+                polished[furtherSplit[0]] = null; //set to whatever it is equal to
+            } else if (furtherSplit.length == 2) {
+                polished[furtherSplit[0]] = furtherSplit[1]; //set value to what's it's equal to
+            } else { //more than 1 equal sign? idk this should never happen but let's be safe
+                var argsList = [];
+                for (var j=1; j<furtherSplit.length-1; j++) {
+                    argsList.push(furtherSplit[j]);
+                }
+                polished[furtherSplit[0]] = argsList;
+            }
+        }
+    },
+
     sendCommand: function(command,value) {
-        arduinoUtilities.arduinoObject.write(command+arduinoUtilities.arduinoCommandValueChar+value+arduinoUtilities.arduinoCommandSplitChar);
+        if (typeof value == "undefined") {
+            arduinoUtilities.arduinoObject.write(command+arduinoUtilities.arduinoCommandSplitChar);
+        } else {
+            arduinoUtilities.arduinoObject.write(command+arduinoUtilities.arduinoCommandValueChar+value+arduinoUtilities.arduinoCommandSplitChar);
+        }
     },
 
     setArduinoFakeClass: function() {
@@ -168,7 +257,9 @@ var arduinoUtilities = {
                 return "";
             }
         }
-    }
+    },
+
+    setSensorOverloadedListener: function(){}
 }
 
 exports.utilities = arduinoUtilities;

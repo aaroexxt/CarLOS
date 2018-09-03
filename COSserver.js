@@ -346,7 +346,7 @@ stdinputListener.addPersistentListener("*",function(d) {
 		console.log("Send arduino mode toggled");
 	} else {
 		if (sendArduinoMode) {
-			arduino.write(uI+arduinoCommandSplitChar);
+			arduinoUtils.sendCommand(uI);
 		} else {
 			console.log("Command not recognized")
 		}
