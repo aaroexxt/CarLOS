@@ -211,38 +211,23 @@ process.argv.forEach(function (val, index, array) {
 --I4-- ARDUINO COMMAND HANDLING --I4--
 *************************************/
 
-var arduinoUtils = require('./drivers/arduino.js'); //require the driver
-arduinoUtils.init(runtimeSettings); //setup arduino object and libs
-
+var arduinoUtils = require('./drivers/arduino.js').utilities; //require the driver
 console.log("Serial device from start script: "+serialDevice);
-
-if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
-	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
-	arduinoUtils.setArduinoFakeClass();
-} else {
-	
-	arduino.open(function (err) { //and open the port
-		if (err) { //arduino was connected in previous server iteration and was disconnected?
-			console.error("Error opening serial port to arduino at "+serialDevice+" (err="+err+")");
-			runtimeInformation.arduinoConnected = false;
-			console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
-			arduino = { //make a fake arduino class so that server doesn't fail on write
-				write: function(t) {
-					console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
-				}
-			}
-		} else {
-			console.log("Arduino connected successfully")
-			runtimeInformation.arduinoConnected = true;
-			arduino.on('readable', function(data) {
-				handleArduinoData(arduino.read());
-			})
-		}
-	})
-}
-
-arduinoUtils.init(arduino);
-arduinoUtils.setArduinoConnectedStatus(runtimeInformation.arduinoConnected);
+arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
+	console.log(colors.green("Arduino driver initialized successfully"));
+	if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
+		console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
+		arduinoUtils.setArduinoFakeClass();
+	} else {
+		arduinoUtils.connectArduino(serialDevice).then( () => {
+			console.info("ARDU INIT OK");
+		}).catch( err => {
+			console.error("Failed to connect to arduino for the following reason: '"+err+"'");
+		});
+	}
+}).catch( err => {
+	console.error("Arduino driver failed to initialize for the following reason: '"+err+"'");
+}) //setup arduino object and libs
 
 /******************************
 --I5-- DATA FILE PARSERS --I5--

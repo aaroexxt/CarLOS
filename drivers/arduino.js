@@ -1,9 +1,67 @@
+/*
+* arduino.js by Aaron Becker
+* Arduino driver to communicate with external arduino, using protocol and command buffering
+*
+* Dedicated to Marc Perkel
+*
+* Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
+*/
+
+const serialPort = require('serialport'); //require serialport driver
+
 var arduinoUtilities = {
     debugMode: false,
     arduinoCommandSplitChar: ";",
     arduinoCommandValueChar: "|",
 
     arduinoCommandBuffer: "",  //need buffer because might not recieve whole command in one recieve
+
+    arduinoObject: undefined,
+    extSettings: {},
+    extInformation: {},
+
+    init: function(eRuntimeSettings, eRuntimeInformation) {
+        return new Promise((resolve, reject) => {
+            if (typeof eRuntimeSettings == "undefined") {
+                return reject("[ARDUINO] runtimeSettings undefined on init");
+            } else {
+                arduinoUtilities.extSettings = eRuntimeSettings;
+            }
+            if (typeof eRuntimeInformation == "undefined") {
+                return reject("[ARDUINO] runtimeInformation undefined on init");
+            } else {
+                arduinoUtilities.extInformation = eRuntimeInformation;
+            }
+            resolve(); //if it wasn't rejected then it's ok
+        });
+    },
+
+    connectArduino: function(arduinoAddr) { //start new arduino connection with
+        return new Promise((resolve, reject) => {
+            try {
+                arduinoUtilities.arduinoObject.close(); //close previous connection
+            } catch(e){}
+            arduinoUtilities.arduinoObject = new serialPort(arduinoAddr, {
+                baudRate: arduinoUtilities.extSettings.arduinoBaudRate,
+                autoOpen: false //don't open it yet
+            });
+            arduinoUtilities.arduinoObject.open(function (err) { //and open the port
+                if (err) { //arduino was connected in previous server iteration and was disconnected?
+                    arduinoUtilities.extInformation.arduinoConnected = false;
+                    console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
+                    arduinoUtilities.setArduinoFakeClass();
+                    reject("Error opening serial port to arduino at "+arduinoAddr+" (err="+err+")");
+                } else {
+                    console.log("Arduino connected successfully");
+                    arduinoUtilities.extInformation.arduinoConnected = true;
+                    arduinoUtilities.arduinoObject.on('readable', function(data) {
+                        arduinoUtilities.handleArduinoData(arduinoUtilities.arduinoObject.read());
+                    });
+                    resolve();
+                }
+            })
+        });
+    },
 
     handleArduinoData: function(data) {
         var sdata = String(data).split("");
@@ -49,14 +107,14 @@ var arduinoUtilities = {
             //INFO COMMANDS
             case "INFO": //arduino requested server information
                 console.log("Arduino has requested information, sending");
-                sendArduinoCommand("uptime",runtimeInformation.uptime);
-                sendArduinoCommand("status",runtimeInformation.status);
-                sendArduinoCommand("users",runtimeInformation.users);
+                arduinoUtilities.sendCommand("uptime",runtimeInformation.uptime);
+                arduinoUtilities.sendCommand("status",runtimeInformation.status);
+                arduinoUtilities.sendCommand("users",runtimeInformation.users);
                 break;
             //SENSOR CONNECTION COMMANDS
             case "SENSORSTATUS": //arduino has sensor status information
                 console.log("Arduino sensor status: "+value);
-                processArduinoValues
+                arduinoUtilities.processCommandValues(value);
                 break;
             case "TSL1DATA": //temp 1 data
                 break;
@@ -98,19 +156,20 @@ var arduinoUtilities = {
     },
 
     sendCommand: function(command,value) {
-        arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
+        arduinoUtilities.arduinoObject.write(command+arduinoUtilities.arduinoCommandValueChar+value+arduinoUtilities.arduinoCommandSplitChar);
+    },
+
+    setArduinoFakeClass: function() {
+        arduinoUtilities.arduinoObject = { //make a fake arduino class so that server doesnt fail on write
+            write: function(t) {
+                console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
+            },
+            read: function() {
+                return "";
+            }
+        }
     }
 }
 
-var arduino = { //make a fake arduino class so that server doesnt fail on write
-        write: function(t) {
-            console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
-        }
-    }
-
-    var SerialPort = require('serialport');
-
-    arduino = new SerialPort(serialDevice, {
-        baudRate: runtimeSettings.arduinoBaudRate,
-        autoOpen: false
-    });
+exports.utilities = arduinoUtilities;
+    
