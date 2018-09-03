@@ -6,7 +6,7 @@
 #include <Adafruit_GPS.h> // gps
 
 //DEBUG MODE
-#define DEBUGMODE false
+boolean DEBUGMODE = false;
 
 #define TCAADDR 0x70 //i2c address for i2c multiplexer
 #define GPSHardSerial Serial1
@@ -21,7 +21,7 @@ Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(1); //accel 
 Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(2); //mag sensor
 Adafruit_TSL2561_Unified tsl1 = Adafruit_TSL2561_Unified(TSL2561_ADDR_HIGH, 3); //on i2c 0 is high
 Adafruit_TSL2561_Unified tsl2 = Adafruit_TSL2561_Unified(TSL2561_ADDR_LOW, 4); //on i2c 1 is low
-Adafruit_Si4713 radio = Adafruit_Si4713(RADIORESETPIN);
+Adafruit_Si4713 radio = Adafruit_Si4713(21);
 Adafruit_GPS GPS(&GPSHardSerial); //set up gps
 
 boolean magConnected = false;
@@ -50,6 +50,7 @@ void tcaselect(uint8_t i) {
   Wire.beginTransmission(TCAADDR);
   Wire.write(1 << i);
   Wire.endTransmission();
+  delay(25); //give some time to propagate
 }
 
 void debugPrintln(char *s) {
@@ -147,7 +148,7 @@ void setup()
 
   debugPrintln("Selecting mag");
   tcaselect(ACCELADDR);
-  debugPrintln("Selected mag");
+  debugPrintln("Selected mag (sameAddr)");
   mag.enableAutoRange(true);
   if(!mag.begin())
   {
@@ -158,6 +159,20 @@ void setup()
     magConnected = true;
     if (DEBUGMODE) {
       displaySensorDetailsMag();
+    }
+  }
+  if (!accelConnected) {
+    debugPrintln("Trying accel again");
+    if(!accel.begin())
+    {
+      debugPrintln("No accel sensor detected (2nd time, giving up)");
+      accelConnected = false;
+    } else {
+      debugPrintln("ACCEL OK");
+      accelConnected = true;
+      if (DEBUGMODE) {
+        displaySensorDetailsAccel();
+      }
     }
   }
 
@@ -249,15 +264,6 @@ void loop()
         Serial.print("CONN");
         Serial.print(commandSplitChar);
         connected = true;
-        
-        Serial.print("OTEMP"); //MAKE THIS ACTUALLY READ TEMP, outside temp
-        Serial.print(commandValueChar);
-        Serial.print("60");
-        Serial.print(commandSplitChar);
-        Serial.print("ITEMP"); //MAKE THIS ACTUALLY READ TEMP, inside temp
-        Serial.print(commandValueChar);
-        Serial.print("75");
-        Serial.print(commandSplitChar);
       }
     } else {
       processCommand: //setup label
@@ -285,8 +291,12 @@ void loop()
              serverStatus = value;
         } else if (command == "users") {
              serverUsers = value;
+        } else if (command == "debugon") {
+          DEBUGMODE = true;
+        } else if (command == "debugoff") {
+          DEBUGMODE = false;
         } else if (command == "sensorstatus") {
-          String values[] = {"OTEMP=true", "ITEMP=true", ("ACCEL="+String(accelConnected)), ("MAG="+String(magConnected)), ("TSL1="+String(tsl1Connected)), ("TSL2="+String(tsl2Connected)), ("RADIO="+String(radioConnected))};
+          String values[] = {"OTEMP=1", "ITEMP=1", ("ACCEL="+String(accelConnected)), ("MAG="+String(magConnected)), ("TSL1="+String(tsl1Connected)), ("TSL2="+String(tsl2Connected)), ("RADIO="+String(radioConnected))};
           sendCommand("SENSORSTATUS", values,sizeof(values));
         } else if (command == "sensorupdate") {
           if (tsl1Connected) { //is the light sensor connected?
@@ -358,6 +368,10 @@ void loop()
                 Serial.print("Z: "); Serial.print(magevent.magnetic.z); Serial.print("  ");Serial.println("uT");
                 Serial.print("Heading: "); Serial.println(heading);
               }
+            }
+            if (true) {
+              String values[] = {"OTEMP=60", "ITEMP=75"};
+              sendCommand("TEMPDATA",values,sizeof(values));
             }
           }
         

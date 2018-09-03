@@ -61,9 +61,6 @@ Runtime Code (2 steps):
 /**********************************
 --I1-- MODULE INITIALIZATION --I1--
 **********************************/
-setTimeout( () => {
-	console.log(JSON.stringify(require('electron')));
-},5000);
 var fs = require('fs');
 var utils = require('./drivers/utils.js'); //include the utils file
 
@@ -113,8 +110,9 @@ var runtimeInformation = {
 	heartbeatMS: "?",
 	nodeConnected: true,
 	pythonConnected: false,
-	arduinoConnected: false //set here and not in settings.json so it is not overridden
-
+	arduinoConnected: false, //set here and not in settings.json so it is not overridden
+	arduinoSensorData: {},
+	arduinoSensorStatus: {}
 }; //holds information like version
 var soundcloudSettings = {
 	clientID: "?",
@@ -208,26 +206,27 @@ process.argv.forEach(function (val, index, array) {
 		}
 	}
 });
+
+/*************************************
+--I4-- ARDUINO COMMAND HANDLING --I4--
+*************************************/
+
+var arduinoUtils = require('./drivers/arduino.js'); //require the driver
+arduinoUtils.init(runtimeSettings); //setup arduino object and libs
+
 console.log("Serial device from start script: "+serialDevice);
-var SerialPort = require('serialport');
+
 if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
 	console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
-	var arduino = { //make a fake arduino class so that server doesnt fail on write
-		write: function(t) {
-			console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
-		}
-	}
+	arduinoUtils.setArduinoFakeClass();
 } else {
-	var arduino = new SerialPort(serialDevice, {
-		baudRate: runtimeSettings.arduinoBaudRate,
-		autoOpen: false
-	});
+	
 	arduino.open(function (err) { //and open the port
 		if (err) { //arduino was connected in previous server iteration and was disconnected?
-			console.error("Error opening serial port to arduino at "+serialDevice+".");
+			console.error("Error opening serial port to arduino at "+serialDevice+" (err="+err+")");
 			runtimeInformation.arduinoConnected = false;
 			console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
-			var arduino = { //make a fake arduino class so that server doesn't fail on write
+			arduino = { //make a fake arduino class so that server doesn't fail on write
 				write: function(t) {
 					console.warn("[WARNING] Arduino.write method called with no arduino connected, data is literally going nowhere");
 				}
@@ -242,73 +241,8 @@ if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoCo
 	})
 }
 
-/*************************************
---I4-- ARDUINO COMMAND HANDLING --I4--
-*************************************/
-
-var arduinoCommandSplitChar = ";";
-var arduinoCommandValueChar = "|";
-
-var arduinoCommandBuffer = ""; //need buffer because might not recieve whole command in one recieve
-function handleArduinoData(data) {
-	var command = arduinoCommandBuffer;
-	var sdata = String(data).split("");
-	for (var i=0; i<sdata.length; i++) {
-		if (sdata[i] == arduinoCommandSplitChar) {
-			var split = arduinoCommandBuffer.split(arduinoCommandValueChar);
-			if (split.length == 1) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", no value in command")
-				arduinoCommandRecognized(arduinoCommandBuffer,null);
-			} else if (split.length == 2) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", single value found")
-				arduinoCommandRecognized(split[0],split[1]);
-			} else if (split.length > 2) {
-				console.log("ARDUINO buf "+arduinoCommandBuffer+", multiple values found")
-				var values = [];
-				for (var i=1; i<split.length; i++) {
-					values.push(split[i]);
-				}
-				arduinoCommandRecognized(split[0],values);
-			}
-			arduinoCommandBuffer = "";
-		} else {
-			arduinoCommandBuffer+=sdata[i];
-		}
-	}
-}
-function arduinoCommandRecognized(command,value) {
-	switch(command) {
-		case "AOK": //arduino tells server that it is ok
-			arduino.write("SOK"); //tell arduino that server is ready
-			break;
-		case "CONN": //arduino tells server that it is connected
-			console.log("Arduino is connected :)");
-			break;
-		case "INFO": //arduino requested server information
-			console.log("Arduino has requested information, sending");
-			sendArduinoCommand("uptime",runtimeInformation.uptime);
-			sendArduinoCommand("status",runtimeInformation.status);
-			sendArduinoCommand("users",runtimeInformation.users);
-			break;
-		case "OTEMP": //arduino reports outside temperature
-			console.log("Outside arduino temp report "+value);
-			runtimeInformation.outsideTemp = Number(value);
-			break;
-		case "ITEMP": //arduino reports inside temperature
-			console.log("Inside arduino temp report "+value);
-			runtimeInformation.insideTemp = Number(value);
-			break;
-		case "CARCOMM": //yee it's a car command! work on this later ;)
-			break;
-		default:
-			console.error("Command "+command+" not recognized as valid arduino command");
-			break;
-	}
-	console.log("Complete command recognized: "+command+", value(s): "+JSON.stringify(value));
-}
-function sendArduinoCommand(command,value) {
-	arduino.write(command+arduinoCommandValueChar+value+arduinoCommandSplitChar);
-}
+arduinoUtils.init(arduino);
+arduinoUtils.setArduinoConnectedStatus(runtimeInformation.arduinoConnected);
 
 /******************************
 --I5-- DATA FILE PARSERS --I5--
