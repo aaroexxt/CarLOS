@@ -10,7 +10,7 @@
 const serialPort = require('serialport'); //require serialport driver
 
 var arduinoUtilities = {
-    debugMode: false,
+    debugMode: true,
     arduinoCommandSplitChar: ";",
     arduinoCommandValueChar: "|",
 
@@ -21,8 +21,9 @@ var arduinoUtilities = {
     extInformation: {},
 
     sensorOverloaded: false,
+    sensorUpdateListener: undefined,
 
-    init: function(eRuntimeSettings, eRuntimeInformation) {
+    init: function(eRuntimeSettings, eRuntimeInformation, arduinoAddr) {
         return new Promise((resolve, reject) => {
             if (typeof eRuntimeSettings == "undefined") {
                 return reject("[ARDUINO] runtimeSettings undefined on init");
@@ -34,30 +35,42 @@ var arduinoUtilities = {
             } else {
                 arduinoUtilities.extInformation = eRuntimeInformation;
             }
-            resolve(); //if it wasn't rejected then it's ok
+            if (typeof arduinoAddr == "undefined") {
+                console.warn("[ARDUINO] library init called without address specified, must be initialized seperately");
+            } else {
+                arduinoUtilities.connectArduino(arduinoAddr, eRuntimeSettings, eRuntimeInformation).catch( err => {
+                    return reject("[ARDUINO] connection failed with err message: "+err);
+                });
+            }
+            return resolve(); //if it wasn't rejected then it's ok
         });
     },
 
-    connectArduino: function(arduinoAddr) { //start new arduino connection with
+    connectArduino: function(arduinoAddr, extSettings, extInformation) { //start new arduino connection with
         return new Promise((resolve, reject) => {
+            if (typeof extSettings == "undefined" || typeof extInformation == "undefined") {
+                return reject("ExtSettings or ExtInformation undefined on arduino ConnectArduino")
+            }
             try {
-                arduinoUtilities.arduinoObject.close(); //close previous connection
+                arduinoUtilities.arduinoObject.close(); //attempt to close previous connection
             } catch(e){}
             arduinoUtilities.arduinoObject = new serialPort(arduinoAddr, {
-                baudRate: arduinoUtilities.extSettings.arduinoBaudRate,
+                baudRate: extSettings.arduinoBaudRate,
                 autoOpen: false //don't open it yet
             });
             arduinoUtilities.arduinoObject.open(function (err) { //and open the port
                 if (err) { //arduino was connected in previous server iteration and was disconnected?
-                    arduinoUtilities.extInformation.arduinoConnected = false;
+                    extInformation.arduinoConnected = false;
                     console.warn("[WARNING] Server running without valid arduino. Errors may occur. Once you have reconnected an arduino, you have to relaunch the start script (unless it is on the same port).");
                     arduinoUtilities.setArduinoFakeClass();
                     reject("Error opening serial port to arduino at "+arduinoAddr+" (err="+err+")");
                 } else {
                     console.log("Arduino connected successfully");
-                    arduinoUtilities.extInformation.arduinoConnected = true;
+                    extInformation.arduinoConnected = true;
                     arduinoUtilities.arduinoObject.on('readable', function(data) {
-                        arduinoUtilities.handleArduinoData(arduinoUtilities.arduinoObject.read());
+                        arduinoUtilities.handleArduinoData(arduinoUtilities.arduinoObject.read(), extSettings, extInformation).catch(e => {
+                            console.error("[ARDUINO] HandleArduinoData failed with message: "+e);
+                        }); //pass reference
                     });
                     resolve();
                 }
@@ -65,39 +78,56 @@ var arduinoUtilities = {
         });
     },
 
-    handleArduinoData: function(data) {
-        var sdata = String(data).split("");
-        for (var i=0; i<sdata.length; i++) {
-            if (sdata[i] == arduinoUtilities.arduinoCommandSplitChar) {
-                var split = arduinoUtilities.arduinoCommandBuffer.split(arduinoUtilities.arduinoCommandValueChar);
-                if (split.length == 1) {
-                    if (arduinoUtilities.debugMode) {
-                        console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", no value in command");
+    handleArduinoData: function(data, extSettings, extInformation) {
+        return new Promise( (resolve, reject) => {
+            var sdata = String(data).split("");
+            for (var i=0; i<sdata.length; i++) {
+                if (sdata[i] == arduinoUtilities.arduinoCommandSplitChar) {
+                    var split = arduinoUtilities.arduinoCommandBuffer.split(arduinoUtilities.arduinoCommandValueChar);
+                    if (split.length == 1) {
+                        if (arduinoUtilities.debugMode) {
+                            console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", no value in command");
+                        }
+                        try {
+                            arduinoUtilities.processFullCommand(arduinoUtilities.arduinoCommandBuffer,null, extSettings, extInformation);
+                            resolve();
+                        } catch(e) {
+                            reject("Arduino handle of data failed with error message '"+e+"'");
+                        }
+                    } else if (split.length == 2) {
+                        if (arduinoUtilities.debugMode) {
+                            console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", single value found");
+                        }
+                        try {
+                            arduinoUtilities.processFullCommand(split[0],split[1], extSettings, extInformation);
+                            resolve();
+                        } catch(e) {
+                            reject("Arduino handle of data failed with error message '"+e+"'");
+                        }
+                    } else if (split.length > 2) {
+                        if (arduinoUtilities.debugMode) {
+                            console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", multiple values found");
+                        }
+                        var values = [];
+                        for (var i=1; i<split.length; i++) {
+                            values.push(split[i]);
+                        }
+                        try {
+                            arduinoUtilities.processFullCommand(split[0],values, extSettings, extInformation);
+                            resolve();
+                        } catch(e) {
+                            reject("Arduino handle of data failed with error message '"+e+"'");
+                        }
                     }
-                    arduinoUtilities.processFullCommand(arduinoUtilities.arduinoCommandBuffer,null);
-                } else if (split.length == 2) {
-                    if (arduinoUtilities.debugMode) {
-                        console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", single value found");
-                    }
-                    arduinoUtilities.processFullCommand(split[0],split[1]);
-                } else if (split.length > 2) {
-                    if (arduinoUtilities.debugMode) {
-                        console.log("ARDUINO buf "+arduinoUtilities.arduinoCommandBuffer+", multiple values found");
-                    }
-                    var values = [];
-                    for (var i=1; i<split.length; i++) {
-                        values.push(split[i]);
-                    }
-                    arduinoUtilities.processFullCommand(split[0],values);
+                    arduinoUtilities.arduinoCommandBuffer = "";
+                } else {
+                    arduinoUtilities.arduinoCommandBuffer+=sdata[i]; //if it's not recognized, just add it to the buffer
                 }
-                arduinoUtilities.arduinoCommandBuffer = "";
-            } else {
-                arduinoUtilities.arduinoCommandBuffer+=sdata[i]; //if it's not recognized, just add it to the buffer
             }
-        }
+        });
     },
 
-    processFullCommand: function(command,value) {
+    processFullCommand: function(command, value, extSettings, extInformation) {
         switch(command) {
             //CONNECTION COMMANDS
             case "AOK": //arduino tells server that it is ok
@@ -120,9 +150,9 @@ var arduinoUtilities = {
                 }
                 var sensorStatus = arduinoUtilities.processCommandValues(value);
                 if (typeof sensorStatus == "undefined" || Object.keys(sensorStatus).length == 0) {
-                    console.warn("Arduino sent undefined sensorstatus");
+                    console.warn("Arduino sent undefined sensorStatus");
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorStatus = sensorStatus;
+                    extInformation.arduinoSensorStatus = sensorStatus;
                 }
                 break;
             case "TSL1DATA": //temp 1 data
@@ -130,11 +160,11 @@ var arduinoUtilities = {
                     console.log("TSL1 Data: "+value);
                 }
                 var lightValue = arduinoUtilities.processCommandValues(value);
-                if (typeof lightValue.LIGHT == "undefined") {
+                if (typeof lightValue == "undefined") {
                     console.warn("Arduino sent light value that is undefined");
-                    arduinoUtilities.extInformation.arduinoSensorData.tsl1Lux = "?";
+                    extInformation.arduinoSensorData.tsl1Lux = "?";
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorData.tsl1Lux = Number(lightValue.LIGHT);
+                    extInformation.arduinoSensorData.tsl1Lux = Number(lightValue.LIGHT);
                 }
                 break;
             case "TSL1OVERLOAD":
@@ -150,9 +180,9 @@ var arduinoUtilities = {
                 var lightValue = arduinoUtilities.processCommandValues(value);
                 if (typeof lightValue.LIGHT == "undefined") {
                     console.warn("Arduino sent light value that is undefined");
-                    arduinoUtilities.extInformation.arduinoSensorData.tsl2Lux = "?";
+                    extInformation.arduinoSensorData.tsl2Lux = "?";
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorData.tsl2Lux = Number(lightValue.LIGHT);
+                    extInformation.arduinoSensorData.tsl2Lux = Number(lightValue.LIGHT);
                 }
                 break;
             case "TSL2OVERLOAD":
@@ -168,9 +198,9 @@ var arduinoUtilities = {
                 var accelValue = arduinoUtilities.processCommandValues(value);
                 if (typeof accelValue.X == "undefined" || typeof accelValue.Y == "undefined" || typeof accelValue.Z == "undefined") {
                     console.warn("Arduino send accel value that is undefined");
-                    arduinoUtilities.extInformation.arduinoSensorData.accelValues = {X: "?",Y: "?", Z: "?"};
+                    extInformation.arduinoSensorData.accelValues = {X: "?",Y: "?", Z: "?"};
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorData.accelValues = {X: Number(accelValue.X), Y: Number(accelValue.Y), Z: Number(accelValue.Z)};
+                    extInformation.arduinoSensorData.accelValues = {X: Number(accelValue.X), Y: Number(accelValue.Y), Z: Number(accelValue.Z)};
                 }
                 break;
             case "MAGDATA":
@@ -180,11 +210,11 @@ var arduinoUtilities = {
                 var magValue = arduinoUtilities.processCommandValues(value);
                 if (typeof magValue.X == "undefined" || typeof magValue.Y == "undefined" || typeof magValue.Z == "undefined" || typeof magValue.HEADING == "undefined") {
                     console.warn("Arduino send mag value that is undefined");
-                    arduinoUtilities.extInformation.arduinoSensorData.magValues = {X: "?",Y: "?",Z: "?"};
-                    arduinoUtilities.extInformation.arduinoSensorData.magHeading = "?";
+                    extInformation.arduinoSensorData.magValues = {X: "?",Y: "?",Z: "?"};
+                    extInformation.arduinoSensorData.magHeading = "?";
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorData.magValues = {X: Number(magValue.X), Y: Number(magValue.Y), Z: Number(magValue.Z)};
-                    arduinoUtilities.extInformation.arduinoSensorData.magHeading = Number(magValue.HEADING);
+                    extInformation.arduinoSensorData.magValues = {X: Number(magValue.X), Y: Number(magValue.Y), Z: Number(magValue.Z)};
+                    extInformation.arduinoSensorData.magHeading = Number(magValue.HEADING);
                 }
                 break;
             case "TEMPDATA":
@@ -194,11 +224,11 @@ var arduinoUtilities = {
                 var tempValue = arduinoUtilities.processCommandValues(value);
                 if (typeof tempValue.OTEMP == "undefined" || typeof tempValue.ITEMP == "undefined") {
                     console.warn("Arduino sent temperature value (inside or outside) that is undefined");
-                    arduinoUtilities.extInformation.arduinoSensorData.outsideTemp = "?";
-                    arduinoUtilities.extInformation.arduinoSensorData.insideTemp = "?";
+                    extInformation.arduinoSensorData.outsideTemp = "?";
+                    extInformation.arduinoSensorData.insideTemp = "?";
                 } else {
-                    arduinoUtilities.extInformation.arduinoSensorData.outsideTemp = Number(tempValue.OTEMP);
-                    arduinoUtilities.extInformation.arduinoSensorData.insideTemp = Number(tempValue.ITEMP);
+                    extInformation.arduinoSensorData.outsideTemp = Number(tempValue.OTEMP);
+                    extInformation.arduinoSensorData.insideTemp = Number(tempValue.ITEMP);
                 }
                 break;
             case "GPSDATA":
@@ -212,6 +242,8 @@ var arduinoUtilities = {
                 break;
             case "CARCOMM": //yee it's a car command! work on this later ;)
                 break;
+            case "UNC":
+                console.warn("[ARDUINO] Command "+value+" was not understood by arduino")
             default:
                 console.error("Command "+command+" not recognized as valid arduino command");
                 break;
@@ -230,7 +262,7 @@ var arduinoUtilities = {
                 polished[furtherSplit[0]] = null; //set to whatever it is equal to
             } else if (furtherSplit.length == 2) {
                 polished[furtherSplit[0]] = furtherSplit[1]; //set value to what's it's equal to
-            } else { //more than 1 equal sign? idk this should never happen but let's be safe
+            } else { //more than 1 equal sign? idk this should never happen but let's write a case for it to be safe
                 var argsList = [];
                 for (var j=1; j<furtherSplit.length-1; j++) {
                     argsList.push(furtherSplit[j]);
@@ -238,9 +270,13 @@ var arduinoUtilities = {
                 polished[furtherSplit[0]] = argsList;
             }
         }
+        return polished;
     },
 
     sendCommand: function(command,value) {
+        if (typeof arduinoUtilities.arduinoObject == "undefined") {
+            arduinoUtilities.setArduinoFakeClass(); //if it's undefined set the fake class
+        }
         if (typeof value == "undefined") {
             arduinoUtilities.arduinoObject.write(command+arduinoUtilities.arduinoCommandSplitChar);
         } else {
@@ -259,7 +295,37 @@ var arduinoUtilities = {
         }
     },
 
-    setSensorOverloadedListener: function(){}
+    enableSensorUpdates: function() {
+        arduinoUtilities.disableSensorUpdates(); //try to clear first
+
+        arduinoUtilities.sensorUpdateListener = setInterval( () => {
+            arduinoUtilities.sendCommand("SENSORSTATUS"); //send status and update requests
+            arduinoUtilities.sendCommand("SENSORUPDATE");
+        },arduinoUtilities.extSettings.arduinoSensorUpdateInterval);
+
+        arduinoUtilities.setSensorOverloadedListener(); //set overloaded listener
+    },
+
+    disableSensorUpdates: function() {
+        try { //try to clear intervals
+            clearInterval(arduinoUtilities.sensorUpdateListener);
+        } catch(e) {}
+        try {
+            clearInterval(arduinoUtilities.sensorOverloadListener);
+        } catch(e) {}
+    },
+
+    setSensorOverloadedListener: function(){
+        arduinoUtilities.sensorOverloadListener = setInterval( () => {
+            if (arduinoUtilities.sensorOverloaded) {
+                console.warn("[ARDUINO] Sensor overload detected, waiting "+String(arduinoUtilities.extSettings.arduinoSensorOverloadedTimeout)+"ms to restart listener");
+                arduinoUtilities.disableSensorUpdates();
+                setTimeout( () => {
+                    arduinoUtilities.enableSensorUpdates(); //reenable sensor updates
+                }, arduinoUtilities.extSettings.arduinoSensorOverloadedTimeout);
+            }
+        },arduinoUtilities.extSettings.arduinoSensorOverloadedInterval);
+    }
 }
 
 exports.utilities = arduinoUtilities;

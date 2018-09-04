@@ -35,6 +35,8 @@ username cache
 
 load balancing
 
+arduino sensor overloading & gps handling
+
 better favicon (the a is lame)
 
 GPS+MAGNETOMETER EXT from arduino
@@ -45,9 +47,13 @@ spam filtering which blocks clients sending > 1 request per 0.1 seconds
 
 linux-like loading (LSB loading... etc (aesthetic))
 
-search tracks
+search tracks sc
+
+BIG CHANGE: remove socket.io and only use get/post requests
 
 sc user which has only goodtracks
+apple music
+bluetooth
 
 MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions

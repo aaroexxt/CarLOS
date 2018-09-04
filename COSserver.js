@@ -214,13 +214,17 @@ process.argv.forEach(function (val, index, array) {
 var arduinoUtils = require('./drivers/arduino.js').utilities; //require the driver
 console.log("Serial device from start script: "+serialDevice);
 arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
-	console.log(colors.green("Arduino driver initialized successfully"));
+	console.log(colors.green("Arduino driver initialized successfully (1/3)"));
 	if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
 		console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
 		arduinoUtils.setArduinoFakeClass();
 	} else {
-		arduinoUtils.connectArduino(serialDevice).then( () => {
-			console.info("ARDU INIT OK");
+		arduinoUtils.connectArduino(serialDevice, runtimeSettings, runtimeInformation).then( () => {
+			console.log(colors.green("Arduino connected successfully (2/3)"));
+			arduinoUtils.enableSensorUpdates(runtimeSettings, runtimeInformation).then( () => {
+				console.log(colors.green("Arduino sensor updates enabled (3/3)"));
+				console.info("ARDU INIT OK");
+			});
 		}).catch( err => {
 			console.error("Failed to connect to arduino for the following reason: '"+err+"'");
 		});
