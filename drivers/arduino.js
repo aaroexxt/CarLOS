@@ -236,9 +236,21 @@ var arduinoUtilities = {
                     console.log("GPS Data: "+value);
                 }
                 var gpsValue = arduinoUtilities.processCommandValues(value);
-                for (var i=0; i<10; i++) {console.log("GPS DOES NOT WORK YET, FINISH THIS!!!");}
-                /*if (typeof gpsValue.FIX)
-                arduinoUtilities.extInformation.arduinoSensorData.*/
+                if (typeof gpsValue.FIX == "undefined" || typeof gpsValue.FIXQUAL == "undefined") {
+                    console.warn("Arduino sent GPS value that is malformed (no fix or fix quality)");
+                    extInformation.arduinoSensorData.gps = {"FIX": "?", "FIXQUAL": "?", "LAT": "?", "LNG": "?", "SPEED": "?", "ANGLE": "?", "ALTITUDE": "?", "SAT": "?"}
+                } else {
+                    extInformation.arduinoSensorData.gps = {
+                        "FIX": gpsValue.FIX,
+                        "FIXQUAL": gpsValue.FIXQUAL,
+                        "LAT": ((typeof gpsValue.LAT == "undefined") ? "?" : gpsValue.LAT), //determine type and set if it was recieved
+                        "LNG": ((typeof gpsValue.LNG == "undefined") ? "?" : gpsValue.LNG),
+                        "SPEED": ((typeof gpsValue.SPEED == "undefined") ? "?" : gpsValue.SPEED),
+                        "ANGLE": ((typeof gpsValue.ANGLE == "undefined") ? "?" : gpsValue.ANGLE),
+                        "ALTITUDE": ((typeof gpsValue.ALTITUDE == "undefined") ? "?" : gpsValue.ALTITUDE),
+                        "SAT": ((typeof gpsValue.SAT == "undefined") ? "?" : gpsValue.SAT)
+                    }
+                }
                 break;
             case "CARCOMM": //yee it's a car command! work on this later ;)
                 break;

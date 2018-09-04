@@ -1,3 +1,10 @@
+/*
+* CarOS_V2.ino by Aaron Becker
+* Arduino sensor reading for CarOS
+*
+* Dedicated to Marc Perkel
+*/
+
 #include "Wire.h"
 #include <Adafruit_Sensor.h>
 #include <Adafruit_LSM303_U.h> //mag and accel
