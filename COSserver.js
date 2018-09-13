@@ -38,12 +38,12 @@ This descriptor describes the layout of the code in this file.
 Initialization (12 steps):
 1) Module Initialization: initalizes modules that are required later on
 2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
-3) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
-4) Arduino Command Handling: defines handling of arduino commands
-5) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
-6) Neural Network Setup: sets up and trains neural network for processing of speech commands
-7) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
-8) Console Colors: overrides prototypes for console to provide colors in console
+3) Console Colors: overrides prototypes for console to provide colors in console
+4) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
+5) Arduino Command Handling: defines handling of arduino commands
+6) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
+7) Neural Network Setup: sets up and trains neural network for processing of speech commands
+8) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
 9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
 10) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
 11) OpenCV Init Code: Initializes and trains OpenCV model for facial recognition
@@ -86,17 +86,19 @@ watchdog.start(60000); //will watch process
 
 //CONFIGURING TOOBUSY
 var toobusy = require('toobusy-js');
-var tooBusyLatestLag;
+var tooBusyLatestLag = 0;
 toobusy.onLag(function(currentLag) {
 	currentLag = Math.round(currentLag);
-	console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
+	if (!PRODUCTIONMODE) {
+		console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
+	}
 	tooBusyLatestLag = currentLag;
 });
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
 **********************************/
-
+var PRODUCTIONMODE = false;
 var runtimeSettings = {
 	faces: "",
 	passes: "",
@@ -157,11 +159,128 @@ for (var i=0; i<keys.length; i++) {
 	soundcloudSettings[keys[i]] = settingsData.soundcloudSettings[keys[i]];
 }
 
+PRODUCTIONMODE = settingsData.PRODUCTION; //production mode?
+runtimeSettings.productionMessage = settingsData.productionMessage;
+
 //console.clear();
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
+/***************************
+--I3-- CONSOLE COLORS --I3--
+****************************/
+
+var colors = require('colors');
+
+const originalWarn = console.warn;
+const originalErr = console.error;
+const originalInfo = console.info;
+const originalLog = console.log;
+
+if (PRODUCTIONMODE) {
+	if (runtimeSettings.productionMessage && runtimeSettings.productionMessage[0] && runtimeSettings.productionMessage[1]) {
+		originalLog(colors.bold.underline.magenta(runtimeSettings.productionMessage[0]))
+		for (var i=1; i<runtimeSettings.productionMessage.length; i++) {
+			originalLog(runtimeSettings.productionMessage[i]);
+		}
+	} else {
+		originalErr(colors.red("No runtimeMessage provided in json config when it is required"));
+	}
+	originalLog(colors.blue("PRODUCTION_MODE is enabled, will only show important information"));
+	runtimeSettings.logLevel = 1; //set to errors only
+	singleLineLog.clear();
+	setInterval( () => {
+		var statusStr = "-- Status: "+colors.green(runtimeInformation.status)+" ~~ Uptime: "+colors.green(runtimeInformation.uptime)+" ~~ Users: "+colors.green(runtimeInformation.users)+" ~~ Lag: ";
+		if (tooBusyLatestLag < 50) {
+			statusStr += colors.green(tooBusyLatestLag);
+		} else if (tooBusyLatestLag < 100) {
+			statusStr += colors.yellow(tooBusyLatestLag);
+		} else if (tooBusyLatestLag < 500) {
+			statusStr += colors.magenta(tooBusyLatestLag);
+		} else if (tooBusyLatestLag < 1000) {
+			statusStr += colors.red(tooBusyLatestLag);
+		} else {
+			statusStr += colors.red.underline(tooBusyLatestLag);
+		}
+		statusStr += " --";
+		singleLineLog(statusStr);
+	},1000);
+}
+
+if (runtimeSettings.logLevel < 4) {
+	originalLog(colors.cyan("Overriding console.log because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.log = function(){};
+}
+
+if (runtimeSettings.logLevel >= 3) {
+	console.info = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalInfo(colors.blue.underline(firstArg),restArgs);
+		} else {
+			originalInfo(colors.blue.underline(arguments[0]));
+		}
+	}
+} else {
+	originalLog(colors.cyan("Overriding console.info because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.info = function(){};
+}
+
+if (runtimeSettings.logLevel >= 2) {
+	console.warn = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalWarn(colors.yellow.underline(firstArg),restArgs);
+		} else {
+			originalWarn(colors.yellow.underline(arguments[0]));
+		}
+	}
+} else {
+	originalLog(colors.cyan("Overriding console.warn because logLevel="+runtimeSettings.logLevel+" is too low"));
+	console.warn = function(){}; //redir to empty function
+}
+
+if (runtimeSettings.logLevel >= 1) {
+	console.error = function(){
+		if (arguments.length > 1) {
+			var firstArg = arguments[0];
+			var restArgs = [];
+			for (var i=1; i<arguments.length; i++) {
+				restArgs.push(arguments[i]);
+			}
+			originalErr(colors.red.underline(firstArg),restArgs);
+		} else {
+			originalErr(colors.red.underline(arguments[0]));
+		}
+	}
+} else {
+	originalLog(colors.cyan("Overriding console.error because logLevel="+runtimeSettings.logLevel+" is too low"));
+	originalWarn(colors.yellow.underline("[WARNING] No logging enabled, will not show any more messages. You might want to disable this to logLevel=1 because you won't see any errors"));
+	console.error = function(){}; //redir to empty function
+}
+
+console.importantInfo = function(){
+	if (arguments.length > 1) {
+		var firstArg = arguments[0];
+		var restArgs = [];
+		for (var i=1; i<arguments.length; i++) {
+			restArgs.push(arguments[i]);
+		}
+		originalInfo("\n"+colors.cyan.bold.underline(firstArg),restArgs);
+	} else {
+		originalInfo("\n"+colors.cyan.bold.underline(arguments[0]));
+	}
+}
+
 /********************************
---I3-- SERIAL DEVICE LOGIC --I3--
+--I4-- SERIAL DEVICE LOGIC --I4--
 ********************************/
 
 var serialDevice = "none";
@@ -208,7 +327,7 @@ process.argv.forEach(function (val, index, array) {
 });
 
 /*************************************
---I4-- ARDUINO COMMAND HANDLING --I4--
+--I5-- ARDUINO COMMAND HANDLING --I5--
 *************************************/
 
 var arduinoUtils = require('./drivers/arduino.js').utilities; //require the driver
@@ -217,13 +336,14 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 	console.log(colors.green("Arduino driver initialized successfully (1/3)"));
 	if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
 		console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
+		console.importantInfo("ARDU INIT ERR: NO ARDU CONNECTED")
 		arduinoUtils.setArduinoFakeClass();
 	} else {
 		arduinoUtils.connectArduino(serialDevice, runtimeSettings, runtimeInformation).then( () => {
 			console.log(colors.green("Arduino connected successfully (2/3)"));
 			arduinoUtils.enableSensorUpdates(runtimeSettings, runtimeInformation).then( () => {
 				console.log(colors.green("Arduino sensor updates enabled (3/3)"));
-				console.info("ARDU INIT OK");
+				console.importantInfo("ARDU INIT OK");
 			});
 		}).catch( err => {
 			console.error("Failed to connect to arduino for the following reason: '"+err+"'");
@@ -234,7 +354,7 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 }) //setup arduino object and libs
 
 /******************************
---I5-- DATA FILE PARSERS --I5--
+--I6-- DATA FILE PARSERS --I6--
 ******************************/
 
 fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function(err,data){
@@ -322,7 +442,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(
 });
 
 /*********************************
---I6-- NEURAL NETWORK SETUP --I6--
+--I7-- NEURAL NETWORK SETUP --I7--
 *********************************/
 
 var speechParser = require('./drivers/speechParser.js'); //include speech parsing file
@@ -334,7 +454,7 @@ var speechNetTargetError = 0.005;//0.00001; //<- for release
 var speechNetReady = false;
 
 /*******************************
---I7-- READING FROM STDIN --I7--
+--I8-- READING FROM STDIN --I8--
 *******************************/
 
 var stdinput = process.openStdin();
@@ -352,81 +472,10 @@ stdinputListener.addPersistentListener("*",function(d) {
 		if (sendArduinoMode) {
 			arduinoUtils.sendCommand(uI);
 		} else {
-			console.log("Command not recognized")
+			console.log("Command not recognized");
 		}
 	}
 });
-
-/***************************
---I8-- CONSOLE COLORS --I8--
-****************************/
-
-var colors = require('colors');
-
-const originalWarn = console.warn;
-const originalErr = console.error;
-const originalInfo = console.info;
-const originalLog = console.log;
-
-if (runtimeSettings.logLevel < 4) {
-	originalLog(colors.cyan("Overriding console.log because logLevel="+runtimeSettings.logLevel+" is too low"));
-	console.log = function(){};
-}
-
-if (runtimeSettings.logLevel >= 3) {
-	console.info = function(){
-		if (arguments.length > 1) {
-			var firstArg = arguments[0];
-			var restArgs = [];
-			for (var i=1; i<arguments.length; i++) {
-				restArgs.push(arguments[i]);
-			}
-			originalInfo(colors.blue.underline(firstArg),restArgs);
-		} else {
-			originalInfo(colors.blue.underline(arguments[0]));
-		}
-	}
-} else {
-	originalLog(colors.cyan("Overriding console.info because logLevel="+runtimeSettings.logLevel+" is too low"));
-	console.info = function(){};
-}
-
-if (runtimeSettings.logLevel >= 2) {
-	console.warn = function(){
-		if (arguments.length > 1) {
-			var firstArg = arguments[0];
-			var restArgs = [];
-			for (var i=1; i<arguments.length; i++) {
-				restArgs.push(arguments[i]);
-			}
-			originalWarn(colors.yellow.underline(firstArg),restArgs);
-		} else {
-			originalWarn(colors.yellow.underline(arguments[0]));
-		}
-	}
-} else {
-	originalLog(colors.cyan("Overriding console.warn because logLevel="+runtimeSettings.logLevel+" is too low"));
-	console.warn = function(){}; //redir to empty function
-}
-
-if (runtimeSettings.logLevel >= 1) {
-	console.error = function(){
-		if (arguments.length > 1) {
-			var firstArg = arguments[0];
-			var restArgs = [];
-			for (var i=1; i<arguments.length; i++) {
-				restArgs.push(arguments[i]);
-			}
-			originalErr(colors.red.underline(firstArg),restArgs);
-		} else {
-			originalErr(colors.red.underline(arguments[0]));
-		}
-	}
-} else {
-	originalLog(colors.cyan("Overriding console.error because logLevel="+runtimeSettings.logLevel+" is too low"));
-	originalWarn(colors.yellow.underline("[WARNING] No logging enabled, will not show any more messages. You might want to disable this to logLevel=1 because you won't see any errors"));
-	console.error = function(){}; //redir to empty function
-}
 
 
 /************************************
@@ -436,7 +485,7 @@ if (runtimeSettings.logLevel >= 1) {
 process.on('SIGINT', function (code) { //on ctrl+c or exit
 	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
 	runtimeInformation.status = "Exiting";
-	sendArduinoCommand("status","Exiting");
+	arduinoUtils.sendCommand("status","Exiting");
 	sendOledCommand("status","Exiting");
 	for (var i=0; i<sockets.length; i++) {
 		sockets[i].socket.emit("pydata","q"); //quit python
@@ -453,7 +502,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.log("\nError signal recieved, graceful exiting (garbage collection)");
-		sendArduinoCommand("status","Error");
+		arduinoUtils.sendCommand("status","Error");
 		sendOledCommand("status","Error");
 		runtimeInformation.status = "Error";
 		for (var i=0; i<sockets.length; i++) {
@@ -568,7 +617,7 @@ function initSoundcloud(username) {
 
 console.info("Starting SC MASTER");
 initSoundcloud().then( () => {
-	console.info("SC INIT OK");
+	console.importantInfo("SC INIT OK");
 }).catch( err => {
 	console.error("Error initializing SC: "+err);
 });
@@ -582,7 +631,7 @@ var openCVReady = false;
 console.log("Initializing OpenCV");
 const cvUtils = require('./drivers/openCV.js').CVUtils;
 cvUtils.init(cwd, runtimeSettings).then( () => {
-	console.info("CV INIT OK");
+	console.importantInfo("CV INIT OK");
 	openCVReady = true; //set ready flag
 }).catch( err => {
 	console.error("Error initializing OpenCV: "+err);
@@ -857,7 +906,7 @@ io.on('connection', function (socket) { //on connection
 					if (data.newUser) {
 						console.info("Restarting SC MASTER with new user "+data.newUser);
 						initSoundcloud(data.newUser).then( () => {
-							console.info("SC INIT OK");
+							console.importantInfo("SC INIT OK");
 						}).catch( err => {
 							console.error("Error initializing SC: "+err);
 						});

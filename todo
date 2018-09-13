@@ -49,6 +49,8 @@ linux-like loading (LSB loading... etc (aesthetic))
 
 search tracks sc
 
+add rds/rdbs radio messages for radio through arduino
+
 BIG CHANGE: remove socket.io and only use get/post requests
 
 sc user which has only goodtracks
