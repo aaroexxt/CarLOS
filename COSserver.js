@@ -178,10 +178,11 @@ const originalLog = console.log;
 
 if (PRODUCTIONMODE) {
 	if (runtimeSettings.productionMessage && runtimeSettings.productionMessage[0] && runtimeSettings.productionMessage[1]) {
-		originalLog(colors.bold.underline.magenta(runtimeSettings.productionMessage[0]))
-		for (var i=1; i<runtimeSettings.productionMessage.length; i++) {
+		originalLog(colors.italic.bold.green(runtimeSettings.productionMessage[0]))
+		for (var i=1; i<runtimeSettings.productionMessage.length-1; i++) {
 			originalLog(runtimeSettings.productionMessage[i]);
 		}
+		originalLog(colors.italic.bold.green(runtimeSettings.productionMessage[runtimeSettings.productionMessage.length-1]));
 	} else {
 		originalErr(colors.red("No runtimeMessage provided in json config when it is required"));
 	}
@@ -203,7 +204,7 @@ if (PRODUCTIONMODE) {
 		}
 		statusStr += " --";
 		singleLineLog(statusStr);
-	},1000);
+	},500);
 }
 
 if (runtimeSettings.logLevel < 4) {
@@ -276,6 +277,18 @@ console.importantInfo = function(){
 		originalInfo("\n"+colors.cyan.bold.underline(firstArg),restArgs);
 	} else {
 		originalInfo("\n"+colors.cyan.bold.underline(arguments[0]));
+	}
+}
+console.importantLog = function(){
+	if (arguments.length > 1) {
+		var firstArg = arguments[0];
+		var restArgs = [];
+		for (var i=1; i<arguments.length; i++) {
+			restArgs.push(arguments[i]);
+		}
+		originalLog("\n"+colors.white.bold(firstArg),restArgs);
+	} else {
+		originalLog("\n"+colors.white.bold(arguments[0]));
 	}
 }
 
@@ -418,7 +431,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(
 		console.log("[SPEECHNET] Training net (won't show progress on chrome console)...");
 		neuralMatcher.algorithm.trainNetAsync(speechClassifierNet, speechNetTargetError, td,
 		function(net){
-			var percent = speechNetTargetError/net.error;
+			/*var percent = speechNetTargetError/net.error;
 			var chars = Math.round(windowSize.width*percent);
 			var str = "";
 			for (var i=0; i<chars-6; i++) {
@@ -427,10 +440,12 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(
 			str+="> ";
 			str+=String(Math.round(percent*100))
 			str+="%"
-			singleLineLog(str); //make it fancy
+			singleLineLog(str); //make it fancy*/
+			//don't need singleLineLog for neural init
 			//singleLineLog("training error: "+net.error+", iterations: "+net.iterations);
 		},
 		function(){
+			console.importantInfo("NEURAL INIT OK");
 			singleLineLog.clear();
 			console.log("\n[SPEECHNET] Done training net. Ready for input.");
 			speechNetReady = true;
@@ -464,15 +479,15 @@ stdinputListener.addPersistentListener("*",function(d) {
 	var uI = d.toString().trim();
 	console.log("you entered: [" + uI + "]");
 	if (uI == "help") {
-		console.log("Right now, sA or sendArduinoMode toggles sending raw to arduino.")
+		console.importantLog("Right now, sA or sendArduinoMode toggles sending raw to arduino.")
 	} else if (uI == "sA" || uI == "sendArduinoMode") {
 		sendArduinoMode = !sendArduinoMode;
-		console.log("Send arduino mode toggled");
+		console.importantLog("Send arduino mode toggled ("+sendArduinoMode+")");
 	} else {
 		if (sendArduinoMode) {
 			arduinoUtils.sendCommand(uI);
 		} else {
-			console.log("Command not recognized");
+			console.importantLog("Command not recognized");
 		}
 	}
 });
