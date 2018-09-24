@@ -1,5 +1,5 @@
 {
-    "PRODUCTION": true,
+    "PRODUCTION": false,
     "productionMessage": ["Welcome to\n"," ██████╗ █████╗ ██████╗      ██████╗ ███████╗    ██╗   ██╗  ██╗", "██╔════╝██╔══██╗██╔══██╗    ██╔═══██╗██╔════╝    ██║   ██║ ███║", "██║     ███████║██████╔╝    ██║   ██║███████╗    ██║   ██║ ╚██║", "██║     ██╔══██║██╔══██╗    ██║   ██║╚════██║    ╚██╗ ██╔╝  ██║", "╚██████╗██║  ██║██║  ██║    ╚██████╔╝███████║     ╚████╔╝██╗██║", " ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝     ╚═════╝ ╚══════╝      ╚═══╝ ╚═╝╚═╝","\nBy Aaron Becker\n"],
 
     "information": {
@@ -15,22 +15,35 @@
         "unscrambleKeys": ["faces","passes"],
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
+
         "faviconDirectory": "/app/assets/images/favicon.ico",
         "defaultFileDirectory": "/app",
         "defaultDataDirectory": "/data",
         "defaultClientFile": "COS.html",
         "assetsDirectory": "/app/assets",
+
         "logLevel": 4,
+        "logDirectory": "logs",
+        "maxKeptFiles": 5,
+        "maxLogFileLength": 10000000,
+
         "arduinoBaudRate": 115200,
         "arduinoSensorUpdateInterval": 1000,
         "arduinoSensorOverloadedInterval": 2000,
         "arduinoSensorOverloadedTimeout": 10000,
+
+        "disableToobusy": true,
+        "tooBusyLagThreshold": 100,
+
         "oledDisplayAddress": "0x3C",
         "oledUpdateTime": "1000",
+
         "cvTrainingImagesPath": "data/CVTrainingData",
+        "minimumCVConfidence": 40,
+
         "runningOnRPI": false,
-        "serverPort": 80,
-        "minimumCVConfidence": 40
+
+        "serverPort": 80
     },
     "soundcloudSettings": {
         "clientID": "3425f0db5f4339b4edbef6afeeb23264",

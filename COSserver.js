@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
 * COSserver.js by Aaron Becker
 * CarOS Node.JS Server
@@ -39,6 +40,7 @@ Initialization (12 steps):
 1) Module Initialization: initalizes modules that are required later on
 2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
 3) Console Colors: overrides prototypes for console to provide colors in console
+4) File Logging Setup: Initializes file logging handlers for functions that output to console
 4) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
 5) Arduino Command Handling: defines handling of arduino commands
 6) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
@@ -83,17 +85,6 @@ var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler w
 
 var watchdog = require('native-watchdog');
 watchdog.start(60000); //will watch process
-
-//CONFIGURING TOOBUSY
-var toobusy = require('toobusy-js');
-var tooBusyLatestLag = 0;
-toobusy.onLag(function(currentLag) {
-	currentLag = Math.round(currentLag);
-	if (!PRODUCTIONMODE) {
-		console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
-	}
-	tooBusyLatestLag = currentLag;
-});
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
@@ -161,6 +152,22 @@ for (var i=0; i<keys.length; i++) {
 
 PRODUCTIONMODE = settingsData.PRODUCTION; //production mode?
 runtimeSettings.productionMessage = settingsData.productionMessage;
+
+if (!runtimeSettings.disableToobusy) {
+	//CONFIGURING TOOBUSY
+	var toobusy = require('toobusy-js');
+	var tooBusyLatestLag = 0;
+	toobusy.onLag(function(currentLag) {
+		currentLag = Math.round(currentLag);
+		if (!PRODUCTIONMODE) {
+			console.log("Lag detected on event loop, declining new requests. Latency: " + currentLag + "ms");
+		}
+		tooBusyLatestLag = currentLag;
+	});
+} else {
+	console.info("TooBusyJS disabled; will not throttle server to remove high loads");
+	var tooBusyLatestLag = -1;
+}
 
 //console.clear();
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
@@ -293,7 +300,31 @@ console.importantLog = function(){
 }
 
 /********************************
---I4-- SERIAL DEVICE LOGIC --I4--
+--I4-- FILE LOGGING SETUP --I4--
+********************************/
+
+const loggingUtils = require("./drivers/logging.js");
+
+const semiOriginalLog = console.log;
+const semiOriginalWarn = console.warn;
+const semiOriginalInfo = console.info;
+const semiOriginalError = console.error;
+const semiOriginalIInfo = console.importantInfo;
+const semiOriginalILog = console.importantLog;
+
+loggingUtils.init(cwd, runtimeSettings).then( () => {
+	console.importantLog("Logging master init ok (1/4)");
+
+	console.log = function() {
+		loggingUtils.log(arguments);
+		semiOriginalLog.apply(null, arguments);
+	}
+}).catch( err => {
+	console.error("Error initializing logger: "+err);
+})
+
+/********************************
+--I5-- SERIAL DEVICE LOGIC --I5--
 ********************************/
 
 var serialDevice = "none";
@@ -340,23 +371,25 @@ process.argv.forEach(function (val, index, array) {
 });
 
 /*************************************
---I5-- ARDUINO COMMAND HANDLING --I5--
+--I6-- ARDUINO COMMAND HANDLING --I6--
 *************************************/
 
 var arduinoUtils = require('./drivers/arduino.js').utilities; //require the driver
 console.log("Serial device from start script: "+serialDevice);
 arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
-	console.log(colors.green("Arduino driver initialized successfully (1/3)"));
+	console.importantLog("Arduino driver initialized successfully (1/3)");
 	if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
 		console.warn("[WARNING] Server running without arduino. Errors may occur. Once you have connected an arduino, you have to relaunch the start script.");
 		console.importantInfo("ARDU INIT ERR: NO ARDU CONNECTED")
 		arduinoUtils.setArduinoFakeClass();
 	} else {
 		arduinoUtils.connectArduino(serialDevice, runtimeSettings, runtimeInformation).then( () => {
-			console.log(colors.green("Arduino connected successfully (2/3)"));
+			console.importantLog("Arduino connected successfully (2/3)");
 			arduinoUtils.enableSensorUpdates(runtimeSettings, runtimeInformation).then( () => {
-				console.log(colors.green("Arduino sensor updates enabled (3/3)"));
+				console.importantLog("Arduino sensor updates enabled (3/3)");
 				console.importantInfo("ARDU INIT OK");
+			}).catch( err => {
+				console.error("Ardu init error (enabling sensorupdates): "+err);
 			});
 		}).catch( err => {
 			console.error("Failed to connect to arduino for the following reason: '"+err+"'");
@@ -367,7 +400,7 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 }) //setup arduino object and libs
 
 /******************************
---I6-- DATA FILE PARSERS --I6--
+--I7-- DATA FILE PARSERS --I7--
 ******************************/
 
 fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function(err,data){
@@ -457,7 +490,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(
 });
 
 /*********************************
---I7-- NEURAL NETWORK SETUP --I7--
+--I8-- NEURAL NETWORK SETUP --I8--
 *********************************/
 
 var speechParser = require('./drivers/speechParser.js'); //include speech parsing file
@@ -469,7 +502,7 @@ var speechNetTargetError = 0.005;//0.00001; //<- for release
 var speechNetReady = false;
 
 /*******************************
---I8-- READING FROM STDIN --I8--
+--I9-- READING FROM STDIN --I9--
 *******************************/
 
 var stdinput = process.openStdin();
@@ -494,21 +527,21 @@ stdinputListener.addPersistentListener("*",function(d) {
 
 
 /************************************
---I9-- ERROR AND EXIT HANDLING --I9--
+--I10-- ERROR AND EXIT HANDLING --I10--
 ************************************/
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
-	console.log("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
+	console.importantLog("\nSIGINT signal recieved, graceful exit (garbage collection) w/code "+code);
 	runtimeInformation.status = "Exiting";
 	arduinoUtils.sendCommand("status","Exiting");
 	sendOledCommand("status","Exiting");
+	console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
 	for (var i=0; i<sockets.length; i++) {
 		sockets[i].socket.emit("pydata","q"); //quit python
 		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 		sockets[i].socket.emit("disconnect","");
 	}
 	watchdog.exit();
-	console.log("Exiting in 1500ms (waiting for sockets to send...)");
 	setTimeout(function(){
 		process.exit(); //exit completely
 	},1500); //give some time for sockets to send
@@ -516,7 +549,7 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
-		console.log("\nError signal recieved, graceful exiting (garbage collection)");
+		console.importantLog("\nError signal recieved, graceful exiting (garbage collection)");
 		arduinoUtils.sendCommand("status","Error");
 		sendOledCommand("status","Error");
 		runtimeInformation.status = "Error";
@@ -525,8 +558,8 @@ if (catchErrors) {
 			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 			sockets[i].socket.emit("disconnect","");
 		}
-		console.log("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
-		console.log("Exiting in 1500ms (waiting for sockets to send...)");
+		console.importantLog("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
+		console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
 		watchdog.exit();
 		setTimeout(function(){
 			process.exit(); //exit completely
@@ -535,7 +568,7 @@ if (catchErrors) {
 }
 
 /***********************************
---I10-- SOUNDCLOUD INIT CODE --I10--
+--I11-- SOUNDCLOUD INIT CODE --I11--
 ***********************************/
 var soundcloudUtils = require('./drivers/soundcloud.js');
 
@@ -638,8 +671,9 @@ initSoundcloud().then( () => {
 });
 
 /*******************************
---I11-- OpenCV Init Code --I11--
+--I12-- OpenCV Init Code --I12--
 *******************************/
+
 const cv = require('opencv4nodejs'); //require opencv
 var openCVReady = false;
 
@@ -654,7 +688,7 @@ cvUtils.init(cwd, runtimeSettings).then( () => {
 }); //initialize (async)
 
 /*******************************
---I12-- OLED Driver Init --I12--
+--I13-- OLED Driver Init --I13--
 *******************************/
 
 console.log("Initializing OLED");
@@ -694,7 +728,7 @@ if (runtimeSettings.runningOnRPI) {
 }
 
 /******************************
---I13-- MISC. INIT CODE --I13--
+--I14-- MISC. INIT CODE --I14--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){
@@ -737,7 +771,7 @@ app.use(serveFavicon(cwd+runtimeSettings.faviconDirectory)); //serve favicon
 app.use(express.static(cwd+runtimeSettings.assetsDirectory)); //define a static directory
 
 app.use(function(req, res, next) {
-  if (toobusy()) {
+  if (tooBusyLatestLag > runtimeSettings.tooBusyLagThreshold) {
     res.send(503, "Server is busy, cannot complete your request at this time. (Latency: "+tooBusyLatestLag+")");
     res.end();
   } else {

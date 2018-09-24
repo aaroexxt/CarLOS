@@ -344,7 +344,8 @@ echo "";
 echo "Killing previous node processes...";
 sudo killall node;
 echo "Killing previous inspector processes...";
-sudo kill $(sudo lsof -t -i:9229) || echo "No processes found";
+echo "Inspector processes:" `sudo lsof -t -i:9229`;
+sudo kill -kill $(sudo lsof -t -i:9229) || echo "No processes found"; #kill option makes sure it is ded
 echo "Starting node server with file...";
 echo "Full node path: '$nodedir'";
 cdloc="$(echo $nodedir | rev | cut -d'/' -f2- | rev)";

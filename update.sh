@@ -21,6 +21,10 @@ do
     a)
          echo "-a flag passed, will automatically delete all files found to be not matching. (won't ask)"; askIfDif="false";
          ;;
+    h)
+        echo "Help: pass -a to automatically update files without y/n for each one."; exit 0;
+        ;;
+        esac
     *)
         echo "Hmm, an invalid option was received."
         echo ""

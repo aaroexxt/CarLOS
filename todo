@@ -73,7 +73,11 @@ retry button on client side
 
 electron framework?
 
+COOL FRAMEWORKS TO IMPLEMENT:
 progressbar.js for nice loading bar when client loads and for tracks
+robot.js for control of rpi https://github.com/octalmage/robotjs
+canvas gages for realtime sensor data? https://canvas-gauges.com/documentation/examples/
+
 
 put frame data on image opencv
 
@@ -84,6 +88,7 @@ https://www.chartjs.org/docs/latest/developers/updates.html
 http://www.chartjs.org/docs/latest/getting-started/
 
 data logging
+state machine
 
 constantly scan for invalid authkeys to prevent tampering
 

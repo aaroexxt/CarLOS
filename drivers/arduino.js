@@ -308,14 +308,21 @@ var arduinoUtilities = {
     },
 
     enableSensorUpdates: function() {
-        arduinoUtilities.disableSensorUpdates(); //try to clear first
+        return new Promise( (resolve, reject) => {
+            try {
+                arduinoUtilities.disableSensorUpdates(); //try to clear first
 
-        arduinoUtilities.sensorUpdateListener = setInterval( () => {
-            arduinoUtilities.sendCommand("SENSORSTATUS"); //send status and update requests
-            arduinoUtilities.sendCommand("SENSORUPDATE");
-        },arduinoUtilities.extSettings.arduinoSensorUpdateInterval);
+                arduinoUtilities.sensorUpdateListener = setInterval( () => {
+                    arduinoUtilities.sendCommand("SENSORSTATUS"); //send status and update requests
+                    arduinoUtilities.sendCommand("SENSORUPDATE");
+                },arduinoUtilities.extSettings.arduinoSensorUpdateInterval);
 
-        arduinoUtilities.setSensorOverloadedListener(); //set overloaded listener
+                arduinoUtilities.setSensorOverloadedListener(); //set overloaded listener
+                resolve();
+            } catch(e) {
+                reject("Error: "+e);
+            }
+        });
     },
 
     disableSensorUpdates: function() {
