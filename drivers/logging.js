@@ -46,15 +46,21 @@ var loggingUtilities = {
 						} else { //it exists
 							console.log("Logging directory exists; checking if there are more logfiles than there should be...");
 							//REMOVE: Creates testing files
-							for (var i=0; i<15; i++) {
+							var count = 0;
+							var clrInterval = setInterval( () => {
 								var date = getCurrentDate();
 								var fPath = path.join(loggingUtilities.cwd,loggingUtilities.logDirectory,date);
+								console.log("Creating file: "+fPath)
 								fs.writeFile(fPath, "TEST", err => {
 									if (err) {
 										console.error("Error creating test file: "+err);
 									}
-								})
-							}
+								});
+								count++;
+								if (count > 20) {
+									clearInterval(clrInterval);
+								}
+							},1000);
 							loggingUtilities.checkValidLogFiles().then( () => {
 								return resolve();
 							}).catch( err => {
@@ -146,13 +152,12 @@ var loggingUtilities = {
 									}
 								}
 							}
-
-
 						}
 						return resolve()
 					} else {
 						return resolve();
 					}
+				}
 			});
 			return resolve();
 		})
