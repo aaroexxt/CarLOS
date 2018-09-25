@@ -319,6 +319,8 @@ loggingUtils.init(cwd, runtimeSettings).then( () => {
 		loggingUtils.log(arguments);
 		semiOriginalLog.apply(null, arguments);
 	}
+
+	console.importantInfo("LOGGING INIT OK");
 }).catch( err => {
 	console.error("Error initializing logger: "+err);
 })
