@@ -315,12 +315,44 @@ const semiOriginalILog = console.importantLog;
 loggingUtils.init(cwd, runtimeSettings).then( () => {
 	console.importantLog("Logging master init ok (1/4)");
 
-	console.log = function() {
-		loggingUtils.log(arguments);
-		semiOriginalLog.apply(null, arguments);
-	}
+	try {
+		console.log = function() {
+			loggingUtils.log(arguments,"log");
+			semiOriginalLog.apply(null, arguments);
+		}
 
-	console.importantInfo("LOGGING INIT OK");
+		console.warn = function() {
+			loggingUtils.warn(arguments,"warn");
+			semiOriginalWarn.apply(null, arguments);
+		}
+
+		console.error = function() {
+			loggingUtils.warn(arguments,"error");
+			semiOriginalWarn.apply(null, arguments);
+		}
+
+		console.importantLog = function() {
+			loggingUtils.warn(arguments,"ilog");
+			semiOriginalWarn.apply(null, arguments);
+		}
+
+		console.importantInfo = function() {
+			loggingUtils.warn(arguments,"iinfo");
+			semiOriginalWarn.apply(null, arguments);
+		}
+
+		console.importantLog("Logging commands init ok (2/4)");
+
+		loggingUtils.registerValidationInterval();
+		console.importantLog("Logging validationListener init ok (3/4)");
+
+
+
+		console.importantInfo("LOGGING INIT OK");
+	} catch(e) {
+		console.error("Logging init error: "+e);
+	}
+	
 }).catch( err => {
 	console.error("Error initializing logger: "+err);
 })

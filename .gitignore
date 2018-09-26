@@ -16,3 +16,4 @@ SCcache/*
 ehthumbs.db
 Thumbs.db
 package-lock.json
+logs/*

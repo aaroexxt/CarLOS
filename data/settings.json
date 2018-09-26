@@ -24,8 +24,10 @@
 
         "logLevel": 4,
         "logDirectory": "logs",
-        "maxKeptFiles": 5,
+        "maxKeptFiles": 10,
         "maxLogFileLength": 10000000,
+        "logValidationInterval": 60000,
+        "loggerBaseFunctions": ["log", "warn", "error", "importantLog"],
 
         "arduinoBaudRate": 115200,
         "arduinoSensorUpdateInterval": 1000,
@@ -47,14 +49,18 @@
     },
     "soundcloudSettings": {
         "clientID": "3425f0db5f4339b4edbef6afeeb23264",
+        "defaultUsername": "bexterdubs",
+        "currentUser": "bexterdubs",
+
         "soundcloudTrackCacheFile": "SCcache/soundcloudTrackCache",
         "soundcloudUserdataCacheFile": "SCcache/soundcloudUserdataCache",
         "soundcloudTrackCacheDirectory": "SCcache/tracks",
+
         "soundcloudCacheExpiryTime": 86400000,
+
         "initErrorDelay": 1000,
         "initMaxAttempts": 3,
-        "defaultUsername": "bexterdubs",
-        "currentUser": "bexterdubs",
+
         "noArtworkUrl": "/images/noAlbumArt.png",
         "defaultVolume": 25,
         "currentVolume": 50,
@@ -69,14 +75,18 @@
         "nextTrackLoop": false,
         "userID": 0,
         "firstPlay": true,
+
         "tracksFromCache": false,
+
         "likedTracks": [],
         "trackList": [],
+
         "clientUpdateTime": 500,
         "requestTimeout": 21000,
         "soundcloudReady": false,
         "playMusicOnServer": true,
         "waitingClients": [],
-        "minInteractionWaitTime": 1000
+        "minInteractionWaitTime": 1000,
+        "trackSelectedWaitMultiplier": 2
     }
 }

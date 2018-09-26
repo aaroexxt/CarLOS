@@ -43,6 +43,8 @@
     "serve-favicon": "^2.5.0",
     "single-line-log": "^1.1.2",
     "socket.io": "^1.7.2",
+    "strip-ansi": "^4.0.0",
+    "strip-color": "^0.1.0",
     "timed-stream": "^1.1.0",
     "toobusy-js": "^0.5.1",
     "window-size": "^1.1.1"

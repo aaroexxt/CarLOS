@@ -681,7 +681,7 @@ var SCSoundManager = {
                     clearTimeout(SCSoundManager.canInteractTrackTimeout);
                     SCSoundManager.canInteractTrackTimeout = setTimeout(function(){
                         SCSoundManager.canInteractTrack = true;
-                    }, SCUtils.localSoundcloudSettings.minInteractionWaitTime);
+                    }, (ev.type.indexOf("clientTrackSelected") > -1) ? SCUtils.localSoundcloudSettings.minInteractionWaitTime*SCUtils.localSoundcloudSettings.trackSelectedWaitMultiplier : SCUtils.localSoundcloudSettings.minInteractionWaitTime);
                 }
 
                 switch (ev.type) {
