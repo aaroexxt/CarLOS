@@ -53,6 +53,6 @@ var stateMachine = {
             } else {
                 return reject("[STATEMACHINE] Failed to register module with name="+moduleName+" because it is missing an initializer value");
             }
-        }
+        });
     }
 }
