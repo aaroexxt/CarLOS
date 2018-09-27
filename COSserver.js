@@ -39,9 +39,9 @@ This descriptor describes the layout of the code in this file.
 Initialization (12 steps):
 1) Module Initialization: initalizes modules that are required later on
 2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
-3) Console Colors: overrides prototypes for console to provide colors in console
-4) File Logging Setup: Initializes file logging handlers for functions that output to console
-4) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
+3) State Machine Init: Initializes state machine that keeps track of the state of each module
+4) Console Colors: overrides prototypes for console to provide colors in console
+5) File Logging Setup: Initializes file logging handlers for functions that output to console46 Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
 5) Arduino Command Handling: defines handling of arduino commands
 6) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
 7) Neural Network Setup: sets up and trains neural network for processing of speech commands
@@ -69,7 +69,7 @@ var utils = require('./drivers/utils.js'); //include the utils file
 var singleLineLog = require('single-line-log').stdout; //single line logging
 
 var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-var catchErrors = false; //enables clean error handling. Only turn off during development
+var catchErrors = true; //enables clean error handling. Only turn off during development
 var displayAuthkeyValidMessages = false;
 
 var cwd = __dirname;
@@ -173,7 +173,12 @@ if (!runtimeSettings.disableToobusy) {
 console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
 /***************************
---I3-- CONSOLE COLORS --I3--
+--I3-- STATE MACHINE INIT --I3--
+****************************/
+const stateMachine = require('./drivers/stateMachine.js');
+
+/***************************
+--I4-- CONSOLE COLORS --I4--
 ****************************/
 
 var colors = require('colors');
@@ -300,7 +305,7 @@ console.importantLog = function(){
 }
 
 /********************************
---I4-- FILE LOGGING SETUP --I4--
+--I5-- FILE LOGGING SETUP --I5--
 ********************************/
 
 const loggingUtils = require("./drivers/logging.js");
@@ -355,10 +360,10 @@ loggingUtils.init(cwd, runtimeSettings).then( () => {
 	
 }).catch( err => {
 	console.error("Error initializing logger: "+err);
-})
+});
 
 /********************************
---I5-- SERIAL DEVICE LOGIC --I5--
+--I6-- SERIAL DEVICE LOGIC --I6--
 ********************************/
 
 var serialDevice = "none";
@@ -405,7 +410,7 @@ process.argv.forEach(function (val, index, array) {
 });
 
 /*************************************
---I6-- ARDUINO COMMAND HANDLING --I6--
+--I7-- ARDUINO COMMAND HANDLING --I7--
 *************************************/
 
 var arduinoUtils = require('./drivers/arduino.js').utilities; //require the driver
@@ -434,7 +439,7 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 }) //setup arduino object and libs
 
 /******************************
---I7-- DATA FILE PARSERS --I7--
+--I8-- DATA FILE PARSERS --I8--
 ******************************/
 
 fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function(err,data){
@@ -524,7 +529,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(
 });
 
 /*********************************
---I8-- NEURAL NETWORK SETUP --I8--
+--I9-- NEURAL NETWORK SETUP --I9--
 *********************************/
 
 var speechParser = require('./drivers/speechParser.js'); //include speech parsing file
@@ -536,7 +541,7 @@ var speechNetTargetError = 0.005;//0.00001; //<- for release
 var speechNetReady = false;
 
 /*******************************
---I9-- READING FROM STDIN --I9--
+--I10-- READING FROM STDIN --I10--
 *******************************/
 
 var stdinput = process.openStdin();
@@ -561,7 +566,7 @@ stdinputListener.addPersistentListener("*",function(d) {
 
 
 /************************************
---I10-- ERROR AND EXIT HANDLING --I10--
+--I11-- ERROR AND EXIT HANDLING --I11--
 ************************************/
 
 process.on('SIGINT', function (code) { //on ctrl+c or exit
@@ -583,6 +588,8 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
+		console.importantLog("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
+		console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
 		console.importantLog("\nError signal recieved, graceful exiting (garbage collection)");
 		arduinoUtils.sendCommand("status","Error");
 		sendOledCommand("status","Error");
@@ -592,8 +599,6 @@ if (catchErrors) {
 			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
 			sockets[i].socket.emit("disconnect","");
 		}
-		console.importantLog("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
-		console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
 		watchdog.exit();
 		setTimeout(function(){
 			process.exit(); //exit completely
@@ -602,7 +607,7 @@ if (catchErrors) {
 }
 
 /***********************************
---I11-- SOUNDCLOUD INIT CODE --I11--
+--I12-- SOUNDCLOUD INIT CODE --I12--
 ***********************************/
 var soundcloudUtils = require('./drivers/soundcloud.js');
 
@@ -705,7 +710,7 @@ initSoundcloud().then( () => {
 });
 
 /*******************************
---I12-- OpenCV Init Code --I12--
+--I13-- OpenCV Init Code --I13--
 *******************************/
 
 const cv = require('opencv4nodejs'); //require opencv
@@ -722,7 +727,7 @@ cvUtils.init(cwd, runtimeSettings).then( () => {
 }); //initialize (async)
 
 /*******************************
---I13-- OLED Driver Init --I13--
+--I14-- OLED Driver Init --I14--
 *******************************/
 
 console.log("Initializing OLED");
@@ -762,7 +767,7 @@ if (runtimeSettings.runningOnRPI) {
 }
 
 /******************************
---I14-- MISC. INIT CODE --I14--
+--I15-- MISC. INIT CODE --I15--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){
