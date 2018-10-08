@@ -86,7 +86,7 @@
         "soundcloudReady": false,
         "playMusicOnServer": true,
         "waitingClients": [],
-        "minInteractionWaitTime": 1000,
-        "trackSelectedWaitMultiplier": 2
+        "minInteractionWaitTime": 2000,
+        "trackSelectedWaitMultiplier": 1.5
     }
 }
