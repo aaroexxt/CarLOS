@@ -63,10 +63,11 @@ Runtime Code (2 steps):
 /**********************************
 --I1-- MODULE INITIALIZATION --I1--
 **********************************/
-var fs = require('fs');
-var utils = require('./drivers/utils.js'); //include the utils file
+const fs = require('fs');
+const utils = require('./drivers/utils.js'); //include the utils file
+const path = require('path');
 
-var singleLineLog = require('single-line-log').stdout; //single line logging
+const singleLineLog = require('single-line-log').stdout; //single line logging
 
 var catchErrors = true; //enables clean error handling. Only turn off during development
 
@@ -74,12 +75,6 @@ var cwd = __dirname;
 process.title = "CarOS V1";
 var sockets = [];
 var pyimgnum = 0; //python image counter
-var displayAuthkeyValidMessages = false;
-var securityOff = true; //PLEASE REMOVE THIS, FOR TESTING ONLY
-
-var userPool = new utils.authPool(); //AuthPool that keeps track of sessions and users
-
-var socketHandler = new utils.socketHandler(userPool,sockets); //socketHandler which keeps track of sockets and userPool and can send messages to specific clients
 
 //CONFIGURING WATCHDOG
 
@@ -91,8 +86,6 @@ watchdog.start(60000); //will watch process
 **********************************/
 var PRODUCTIONMODE = false;
 var runtimeSettings = {
-	faces: "",
-	passes: "",
 	maxVideoAttempts: "",
 	maxPasscodeAttempts: "",
 	defaultDataDirectory: "/data"
@@ -116,29 +109,13 @@ var soundcloudSettings = {
 }
 
 try {
-	var settingsData = fs.readFileSync(cwd+runtimeSettings.defaultDataDirectory+"/settings.json");
+	var settingsData = fs.readFileSync(path.join(cwd,runtimeSettings.defaultDataDirectory,"settings.json"));
 } catch(e) {
 	console.error("[FATAL] Error reading info/settings file");
 	throw "[FATAL] Error reading info/settings file";
 }
 
 settingsData = JSON.parse(settingsData);
-if (typeof settingsData.settings.unscrambleKeys == "undefined") {
-	console.error("UnscrambleKeys undefined in runtimeSettings, not unscrambling. This may result in no users being able to login");
-	throw "UnscrambleKeys undefined in runtimeSettings, not unscrambling. This may result in no users being able to login";
-} else {
-	var keys = Object.keys(settingsData.settings);
-	for (var i=0; i<keys.length; i++) {
-		if (settingsData.settings.unscrambleKeys.indexOf(keys[i]) > -1) {
-			runtimeSettings[keys[i]] = [];
-			for (var j=0; j<settingsData.settings[keys[i]].length; j++) {
-				runtimeSettings[keys[i]][j] = utils.atob(settingsData.settings[keys[i]][j]); //undo atob encryption
-			}
-		} else {
-			runtimeSettings[keys[i]] = settingsData.settings[keys[i]]; //undo atob encryption
-		}
-	}
-}
 
 var keys = Object.keys(settingsData.information); //only override keys from settingsData
 for (var i=0; i<keys.length; i++) {
@@ -148,6 +125,11 @@ for (var i=0; i<keys.length; i++) {
 var keys = Object.keys(settingsData.soundcloudSettings); //only override keys from settingsData
 for (var i=0; i<keys.length; i++) {
 	soundcloudSettings[keys[i]] = settingsData.soundcloudSettings[keys[i]];
+}
+
+var keys = Object.keys(settingsData.settings); //only override keys from settingsData
+for (var i=0; i<keys.length; i++) {
+	runtimeSettings[keys[i]] = settingsData.settings[keys[i]];
 }
 
 PRODUCTIONMODE = settingsData.PRODUCTION; //production mode?
@@ -444,7 +426,7 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 --I8-- DATA FILE PARSERS --I8--
 ******************************/
 
-fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function(err,data){
+fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/responses.json"), function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading responses file");
 		throw "[FATAL] Error reading responses file";
@@ -461,7 +443,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/responses.json", function
 	}
 });
 
-fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commandGroup.json", function(err,data){
+fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/commandGroup.json"), function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading commandGroup file");
 		throw "[FATAL] Error reading commandGroup file";
@@ -487,7 +469,7 @@ fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commandGroup.json", funct
 	}
 });
 
-fs.readFile(cwd+runtimeSettings.defaultDataDirectory+"/commands.json", function(err,data){
+fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/commands.json"), function(err,data){
 	if (err) {
 		console.error("[FATAL] Error reading commands file");
 		throw "[FATAL] Error reading commands file";
@@ -776,7 +758,9 @@ var statusUpdateInterval = setInterval(function(){
 	var time = process.uptime();
 	var uptime = utils.formatHHMMSS(time); //rts.uptime
 	runtimeInformation.uptime = uptime;
-	runtimeInformation.users = userPool.auth_keys.length //rts.users
+	sessionFileStore.length(function session_count(a,len) {
+		runtimeInformation.users = len;
+	});  //rts.users
 	if (runtimeInformation.status.toLowerCase() != "running") {
 		console.log("Sending runtimeinfo because of status change");
 		socketHandler.socketEmitToAll('POST', {"action": "runtimeInformation", "information":runtimeInformation})
@@ -795,453 +779,214 @@ process.stdout.on('resize', function() {
 --R1-- HTTP SERVER SETUP/HANDLING --R1--
 ***************************************/
 
-var authDriver = require("./drivers/authenticationRouting.js");
-const io = require('socket.io');
+//Much love to Evan Gow for his great tutorial at https://medium.com/@evangow/server-authentication-basics-express-sessions-passport-and-curl-359b7456003d
 
-authDriver.init(cwd, runtimeSettings).then( serverPass => {
-	if (typeof serverPass == "undefined") {
-		console.error("FATAL: Failed to pass IO reference through server init; this will disable socket.io.");
-		process.nextTick( ()=>{
-			throw "IO Passthrough undefined";
-		});
-	} else {
+/****
+DEPS
+*****/
 
-/***************************************
---R2-- SOCKET.IO CONNECTION LOGIC --R2--
-***************************************/
-		const ioPassthrough = io(serverPass);
-		ioPassthrough.on('connection', function (socket) { //on connection
-            sockets[sockets.length] = {socket: socket, type: "uninitialized", status: "init", id: socket.id, handler: undefined, authkey: "uninitialized"};
-            var socketid = sockets.length-1;
-            var socketuid = socket.id;
-            var track = sockets[socketid];
-            track.handler = socketHandler;
+//express deps
+const express = require("express");
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 
-            socketHandler.update(userPool,sockets); //update the handler
+//create app instance
+const app = express();
+const server = require('http').Server(app);
 
-            /****************************************
-            --R2:S1-- WEB/PYTHON INIT LOGIC --R2:S1--
-            ****************************************/
+//express modules
+const finalHandler = require('finalhandler');
+const serveFavicon = require('serve-favicon');
+const bodyParser = require('body-parser');
+const uuid = require('uuid/v4');
 
-            socket.on('initweb', function (data) { //set up listener for web intialization
-                track.status = "connected";
-                track.type = "client";
-                var myauth = new userPool.key(); //create new key
-                myauth.properties.approved = false; //set approved parameter
-                myauth.properties.videoAttemptNumber = 1; //video login attempt number
-                myauth.properties.passcodeAttemptNumber = 1; //passcode login attempt number
-                myauth.properties.socketID = socket.id; //socket id attached to key
-                myauth.properties.allowOpenCV = true; //allow opencv to happen with key
-                //console.log(myauth);
-                myauth.init();
-                track.authkey = myauth;
-                //console.log("emitting to id: "+socket.id)
-                socketHandler.socketEmitToID(socket.id,'webdata',{ //emit data to socket
-                    authkey: myauth.key,
-                    runtimeInformation: runtimeInformation
-                });
+//authentication deps
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const CustomStrategy = require('passport-custom').Strategy;
 
-                if (cv) {
-                    runtimeInformation.pythonConnected = true;
-                } else {
-                    console.error("Error: cv module not found");
-                    throw "FATAL: cv module not found :(";
-                }
-            });
-            socketHandler.update(userPool,sockets);
+const bcrypt = require('bcrypt');
+const axios = require('axios');
 
-            /**********************************
-            --R2:S2-- ACTION HANDLERS --R2:S2--
-            **********************************/
+/****
+INIT MODS
+*****/
 
-            socket.on("GET", function (data) { //make it nice! like one unified action for all commands
-                socketHandler.update(userPool,sockets); //update socketHandler
-                var action = data.action;
-                var key = data.authkey;
-                if (typeof key == "undefined") {
-                    key = data.key;
-                }
-                var keyObject = userPool.findKey(key);
-                var keyObjectValid = true;
-                if (keyObject == null || typeof keyObject == "undefined") {
-                    keyObjectValid = false;
-                }
-                var validKey = userPool.validateKey(key);
-                var processeddata = data.data;
-                //console.log("OPENCVALLOWED? "+((keyObjectValid == true)?keyObject.properties.allowOpenCV:"invalid keyObject"))
-                //console.log("TRACK TYPE: "+track.type);
-                if ((track.type == "uninitialized" || true)) { //different actions based on tracking type, if uninit just give all
-                    switch(action) {
-                        /*GENERAL ACTIONS*/
-                        case "validatekey":
-                            var ok = validKey;
-                            if (ok == true) {
-                                if (displayAuthkeyValidMessages) {
-                                    console.log("Validating authkey: "+key+", valid=true");
-                                }
-                                socketHandler.socketEmitToKey(key, 'POST', {"action": "validatekey", "valid": "true"});
-                            } else {
-                                if (displayAuthkeyValidMessages) {
-                                    console.log("Validating authkey: "+key+", valid=false");
-                                }
-                                socketHandler.socketEmitToID(track.id,'POST', {"action": "validatekey", "valid": "false"});
-                            }
-                            break;
-                        case "readback":
-                            console.log("Reading back data: "+JSON.stringify(data));
-                        break;
-                        case "requestRuntimeInformation": //valid key not required
-                            console.log("Runtime information requested");
-                            socketHandler.socketEmitToWeb('POST', {"action": "runtimeInformation", "information": runtimeInformation});
-                        break;
-                        case "SCClientReady":
-                        if (validKey || securityOff) {
-                            if (soundcloudSettings.soundcloudReady) {
-                                console.log("SCClientReady request recieved; sending data");
-                                socketHandler.socketEmitToKey(key, 'POST', {
-                                    "action": "serverDataReady",
-                                    hasTracks: true,
-                                    likedTracks: soundcloudSettings.likedTracks,
-                                    trackList: soundcloudSettings.trackList,
-                                    clientID: soundcloudSettings.clientID,
-                                    settingsData: {
-                                        currentUser: soundcloudSettings.currentUser,
-                                        noArtworkUrl: soundcloudSettings.noArtworkUrl,
-                                        defaultVolume: soundcloudSettings.defaultVolume,
-                                        volStep: soundcloudSettings.volStep,
-                                        currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
-                                        tracksFromCache: soundcloudSettings.tracksFromCache,
-                                        playMusicOnServer: soundcloudSettings.playMusicOnServer,
-                                        nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
-                                        nextTrackLoop: soundcloudSettings.nextTrackLoop,
-                                        soundcloudReady: soundcloudSettings.soundcloudReady
-                                    }
-                                });
-                            } else {
-                                console.log("SCClientReady request recieved; soundcloud is not ready");
-                                socketHandler.socketEmitToKey(key, 'POST', {
-                                    "action": "serverLoadingTracklist"
-                                });
-                                soundcloudSettings.waitingClients.push(socket.id);
-                            }
-                        }
-                        break;
+console.log("[AUTH] Init modules begun");
+app.use(serveFavicon(path.join(cwd,runtimeSettings.faviconDirectory))); //serve favicon
 
-                        case "SCClientUserEvent":
-                        if (validKey || securityOff) {
-                            if (data.type) {
-                                soundcloudUtils.SCSoundManager.processClientEvent({
-                                    type: data.type,
-                                    data: data.data,
-                                    origin: "external"
-                                });
-                            } else {
-                                console.log("Type undefined sccliuserevent");
-                            }
-                        } else {
-                            console.error("keyObject invalid w/key '"+key+"'");
-                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "SCClientUserEventInvalidKeyObject"});
-                        }
-                        break;
+app.use(express.static(path.join(cwd,runtimeSettings.assetsDirectory))); //define a static directory
 
-                        case "SCClientChangeUser":
-                        if (validKey || securityOff) {
-                            if (data.newUser) {
-                                console.info("Restarting SC MASTER with new user "+data.newUser);
-                                initSoundcloud(data.newUser).then( () => {
-                                    console.importantInfo("SC INIT OK");
-                                }).catch( err => {
-                                    console.error("Error initializing SC: "+err);
-                                });
-                            } else {
-                                console.log("NewUser undefined SCClientChangeUser");
-                            }
-                        } else {
-                            console.error("keyObject invalid w/key '"+key+"'");
-                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "SCClientChangeUserInvalidKeyObject"});
-                        }
-                        break;
+app.use(bodyParser.urlencoded({ extended: true })) //bodyparser for getting json data
+app.use(bodyParser.json())
 
-                        /*OPENCV HANDLERS*/
-                        //yes I know I can use single line comments
-                        case "login-imageready":
-                            if (securityOff) {console.warn("WARNING: opencv security protections are OFF");}
-                            if (keyObjectValid) {
-                                if (typeof keyObject.properties.videoAttemptNumber == "undefined") {
-                                    console.error("keyObject videoAttemptNumber undefined, erroring");
-                                    socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientVideoAttemptPropertyUndefined"});
-                                } else {
-                                    if ((validKey || securityOff) && keyObject.properties.videoAttemptNumber < runtimeSettings.maxVideoAttempts) {
-                                        if (openCVReady) {
-                                            if (keyObject.properties.allowOpenCV) {
-                                                //console.log("recv imgdata");
-                                                var raw = data.raw;
-                                                raw = raw.replace(/^data:image\/\w+;base64,/, "");
-                                                var imageBuffer = new Buffer(raw, 'base64');
+const sessionFileStore = new FileStore(); //create the session file store
 
-                                                socketHandler.socketEmitToID(track.id,"POST",{ action: "login-opencvqueue", queue: pyimgnum });
-                                                const currentImgNum = pyimgnum;
+app.use(session({
+	genid: (req) => {
+		console.log('Inside UUID-generation');
+		return uuid(); // use UUIDs for session IDs
+	},
+	store: sessionFileStore, //filestore for sessions
+	secret: "k3yB0ARdC@3t5s!", //set secret to new ID
+	resave: false,
+	saveUninitialized: true
+}));
 
-                                                keyObject.properties.allowOpenCV = false;
+app.use(passport.initialize()); //passport.js init
+app.use(passport.session());
 
-                                                const image = cv.imdecode(imageBuffer); //decode the buffer
+app.use(function(req, res, next) {
+  if (tooBusyLatestLag > runtimeSettings.tooBusyLagThreshold) {
+	res.send(503, "Server is busy, cannot complete your request at this time. (Latency: "+tooBusyLatestLag+")");
+	res.end();
+  } else {
+	next();
+  }
+});
 
-                                                var maxVidAttempts = runtimeSettings.maxVideoAttempts;
-                                                var vidAttempt = keyObject.properties.videoAttemptNumber;
-                                                
-                                                cvUtils.predictFaceFromData(image).then( result => {
-                                                    if (result == false) {
-                                                        keyObject.properties.allowOpenCV = true;
-                                                        keyObject.properties.videoAttemptNumber += 1;
-                                                        vidAttempt += 1;
+//TODODODODODODODO FINISH THIS
+app.use(function(req, res, next) { //default listener that sets session values
+	//if (req.session.authenticated)
+	next();
+});
 
-                                                        console.log("modified key "+key+" with attempt attrib (no face found)");
-                                                        socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-                                                    } else {
+/****
+INIT STRATS
+*****/
 
-                                                        var face = result[0];
-                                                        var confidence = result[1];
+console.log("[AUTH] Init strategies begun");
+// configure passport.js to use the local strategy
+passport.use(new LocalStrategy(
+  { usernameField: 'name' },
+  (name, password, done) => {
+	console.log('Passport localStrategy found, looking up user w/name: '+name+", passwd: "+password);
+	axios.get(`http://localhost:5000/users?name=${name}`)
+	.then(res => {
+		let user = res.data[0]; //get the first user
+		if (!user) {
+			return done(null, false, { message: 'Invalid credentials: user not found.\n' });
+		} else if (!bcrypt.compareSync(password, user.password)) {
+			return done(null, false, { message: 'Invalid credentials: password invalid.\n' });
+		} else {
+			return done(null, user);
+		}
+	})
+	.catch(error => done(error));
+  }
+));
+passport.use('openCV', new CustomStrategy( function(req, done) {
+	console.log("DOING CV SHIT");
+	done(null, users[0]);
+}));
 
-                                                        keyObject.properties.allowOpenCV = true;
+//User serialization and deserialization
+passport.serializeUser((user, done) => {
+	console.log("Serializing user with id: "+user.id);
+	done(null, user.id);
+});
 
-                                                        var foundFace = false;
-                                                        for (var j=0; j<runtimeSettings.faces.length; j++) {
-                                                            console.log("label "+face+", face "+runtimeSettings.faces[j])
-                                                            if (face === runtimeSettings.faces[j]) {
-                                                                foundFace = true;
-                                                                break;
-                                                            }
-                                                        }
-                                                        if (foundFace) {
-                                                            keyObject.properties.approved = true;
-                                                            console.log("modified key "+key+" with approved attrib");
-                                                            socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-                                                        } else {
-                                                            keyObject.properties.videoAttemptNumber += 1;
-                                                            vidAttempt += 1;
-                                                            console.log("modified key "+key+" with attempt attrib (face found not approved)");
-                                                            socketHandler.socketEmitToKey(key, "POST", {action: 'login-opencvdata', queue: currentImgNum, confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: false, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-                                                        }
-                                                    }
+passport.deserializeUser((id, done) => {
+	console.log("Deserializing user with id: "+id);
+	  axios.get(`http://localhost:5000/users/${id}`)
+	  .then(res => done(null, res.data) )
+	  .catch(error => done(error, false))
+});
 
-                                                }).catch( err => {
-                                                    keyObject.properties.allowOpenCV = true;
-                                                    keyObject.properties.videoAttemptNumber += 1;
-                                                    vidAttempt += 1;
-                                                    console.log("modified key "+key+" with attempt attrib");
-                                                    console.error("Error predicting image: "+err);
-                                                    socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVBackendServerError ("+err+")"});
-                                                })
-                                                /*socketHandler.socketListenToAll(("opencvresp:"+pyimgnum), function (data) {
-                                                    console.log("data from opencv "+JSON.stringify(data));
-                                                });*/
-                                                pyimgnum++;
-                                            } else {
-                                                console.log("no response recieved yet from opencv, client sending too fast??");
-                                                socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientResponseNotAttainedFromPrevRequest", longerror: "Python response from previous request has not been attained, waiting."});
-                                            }
-                                        } else {
-                                            console.log("Request recieved from client for opencv; but it is not ready yet");
-                                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVNotReady (try again soon)", longerror: "OpenCV is not ready yet :("});
-                                        }
-                                    } else {
-                                        console.log("Client invalid for opencv processing");
-                                        if (!validKey) {
-                                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientInvalidKey"});
-                                        } else {
-                                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientVideoAttemptsExceeded"});
-                                        }
-                                    }
-                                }
-                            } else {
-                                console.error("keyObject invalid on opencv w/key '"+key+"'");
-                                socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "OpenCVClientInvalidKeyObject"});
-                            }
-                            //console.log(raw)
-                            /*var b = new Buffer(raw.length);
-                            var c = "";
-                            for (var i=0; i<raw.length; i++) {
-                                b[i] = raw[i];
-                                c = c + " " + raw[i];
-                            }
-                            fs.writeFile(pyimgbasepath+"in/image"+pyimgnum+".jpg",c,"binary",function(err) {
-                                console.log("write error?: "+err)
-                            })*/
-                        break;
-                        case "login-passcodeready":
-                            if (securityOff) {console.warn("WARNING: passcode security protections are OFF");}
-                            if (validKey || securityOff) {
-                                console.log("Authkey "+data.authkey+" approved");
-                                var passok = false;
-                                for (var i=0; i<runtimeSettings.passes.length; i++) {
-                                    if (runtimeSettings.passes[i] == data.passcode) {
-                                        console.log("Pass "+data.passcode+" approved");
-                                        passok = true;
-                                    } else {
-                                        console.log("Pass "+data.passcode+" denied");
-                                    }
-                                }
-                                if (passok) {
-                                    socketHandler.socketEmitToKey(key,"POST", {action: 'login-passcodeapproval', approved: true});
-                                    if (keyObjectValid) {
-                                        keyObject.properties.approved = true;
-                                    } else {
-                                        socketHandler.socketEmitToKey(key,"POST", {action: 'processingError', error: "loginPasscodeKeyObjectInvalid"});
-                                    }
-                                } else {
-                                    socketHandler.socketEmitToKey(key,"POST", {action: 'login-passcodeapproval', approved: false});
-                                }
-                            } else {
-                                console.log("Authkey "+data.authkey+" denied");
-                            }
-                        break;
-                        case "pydata":
-                            if (securityOff) {console.warn("WARNING: pydata security protections are OFF");}
-                            if (validKey || securityOff) {
-                                console.log("Authkey "+data.authkey+" approved")
-                                if (securityOff) {
-                                    socketHandler.socketEmitToAll('pydata',data.data);
-                                } else {
-                                    socketHandler.socketEmitToPython('pydata',data.data);
-                                }
-                            } else {
-                                console.log("Authkey "+data.authkey+" denied");
-                            }
-                        break;
-                        case "processSpeech":
-                            if (securityOff) {console.warn("WARNING: processSpeech security protections are OFF");}
-                            if (validKey) {
-                                if (keyObjectValid || securityOff) {
-                                    if (keyObject.properties.approved || securityOff) {
-                                        if (speechNetReady) {
-                                            console.log("processing speech: '"+JSON.stringify(data.speech)+"'");
-                                            var classifiedSpeech = []; //array to hold speech that is classified
-                                            if (data.speech.constructor === Array) { //array of possibilities?
-                                                var classifications = []; //array of potential classifications
-                                                for (var i=0; i<data.speech.length; i++) { //part 1: get all possibilities
-                                                    console.log("running speech possibility: "+data.speech[i]);
-                                                    var classification = neuralMatcher.algorithm.classify(speechClassifierNet, data.speech[i]);
-                                                    if (classification.length > 0) {
-                                                        classifiedSpeech.push(data.speech[i]);
-                                                    }
-                                                    console.log("Speech classification: "+JSON.stringify(classification));
-                                                    for (var j=0; j<classification.length; j++) {
-                                                        var category = classification[j][0];
-                                                        var confidence = classification[j][1];
-
-                                                        var contains = false;
-                                                        var containIndex = -1;
-                                                        for (var b=0; b<classifications.length; b++) {
-                                                            if (classifications[b][0] == category) {
-                                                                contains = true;
-                                                                containIndex = b;
-                                                            }
-                                                        }
-                                                        if (contains) {
-                                                            console.log("contains, push _ cat="+category+", conf="+confidence);
-                                                            classifications[containIndex][1].push(confidence);
-                                                        } else {
-                                                            console.log("no contain, not averaging _ cat="+category+", conf="+confidence);
-                                                            classifications[classifications.length] = classification[j];
-                                                            classifications[classifications.length-1][1] = [classifications[classifications.length-1][1]];
-                                                        }
-                                                    }
-                                                }
-                                                var max = 0;
-                                                for (var i=0; i<classifications.length; i++) { //part 2: total possibilities
-                                                    if (classifications[i][1].length > 1) {
-                                                        console.log("averaging "+JSON.stringify(classifications[i][1]));
-                                                        var tot = 0;
-                                                        var len = classifications[i][1].length;
-                                                        for (var j=0; j<classifications[i][1].length; j++) {
-                                                            tot += classifications[i][1][j];
-                                                        }
-                                                        var avg = tot/len;
-                                                        if (tot > max) {
-                                                            max = tot;
-                                                        }
-                                                        console.log("avg="+avg+", tot="+tot)
-                                                        classifications[i][1] = avg*tot; //multiply by total to weight more answers (I know this results in just total)
-                                                    }
-                                                }
-                                                for (var i=0; i<classifications.length; i++) { //part 3, scale by max
-                                                    console.log("Scaling classification "+classifications[i][1]+" by max val "+max);
-                                                    if (max == 0) {
-                                                        console.warn("Dividing factor max is 0, did you pass only a single word in an array?");
-                                                    } else {
-                                                        classifications[i][1] /= max;
-                                                    }
-                                                }
-                                                var finalClassifications = [];
-                                                for (var i=0; i<classifications.length; i++) {
-                                                    if (classifications[i][1] > neuralMatcher.algorithm.cutoffOutput) {
-                                                        finalClassifications.push(classifications[i]);
-                                                    }
-                                                }
-                                                console.log("classifications: "+JSON.stringify(classifications)+", cutoff filtered classifications: "+JSON.stringify(finalClassifications));
-                                                //pick the more likely response from the ones provided
-                                                var likelyResponse = ["",[0]];
-                                                for (var i=0; i<finalClassifications.length; i++) {
-                                    
-                                                    if (finalClassifications[i][1] > likelyResponse[1]) {
-                                                        likelyResponse = finalClassifications[i];
-                                                    }
-                                                }
-                                                var response;
-                                                if (likelyResponse.constructor == Array && likelyResponse[0] !== "" && likelyResponse[1][1] !== 0) {
-                                                    speechParser.algorithm.addRNGClass(likelyResponse[0]); //generate rng class from classification
-                                                    response = speechParser.algorithm.dumpAndClearQueue();
-                                                } else {
-                                                    console.warn("Likelyresponse is blank, what happened?")
-                                                    response = "";
-                                                }
-                                                socketHandler.socketEmitToKey(key,"POST",{action: "speechMatchingResult", classification: finalClassifications, likelyResponse: likelyResponse, transcript: data.speech, classifiedTranscript: classifiedSpeech, response: response});
-                                            } else {
-                                                var classification = neuralMatcher.algorithm.classify(speechClassifierNet, data.speech); //classify speech
-                                                console.log("Speech classification: "+JSON.stringify(classification));
-                                                var response;
-                                                if (classification.constructor == Array && classification.length > 0) {
-                                                    speechParser.algorithm.addRNGClass(classification[0][0]); //generate rng class from classification
-                                                    response = speechParser.algorithm.dumpAndClearQueue(); //dump queue to response (if backed up w/multiple calls)
-                                                } else {
-                                                    console.warn("Classification length is 0, response is nothing")
-                                                    response = "";
-                                                }
-                                                socketHandler.socketEmitToKey(key,"POST",{action: "speechMatchingResult", classification: classification, transcript: data.speech, classifiedTranscript: classifiedSpeech, response: response});
-                                            }
-                                        } else {
-                                            socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "speechNetNotReady"});
-                                        }
-                                    } else {
-                                        socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "ProcessSpeechClientKeyNotApproved, key: "+key});
-                                    }
-                                }
-                            } else {
-                                socketHandler.socketEmitToKey(key,"POST",{action: "processingError", error: "ProcessSpeechKeyInvalid, key:"+key});
-                            }
-                        break;
-                        default:
-                            console.error("Recieved invalid action "+action+" from key "+key);
-                        break;
-                    }
-                }
-            })
-        /*
-        socket shenanigans (thx jerry)
-        {"type":2,"nsp":"/","data":["opencvresp:0",{"image":"true","data":"0,/Users/Aaron/Desktop/Code/nodejs/index/tmpimgs/out/image0.jpg"}]}
-        {"type":2,"nsp":"/","data":["pyok",""]}
-        */
-        });
-    }
-}).catch( err => {
-	console.error("FATAL: Failed to initialize authentication server for the following reason: "+err);
-	process.nextTick( ()=>{
-		throw "Couldn't initialize authentication";
+/****
+INIT ROUTES
+*****/
+app.get("/client", function(req, res) { //COS main route
+	var done = finalHandler(req, res, {
+		onerror: function(err) {
+			console.log("[HTTP] Error: "+err.stack || err.toString())
+		}
 	});
+
+	console.log('Inside GET /authrequired callback')
+	console.log(`User authenticated? ${req.isAuthenticated()}`)
+	if(req.isAuthenticated()) {
+		fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,runtimeSettings.defaultClientFile), function (err, buf) {
+			if (err) {
+				return done(err);
+			} else {
+				//res.setHeader('Content-Type', 'text/html')
+				res.end(buf);
+			}
+		})
+	} else {
+		res.redirect('/login');
+	}
+});
+
+app.get("/console", function(req, res) { //console route
+	var done = finalHandler(req, res, {
+		onerror: function(err) {
+			console.log("[HTTP] Error: "+err.stack || err.toString())
+		}
+	});
+
+	res.send("Umm... It's not made yet, so check back later");
+	res.end();
+});
+
+app.get('/login', (req, res) => {
+    console.log('Inside GET request on /login, sessID: '+req.sessionID);
+    if (req.isAuthenticated()) {
+        res.redirect("/client");
+    } else {
+        res.send(`You hit login page!\n<form action="/loginRegular" method="post">Email:<br><input type="text" name="name"><br>Password:<br><input type="text" name="password"><br><input type="submit" value="Submit"></form>`)
+    }
+})
+
+app.get('/loginRegular', (req, res, next) => {
+    res.redirect("/login");
+});
+app.post('/loginRegular', (req, res, next) => {
+    console.log('Inside POST request on /loginRegular, sessID: '+req.sessionID)
+    passport.authenticate('local', (err, user, info) => {
+        if(info) {return res.send(info.message)}
+        if (err) { return next(err); }
+        if (!user) { return res.redirect('/login'); }
+        req.login(user, (err) => {
+          if (err) { return next(err); }
+          console.log("You were authenticated :)")
+          return res.redirect('/client');
+        })
+    })(req, res, next);
+})
+
+app.get('/loginCV', (req, res, next) => {
+    res.redirect("/login");
+});
+app.post('/loginCV', (req, res, next) => {
+    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
+    passport.authenticate('openCV', (err, user, info) => {
+        if(info) {return res.send(info.message)}
+        if (err) { return next(err); }
+        if (!user) { return res.redirect('/login'); }
+        req.login(user, (err) => {
+          if (err) { return next(err); }
+          console.log("You were authenticated :)")
+          return res.redirect('/authrequired');
+        })
+    })(req, res, next);
+})
+
+app.get("/isup", function(req, res) { //console route
+	res.status(200);
+	res.end();
+});
+
+app.use(function(req, res, next){
+	res.status(404); //crappy 404 page
+	res.send("<h1>Uhoh, you tried to go to a page that doesn't exist.</h1><br> Navigate to /client to go to the main page.");
 });
 
 
-
-
+console.log("[AUTH] Init server begun");
+server.listen(runtimeSettings.serverPort, () => {
+	console.log((new Date()) + ' Node server is listening on port ' + runtimeSettings.serverPort);
+});
 
 //I see you all the way at the bottom... what r u doing here, go back up and code something useful!

@@ -53,6 +53,7 @@ sudo npm install --unsafe-perm=true --allow-root --save-prod axios express-sessi
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --save-prod serialport;
 sudo npm install --unsafe-perm=true --allow-root --save-prod socket.io@1.7.2;
 sudo npm install --unsafe-perm=true --allow-root --save-prod nodemon;
+sudo npm install --unsafe-perm=true --allow-root --save-prod json-server;
 
 if ["$platform" = "mac"]; then
     sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root --save-prod speaker;

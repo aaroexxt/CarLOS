@@ -10,9 +10,6 @@
         "dynamicMusicMenu": true
     },
     "settings": {
-        "faces": ["QWFyb24="],
-        "passes": ["cGFzc2NvZGU=","MTIzNDU="],
-        "unscrambleKeys": ["faces","passes"],
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
 
