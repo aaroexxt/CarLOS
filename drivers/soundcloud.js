@@ -27,7 +27,6 @@ var SCUtils = {
     localSoundcloudSettings: undefined,
     CWD: undefined,
     failedToLoadTracksFirstRun: true,
-    extSocketHandler: undefined,
     debugMode: false,
     track401Offset: 0, //offset to keep track of tracks that load as 401 and to subtract length
 
@@ -35,7 +34,7 @@ var SCUtils = {
     INIT: LOAD TRACKS & CACHE
     ************************/
 
-    init: function(options) { //required: options object with properties 'soundcloudSettings','username','socketHandler', and 'cwd'
+    init: function(options) { //required: options object with properties 'soundcloudSettings','username' and 'cwd'
         return new Promise((resolve, reject) => {
             if (typeof options == "undefined") {
                 return reject("Options was not defined in scInit");
@@ -47,11 +46,6 @@ var SCUtils = {
                 }
                 if (typeof options.username == "undefined") {
                     options.username = options.soundcloudSettings.defaultUsername;
-                }
-                if (typeof options.socketHandler == "undefined") {
-                    return reject("socketHandler not defined; can't send to sockets");
-                } else {
-                    this.extSocketHandler = options.socketHandler;
                 }
                 if (typeof options.cwd == "undefined") {
                     return reject("CWD Undefined on SC init; was it specified?");
@@ -224,7 +218,6 @@ var SCUtils = {
                     if (scSettings.trackList.length >= tracksToLoad || requestCounter >= requiredRequestTimes) { //does loaded tracklist length equal tracks to load (equates for partial requests)
                         console.log(colors.green("Processed "+colors.underline(scSettings.likedTracks.length)+" tracks for soundcloud"));
                         scSettings.tracksFromCache = false;
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         console.log("Saving SC cache...");
                         SCUtils.saveTrackCache(scSettings.likedTracks, scSettings.userID, scSettings).then( () => {
                             console.log(colors.green("Saved track cache; saving tracks"));
@@ -348,7 +341,6 @@ var SCUtils = {
             this.failedToLoadTracksFirstRun = false;
             //console.info("Error getting soundcloud tracks: "+JSON.stringify(e));
             console.log("Getting tracks from cache");
-            this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
             this.loadTrackCache(scSettings.userID, scSettings).then( cacheObject => {
                 var cachelen = cacheObject.cache.length;
                 var cache = cacheObject.cache;
@@ -357,7 +349,6 @@ var SCUtils = {
 
                 if (typeof cache == "undefined" || cachelen == 0) {
                     return reject("TrackCache is undefined or has no tracks");
-                    SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
                 } else {
                     scSettings.tracksFromCache = true;
                     scSettings.likedTracks = [];
@@ -373,10 +364,8 @@ var SCUtils = {
                     }).catch( err => {
                         return reject("Expected error saving tracks: "+err);
                     });
-                    SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                 }
             }).catch( error => {
-                SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
                 return reject("Server has no track cache, no music playing possible (err: "+error+")");
             });
         });
@@ -405,7 +394,6 @@ var SCUtils = {
                         return reject("TrackObject is invalid")
                     }
                     var trackID = likedTracks[trackIndex].id;
-                    SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingTracksUpdate", track: likedTracks[trackIndex].title, percent: ((tracksLoaded+1)/tracksToLoad)*100});
                     //console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
 
                     var unfinTrackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+"-UNFINISHED.mp3"));
@@ -800,35 +788,13 @@ var SCSoundManager = {
                             console.warn("Track with title: "+trackObject.title+" had no copy saved locally; downloading one (was it deleted somehow?)");
                             SCUtils.saveTrack().then( () => {
                                 SCSoundManager.playTrackServer(trackObject);
-                                setCUI();
                             }).catch( err => {
                                 console.error("Error playing track with title: "+trackObject.title+"; no copy saved locally and couldn't download (protected track?)");
                             })
                         } else {
                             SCSoundManager.playTrackServer(trackObject);
-                            setCUI();
                         }
                     });
-                }
-
-                function setCUI() {
-                    SCSoundManager.clientUpdateInterval = setInterval(function(){
-                        var ps = SCSoundManager.getPlayedSeconds();
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {
-                            action: "serverPlayingTrackUpdate",
-                            currentPlayingTrack: SCSoundManager.currentPlayingTrack,
-                            percent: SCSoundManager.getPercent(),
-                            playedSeconds: ps,
-                            timeStamp: utils.formatHHMMSS(ps),
-                            playing: SCSoundManager.playingTrack,
-                            settingsData: {
-                                currentUser: SCUtils.localSoundcloudSettings.currentUser,
-                                currentVolume: SCSoundManager.currentVolume,
-                                nextTrackShuffle: SCUtils.localSoundcloudSettings.nextTrackShuffle,
-                                nextTrackLoop: SCUtils.localSoundcloudSettings.nextTrackLoop
-                            }
-                        });
-                    },SCUtils.localSoundcloudSettings.clientUpdateTime);
                 }
             } else {
                 console.log("Playing music on: CLIENT");

@@ -35,6 +35,7 @@ launchpython="true"; #only works if pythoncompatibility mode is set to true
 printtitle="true";
 cwd=$(pwd)
 defaultroot="$cwd/app";
+userdatapath="./data/userDB.json";
 defaultscript="$cwd/COSserver.js";
 defaultpython="$cwd/pythonDevelopment/python/rpibackend.py";
 
@@ -343,6 +344,10 @@ echo "FOUND DEVICE?: find type: $foundDevice, devicename $device"
 echo "";
 echo "Killing previous node processes...";
 sudo killall node;
+echo "Killing all json-server processes...";
+sudo killall json-server;
+echo "Starting json-server...";
+json-server --watch $userdatapath --port 5000 &
 echo "Killing previous inspector processes...";
 echo "Inspector processes:" `sudo lsof -t -i:9229`;
 sudo kill -kill $(sudo lsof -t -i:9229) || echo "No processes found"; #kill option makes sure it is ded
@@ -404,5 +409,7 @@ else
         fi
     fi
 fi
+echo "Killing all json-server processes...";
+sudo killall json-server;
 #trap : 0;
 #exit 0; #removed because this closes the terminal

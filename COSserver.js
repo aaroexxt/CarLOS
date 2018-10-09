@@ -608,47 +608,11 @@ function initSoundcloud(username) {
 				soundcloudSettings: soundcloudSettings,
 				username: username,
 				cwd: cwd,
-				socketHandler: socketHandler
 			}).then( () => {
 				console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
 				soundcloudUtils.SCSoundManager.init().then( () => {
 					console.log(colors.green("Initialized trackManager successfully!"));
 					soundcloudSettings.soundcloudReady = true;
-
-					if (username == soundcloudSettings.defaultUsername) { //first init
-						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
-								"action": "serverDataReady",
-								hasTracks: true,
-								likedTracks: soundcloudSettings.likedTracks,
-								trackList: soundcloudSettings.trackList,
-								settingsData: {
-									currentUser: soundcloudSettings.currentUser,
-									noArtworkUrl: soundcloudSettings.noArtworkUrl,
-									defaultVolume: soundcloudSettings.defaultVolume,
-									volStep: soundcloudSettings.volStep,
-									currentVolume: soundcloudSettings.currentVolume,
-									tracksFromCache: soundcloudSettings.tracksFromCache
-								}
-							});
-						}
-					} else {
-						socketHandler.socketEmitToWeb('POST', {
-							"action": "serverDataReady",
-							hasTracks: true,
-							likedTracks: soundcloudSettings.likedTracks,
-							trackList: soundcloudSettings.trackList,
-							settingsData: {
-								currentUser: soundcloudSettings.currentUser,
-								noArtworkUrl: soundcloudSettings.noArtworkUrl,
-								defaultVolume: soundcloudSettings.defaultVolume,
-								volStep: soundcloudSettings.volStep,
-								currentVolume: soundcloudSettings.currentVolume,
-								tracksFromCache: soundcloudSettings.tracksFromCache
-							}
-						});
-					}
-
 					mresolve();
 
 				}).catch( e => {
@@ -787,6 +751,9 @@ DEPS
 
 //express deps
 const express = require("express");
+var APIrouter = express.Router();
+var AUTHrouter = express.Router();
+
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
 
@@ -847,7 +814,12 @@ app.use(function(req, res, next) {
 
 //TODODODODODODODO FINISH THIS
 app.use(function(req, res, next) { //default listener that sets session values
-	//if (req.session.authenticated)
+	if (req.session.views) {
+		req.session.views++;
+	} else {
+		req.session.views = 1;
+	}
+	req.session.uuuuuid = uuid();
 	next();
 });
 
@@ -896,7 +868,9 @@ passport.deserializeUser((id, done) => {
 /****
 INIT ROUTES
 *****/
+//MAIN ROUTES
 app.get("/client", function(req, res) { //COS main route
+	console.log(JSON.stringify(req.session)+" session");
 	var done = finalHandler(req, res, {
 		onerror: function(err) {
 			console.log("[HTTP] Error: "+err.stack || err.toString())
@@ -935,14 +909,15 @@ app.get('/login', (req, res) => {
     if (req.isAuthenticated()) {
         res.redirect("/client");
     } else {
-        res.send(`You hit login page!\n<form action="/loginRegular" method="post">Email:<br><input type="text" name="name"><br>Password:<br><input type="text" name="password"><br><input type="submit" value="Submit"></form>`)
+        res.send(`You hit login page!\n<form action="/login/regular" method="post">Email:<br><input type="text" name="name"><br>Password:<br><input type="text" name="password"><br><input type="submit" value="Submit"></form>`)
     }
 })
 
-app.get('/loginRegular', (req, res, next) => {
+//AUTH ROUTES
+AUTHrouter.get('/regular', (req, res, next) => {
     res.redirect("/login");
 });
-app.post('/loginRegular', (req, res, next) => {
+AUTHrouter.post('/regular', (req, res, next) => {
     console.log('Inside POST request on /loginRegular, sessID: '+req.sessionID)
     passport.authenticate('local', (err, user, info) => {
         if(info) {return res.send(info.message)}
@@ -956,10 +931,10 @@ app.post('/loginRegular', (req, res, next) => {
     })(req, res, next);
 })
 
-app.get('/loginCV', (req, res, next) => {
+AUTHrouter.get('/cv', (req, res, next) => {
     res.redirect("/login");
 });
-app.post('/loginCV', (req, res, next) => {
+AUTHrouter.post('/cv', (req, res, next) => {
     console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
     passport.authenticate('openCV', (err, user, info) => {
         if(info) {return res.send(info.message)}
@@ -971,12 +946,110 @@ app.post('/loginCV', (req, res, next) => {
           return res.redirect('/authrequired');
         })
     })(req, res, next);
-})
+});
 
-app.get("/isup", function(req, res) { //console route
+//API ROUTES
+
+APIrouter.get("/isup", function(req, res) { //console route
 	res.status(200);
 	res.end();
 });
+APIrouter.get("/runtimeinformation", function(req, res) { //console route
+	res.send(JSON.stringify(runtimeInformation));
+	res.end();
+});
+APIrouter.get("/SC_clientReady", function(req, res) {
+	if (soundcloudSettings.soundcloudReady || true) {
+        console.log("SCClientReady request recieved; sending data");
+        res.send({
+            "action": "serverDataReady",
+            hasTracks: true,
+            likedTracks: soundcloudSettings.likedTracks,
+            trackList: soundcloudSettings.trackList,
+            clientID: soundcloudSettings.clientID,
+            settingsData: {
+                currentUser: soundcloudSettings.currentUser,
+                noArtworkUrl: soundcloudSettings.noArtworkUrl,
+                defaultVolume: soundcloudSettings.defaultVolume,
+                volStep: soundcloudSettings.volStep,
+                currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
+                tracksFromCache: soundcloudSettings.tracksFromCache,
+                playMusicOnServer: soundcloudSettings.playMusicOnServer,
+                nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
+                nextTrackLoop: soundcloudSettings.nextTrackLoop,
+                soundcloudReady: soundcloudSettings.soundcloudReady
+            }
+        });
+        res.end();
+    } else {
+        console.log("SCClientReady request recieved; soundcloud is not ready");
+        res.send("serverLoadingTracklist");
+        soundcloudSettings.waitingClients.push(req.session.id);
+        res.end();
+    }
+})
+/*
+function setCUI() {
+    SCSoundManager.clientUpdateInterval = setInterval(function(){
+        var ps = SCSoundManager.getPlayedSeconds();
+        SCUtils.extSocketHandler.socketEmitToWeb("POST", {
+            action: "serverPlayingTrackUpdate",
+            currentPlayingTrack: SCSoundManager.currentPlayingTrack,
+            percent: SCSoundManager.getPercent(),
+            playedSeconds: ps,
+            timeStamp: utils.formatHHMMSS(ps),
+            playing: SCSoundManager.playingTrack,
+            settingsData: {
+                currentUser: SCUtils.localSoundcloudSettings.currentUser,
+                currentVolume: SCSoundManager.currentVolume,
+                nextTrackShuffle: SCUtils.localSoundcloudSettings.nextTrackShuffle,
+                nextTrackLoop: SCUtils.localSoundcloudSettings.nextTrackLoop
+            }
+        });
+    },SCUtils.localSoundcloudSettings.clientUpdateTime);
+}
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
+                        this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
+                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingTracksUpdate", track: likedTracks[trackIndex].title, percent: ((tracksLoaded+1)/tracksToLoad)*100});
+                        if (username == soundcloudSettings.defaultUsername) { //first init
+						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
+							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
+								"action": "serverDataReady",
+								hasTracks: true,
+								likedTracks: soundcloudSettings.likedTracks,
+								trackList: soundcloudSettings.trackList,
+								settingsData: {
+									currentUser: soundcloudSettings.currentUser,
+									noArtworkUrl: soundcloudSettings.noArtworkUrl,
+									defaultVolume: soundcloudSettings.defaultVolume,
+									volStep: soundcloudSettings.volStep,
+									currentVolume: soundcloudSettings.currentVolume,
+									tracksFromCache: soundcloudSettings.tracksFromCache
+								}
+							});
+						}
+					} else {
+						socketHandler.socketEmitToWeb('POST', {
+							"action": "serverDataReady",
+							hasTracks: true,
+							likedTracks: soundcloudSettings.likedTracks,
+							trackList: soundcloudSettings.trackList,
+							settingsData: {
+								currentUser: soundcloudSettings.currentUser,
+								noArtworkUrl: soundcloudSettings.noArtworkUrl,
+								defaultVolume: soundcloudSettings.defaultVolume,
+								volStep: soundcloudSettings.volStep,
+								currentVolume: soundcloudSettings.currentVolume,
+								tracksFromCache: soundcloudSettings.tracksFromCache
+							}
+						});
+					}*/
+
+app.use('/login', AUTHrouter); //connect routers
+app.use('/api', APIrouter);
 
 app.use(function(req, res, next){
 	res.status(404); //crappy 404 page
