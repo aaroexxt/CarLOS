@@ -316,17 +316,17 @@ loggingUtils.init(cwd, runtimeSettings).then( () => {
 		}
 
 		console.error = function() {
-			loggingUtils.warn(arguments,"error");
+			loggingUtils.error(arguments,"error");
 			semiOriginalWarn.apply(null, arguments);
 		}
 
 		console.importantLog = function() {
-			loggingUtils.warn(arguments,"ilog");
+			loggingUtils.ilog(arguments,"ilog");
 			semiOriginalWarn.apply(null, arguments);
 		}
 
 		console.importantInfo = function() {
-			loggingUtils.warn(arguments,"iinfo");
+			loggingUtils.iinfo(arguments,"iinfo");
 			semiOriginalWarn.apply(null, arguments);
 		}
 
