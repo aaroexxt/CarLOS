@@ -752,6 +752,9 @@ DEPS
 //express deps
 const express = require("express");
 var APIrouter = express.Router();
+var SCrouter = express.Router();
+
+
 var AUTHrouter = express.Router();
 
 const session = require('express-session');
@@ -950,15 +953,18 @@ AUTHrouter.post('/cv', (req, res, next) => {
 
 //API ROUTES
 
+//Main routes
 APIrouter.get("/isup", function(req, res) { //console route
 	res.status(200);
 	res.end();
 });
-APIrouter.get("/runtimeinformation", function(req, res) { //console route
+APIrouter.get("/runtimeInformation", function(req, res) { //console route
 	res.send(JSON.stringify(runtimeInformation));
 	res.end();
 });
-APIrouter.get("/SC_clientReady", function(req, res) {
+
+//Soundcloud Routes
+SCrouter.get("/clientReady", function(req, res) {
 	if (soundcloudSettings.soundcloudReady || true) {
         console.log("SCClientReady request recieved; sending data");
         res.send({
@@ -987,27 +993,45 @@ APIrouter.get("/SC_clientReady", function(req, res) {
         soundcloudSettings.waitingClients.push(req.session.id);
         res.end();
     }
-})
-/*
-function setCUI() {
-    SCSoundManager.clientUpdateInterval = setInterval(function(){
-        var ps = SCSoundManager.getPlayedSeconds();
-        SCUtils.extSocketHandler.socketEmitToWeb("POST", {
+});
+SCrouter.get("/clientUpdate", function(req, res) {
+	if (soundcloudSettings.soundcloudReady) {
+        console.log("SCClientUpdate");
+        var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
+        res.send({
             action: "serverPlayingTrackUpdate",
-            currentPlayingTrack: SCSoundManager.currentPlayingTrack,
-            percent: SCSoundManager.getPercent(),
+            currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack,
+            percent: soundcloudUtils.SCSoundManager.getPercent(),
             playedSeconds: ps,
             timeStamp: utils.formatHHMMSS(ps),
-            playing: SCSoundManager.playingTrack,
+            playing: soundcloudUtils.SCSoundManager.playingTrack,
             settingsData: {
-                currentUser: SCUtils.localSoundcloudSettings.currentUser,
-                currentVolume: SCSoundManager.currentVolume,
-                nextTrackShuffle: SCUtils.localSoundcloudSettings.nextTrackShuffle,
-                nextTrackLoop: SCUtils.localSoundcloudSettings.nextTrackLoop
+                currentUser: soundcloudUtils.SCUtils.localSoundcloudSettings.currentUser,
+                currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
+                nextTrackShuffle: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackShuffle,
+                nextTrackLoop: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackLoop
             }
         });
-    },SCUtils.localSoundcloudSettings.clientUpdateTime);
-}
+        res.end();
+    } else {
+        console.log("SC not ready on clientUpdate");
+        res.send("serverLoadingTracklist");
+        soundcloudSettings.waitingClients.push(req.session.id);
+        res.end();
+    }
+});
+SCrouter.get("/userEvent", function(req, res) {
+	if (data.type) {
+	    soundcloudUtils.SCSoundManager.processClientEvent({
+	        type: data.type,
+	        data: data.data,
+	        origin: "external"
+	    });
+	} else {
+	    console.log("Type undefined sccliuserevent");
+	}
+});
+/*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
@@ -1049,6 +1073,7 @@ function setCUI() {
 					}*/
 
 app.use('/login', AUTHrouter); //connect routers
+APIrouter.use('/SC', SCrouter); //connect soundcloud router to api
 app.use('/api', APIrouter);
 
 app.use(function(req, res, next){
