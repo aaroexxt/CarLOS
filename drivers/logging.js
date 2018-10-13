@@ -20,11 +20,12 @@ var loggingUtilities = {
 	errorFunctionOriginal: undefined,
 	maxLogFileLength: undefined,
 	logDirectory: undefined,
-	debugMode: false,
+	debugMode: true,
 	cwd: undefined,
 	validationInterval: -1,
 	validationTime: -1,
 	maxKeptFiles: 5,
+	ignoreFileString: "save", //string that will prevent deletion of file
 
 	writeInformation: {
 		currentFile: undefined, //current file that we are writing to
@@ -61,7 +62,11 @@ var loggingUtilities = {
 								}
 								loggingUtilities.logRaw("["+type+"] "+JSON.stringify(stripArg));
 							} else {
-								loggingUtilities.logRaw("["+type+"] "+stripColor(stripAnsi(dat[0])));
+								try {
+									loggingUtilities.logRaw("["+type+"] "+stripColor(stripAnsi(dat[0])));
+								} catch(e) {
+									loggingUtilities.logRaw("["+type+"] "+dat[0]);
+								}
 							}
 						}
 						if (loggingUtilities.debugMode) {
@@ -108,17 +113,20 @@ var loggingUtilities = {
 						for (var i=0; i<logfiles.length; i++) { //just iterate to find invalid files
 							let filePath = path.join(logDirPath,logfiles[i]);
 
-							if (!validateDate(logfiles[i])) { //logfile invalid
-								dateObjects.push({getTime: function(){return -1}}); //blank fn
-								skipDateObjects.push(i);
+							console.log("INDEX: "+logfiles[i].indexOf(loggingUtilities.ignoreFileString))
+							if (logfiles[i].indexOf(loggingUtilities.ignoreFileString) == -1) {
+								if (!validateDate(logfiles[i]) && logfiles[i].indexOf(loggingUtilities.ignoreFileString) == -1) { //logfile invalid
+									dateObjects.push({getTime: function(){return -1}}); //blank fn
+									skipDateObjects.push(i);
 
-								console.warn("Invalid log file detected (name invalid): "+logfiles[i]);
-								fs.unlink(filePath, err => {
-									if (err) {
-										console.error("Error unlinking logfile at path: "+filePath+", err: "+err);
-									}
-								});
-								numFilesToDelete--; //subtract from numFiles
+									console.warn("Invalid log file detected (name invalid): "+logfiles[i]);
+									fs.unlink(filePath, err => {
+										if (err) {
+											console.error("Error unlinking logfile at path: "+filePath+", err: "+err);
+										}
+									});
+									numFilesToDelete--; //subtract from numFiles
+								}
 							}
 						}
 					} else {
@@ -138,7 +146,10 @@ var loggingUtilities = {
 							for (var i=0; i<logfiles.length; i++) {
 								let filePath = path.join(logDirPath,logfiles[i]);
 
-								if (!validateDate(logfiles[i])) { //logfile invalid
+								if (logfiles[i].indexOf(loggingUtilities.ignoreFileString) > -1) {
+									dateObjects.push({getTime: function(){return -1}}); //blank fn
+									skipDateObjects.push(i);
+								} else if (!validateDate(logfiles[i])) { //logfile invalid
 									dateObjects.push({getTime: function(){return -1}}); //blank fn
 									skipDateObjects.push(i);
 
@@ -170,14 +181,23 @@ var loggingUtilities = {
 							}
 							if (numFilesToDelete > 0) {
 								for (var j=0; j<numFilesToDelete; j++) {
-									console.log("[LOGGING] Deleting logfile at index "+minDateInd+" because it is too old (name "+logfiles[minDateInd]+")");
-									let filePath = path.join(logDirPath,logfiles[minDateInd]);
-									skipDateObjects.push(minDateInd);
-									fs.unlink(filePath, err => {
-										if (err) {
-											console.error("Error unlinking logfile at path: "+filePath+", err: "+err);
+									if (loggingUtilities.debugMode) {
+										console.log("[LOGGING] SkipDateObjects: "+JSON.stringify(skipDateObjects));
+									}
+									if (skipDateObjects.indexOf(minDateInd) == -1) {
+										console.log("[LOGGING] Deleting logfile at index "+minDateInd+" because it is too old (name "+logfiles[minDateInd]+")");
+										let filePath = path.join(logDirPath,logfiles[minDateInd]);
+										skipDateObjects.push(minDateInd);
+										fs.unlink(filePath, err => {
+											if (err) {
+												console.error("Error unlinking logfile at path: "+filePath+", err: "+err);
+											}
+										});
+									} else {
+										if (loggingUtilities.debugMode) {
+											console.log("[LOGGING] skipping logfile deletion at index "+minDateInd+" because it is in skipDateObjects");
 										}
-									});
+									}
 
 									//RECALCULATE MIN+MAX DATES
 
@@ -187,7 +207,7 @@ var loggingUtilities = {
 									maxDateInd = 0;
 
 									for (var i=0; i<dateObjects.length; i++) {
-										if (skipDateObjects.indexOf(i) > -1) {
+										if (skipDateObjects.indexOf(i) > -1 || dateObjects[i] == -1) {
 											continue;
 										} else {
 											let dObjTime = dateObjects[i].getTime();
@@ -326,6 +346,8 @@ function validateDate(date) {
 		}
 		for (var i=0; i<splitTime.length; i++) {
 			if (Number(splitTime[i]) < 0 || Number(splitTime[i]) > 60) { //hey ik that the first number can also be 60 but whatever
+				return false;
+			} else if (isNaN(Number(splitTime[i]))) {
 				return false;
 			}
 		}

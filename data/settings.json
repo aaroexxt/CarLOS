@@ -24,7 +24,7 @@
         "maxKeptFiles": 10,
         "maxLogFileLength": 10000000,
         "logValidationInterval": 60000,
-        "loggerBaseFunctions": ["log", "warn", "error", "importantLog"],
+        "loggerBaseFunctions": ["log", "warn", "error", "iinfo", "ilog"],
 
         "arduinoBaudRate": 115200,
         "arduinoSensorUpdateInterval": 1000,
