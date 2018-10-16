@@ -49,7 +49,8 @@ fi
 echo "Installing packages...";
 sudo npm i -g npm@latest;
 #cd ~;
-sudo npm install --unsafe-perm=true --allow-root --save-prod axios express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js electron;
+sudo npm install --unsafe-perm=true --allow-root --save-prod electron axios express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js electron;
+sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --save-prod serialport;
 sudo npm install --unsafe-perm=true --allow-root --save-prod socket.io@1.7.2;
 sudo npm install --unsafe-perm=true --allow-root --save-prod nodemon;
@@ -61,8 +62,12 @@ elif [ "$platform" = "linux"]; then
     sudo npm install --unsafe-perm=true --allow-root --save-prod speaker;
     sudo npm install --unsafe-perm=true --allow-root --save-prod rpi-oled oled-font-5x7;
 fi
-
 echo "Done installing packages.";
+
+#rebuild electron
+echo "Rebuilding modules for electron...";
+sudo ./node_modules/.bin/electron-rebuild
+
 echo "Changing permissions on downloaded folder";
 sudo chmod 777 -R $cwd;
 sudo npm audit fix;
