@@ -599,7 +599,6 @@ function initSoundcloud(username) {
 		}
 		var timesLeft = soundcloudSettings.initMaxAttempts;
 
-		soundcloudSettings.soundcloudReady = false;
 		function initSCSlave() {
 			console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
 			soundcloudUtils.SCUtils.init({
@@ -866,6 +865,7 @@ passport.use('passcode', new CustomStrategy( function(req, done) {
 	} else {
 		console.log("no psc entered?");
 	}
+	console.log("DOING CV SHIT");
 	done(null, users[0]);
 }));
 
@@ -961,26 +961,8 @@ AUTHrouter.get('/cv', (req, res, next) => {
     res.redirect("/login");
 });
 AUTHrouter.post('/cv', (req, res, next) => {
-    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID+", image: "+req.params.image)
+    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
     passport.authenticate('openCV', (err, user, info) => {
-        if(info) {return res.send(info.message)}
-        if (err) { return next(err); }
-        if (!user) { return res.redirect('/login'); }
-        req.login(user, (err) => {
-          if (err) { return next(err); }
-          console.log("You were authenticated :)")
-          return res.redirect('/authrequired');
-        })
-    })(req, res, next);
-});
-
-
-AUTHrouter.get('/passcode', (req, res, next) => {
-    res.redirect("/login");
-});
-AUTHrouter.post('/passcode', (req, res, next) => {
-    console.log('Inside POST request on /loginPasscode, sessID: '+req.sessionID)
-    passport.authenticate('passcode', (err, user, info) => {
         if(info) {return res.send(info.message)}
         if (err) { return next(err); }
         if (!user) { return res.redirect('/login'); }
@@ -1006,7 +988,7 @@ APIrouter.get("/runtimeInformation", function(req, res) { //console route
 
 //Soundcloud Routes
 SCrouter.get("/clientReady", function(req, res) {
-	if (soundcloudSettings.soundcloudReady) {
+	if (soundcloudSettings.soundcloudReady || true) {
         console.log("SCClientReady request recieved; sending data");
         res.send({
             "action": "serverDataReady",
@@ -1040,6 +1022,7 @@ SCrouter.get("/clientUpdate", function(req, res) {
         console.log("SCClientUpdate");
         var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
         res.send({
+            action: "serverPlayingTrackUpdate",
             currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack,
             percent: soundcloudUtils.SCSoundManager.getPercent(),
             playedSeconds: ps,
@@ -1060,57 +1043,17 @@ SCrouter.get("/clientUpdate", function(req, res) {
         res.end();
     }
 });
-SCrouter.get("/event/:type", function(req, res) {
-	console.log("SCROUTER: Event type="+req.params.type+", data="+req.query.data)
-	if (req.params.type) {
+SCrouter.get("/userEvent", function(req, res) {
+	if (data.type) {
 	    soundcloudUtils.SCSoundManager.processClientEvent({
-	        type: req.params.type,
-	        data: req.query.data,
+	        type: data.type,
+	        data: data.data,
 	        origin: "external"
-	    }).then( () => {
-	    	res.end();
-	    }).catch( err => {
-	    	res.send(err);
-	    	res.end();
-	    })
+	    });
 	} else {
-	    console.error("Type undefined sccliuserevent");
-	    res.send("Error: Type is undefined in request");
-	    res.end();
+	    console.log("Type undefined sccliuserevent");
 	}
 });
-
-var gettingSCUser = false;
-SCrouter.get("/changeUser/:user", function(req, res) {
-	if (req.params.user) {
-	    console.info("Restarting SC MASTER with new user "+req.params.user);
-	    if (!gettingSCUser) {
-	    	gettingSCUser = true;
-	        initSoundcloud(req.params.user).then( () => {
-	            console.importantInfo("SC INIT OK");
-	            gettingSCUser = false;
-	            res.send("OK");
-	            res.end();
-	        }).catch( err => {
-	            console.error("Error initializing SC: "+err);
-	            res.send("Error initializing SC: "+err);
-	            gettingSCUser = false;
-	            res.end();
-	        });
-	    } else {
-	    	res.send("Error: Soundcloud not ready");
-	    	res.end();
-	    }
-	} else {
-	    console.error("User undefined in SC changeUser");
-	    res.send("Error: User is undefined in request");
-	    res.end();
-	}
-});
-
-
-
-
 /*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
