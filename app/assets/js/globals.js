@@ -873,9 +873,8 @@ var login = {
                 if (x < 0) {
                     x = tilesPerGlobe+x;
                 }
-
-                console.log("zoom="+zoom+", x="+x+", y="+coord.y)
                 // Wrap y (latitude) in a like manner if you want to enable vertical infinite scrolling
+
                 return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
             },
             tileSize: new google.maps.Size(256, 256),

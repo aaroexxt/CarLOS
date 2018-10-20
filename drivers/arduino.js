@@ -347,5 +347,5 @@ var arduinoUtilities = {
     }
 }
 
-module.exports = arduinoUtilities;
+exports.utilities = arduinoUtilities;
     

@@ -54,11 +54,7 @@ var loggingUtilities = {
 							if (dat.length > 1) {
 								var stripArg = dat;
 								for (var j=0; j<stripArg.length; j++) {
-									try {
-										stripArg[j] = stripColor(stripAnsi(stripArg[j]));
-									} catch(e) {
-										console.warn("[LOGGER] Failed to strip argument at j val "+j);
-									}
+									stripArg[j] = stripColor(stripAnsi(stripArg[j]));
 								}
 								loggingUtilities.logRaw("["+type+"] "+JSON.stringify(stripArg));
 							} else {
@@ -271,7 +267,7 @@ var loggingUtilities = {
 			if (loggingUtilities.writeInformation.currentBytesWritten+data.length > loggingUtilities.maxLogFileLength) {
 				/*loggingUtilities.writeInformation.currentBytesWritten = loggingUtilities.maxLogFileLength+1; //write into a new file if it's too long
 				loggingUtilities.logRaw(data);*/
-				//noped this because it could lead to infinite recursion (i.e. data is greater than max file len)
+				//noped this because it could lead to infinite recursion
 
 				let fullData = "\n["+fullDateShort+"] "+data;
 				loggingUtilities.writeInformation.currentFileStream.write(fullData);
