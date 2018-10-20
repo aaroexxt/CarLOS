@@ -66,17 +66,14 @@ Runtime Code (2 steps):
 const fs = require('fs');
 const utils = require('./drivers/utils.js'); //include the utils file
 const path = require('path');
-const singleLineLog = require('single-line-log').stdout; //single line logging\
 
-const isRoot = require('is-root');
-if (!isRoot()) { //are we running as root?
-	throw "Process is not running as root. Please start with elevated permissions"
-}
+const singleLineLog = require('single-line-log').stdout; //single line logging
 
-var catchErrors = false; //enables clean error handling. Only turn off during development
+var catchErrors = true; //enables clean error handling. Only turn off during development
 
 var cwd = __dirname;
 process.title = "CarOS V1";
+var sockets = [];
 var pyimgnum = 0; //python image counter
 
 //CONFIGURING WATCHDOG
@@ -561,29 +558,35 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 	runtimeInformation.status = "Exiting";
 	arduinoUtils.sendCommand("status","Exiting");
 	sendOledCommand("status","Exiting");
-	console.importantLog("Exiting in 1500ms");
+	console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
+	for (var i=0; i<sockets.length; i++) {
+		sockets[i].socket.emit("pydata","q"); //quit python
+		sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
+		sockets[i].socket.emit("disconnect","");
+	}
 	watchdog.exit();
 	setTimeout(function(){
 		process.exit(); //exit completely
-	},1500);
+	},1500); //give some time for sockets to send
 });
 
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.importantLog("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
-		console.importantLog("Exiting in 1500ms");
+		console.importantLog("Exiting in 1500ms (waiting for sockets to send...)");
 		console.importantLog("\nError signal recieved, graceful exiting (garbage collection)");
 		arduinoUtils.sendCommand("status","Error");
 		sendOledCommand("status","Error");
 		runtimeInformation.status = "Error";
+		for (var i=0; i<sockets.length; i++) {
+			sockets[i].socket.emit("pydata","q"); //quit python
+			sockets[i].socket.emit("POST",{"action": "runtimeInformation", "information":runtimeInformation}); //send rti
+			sockets[i].socket.emit("disconnect","");
+		}
 		watchdog.exit();
 		setTimeout(function(){
 			process.exit(); //exit completely
-		},1500);
-	});
-	process.on('unhandledRejection', (reason, p) => {
-	    console.error("Unhandled Promise Rejection at: Promise ", p, " reason: ", reason);
-	    // application specific logging, throwing an error, or other logic here
+		},1500); //give some time for sockets to send
 	});
 }
 
@@ -748,9 +751,9 @@ DEPS
 
 //express deps
 const express = require("express");
-const errorHandler = require('errorhandler');
 var APIrouter = express.Router();
 var SCrouter = express.Router();
+
 
 var AUTHrouter = express.Router();
 
@@ -773,17 +776,13 @@ const LocalStrategy = require('passport-local').Strategy;
 const CustomStrategy = require('passport-custom').Strategy;
 
 const bcrypt = require('bcrypt');
-const jsonDB = require('node-json-db');
-
-const db = new jsonDB(runtimeSettings.jsonDBPath, true, false); //connect to json-database
+const axios = require('axios');
 
 /****
 INIT MODS
 *****/
 
 console.log("[AUTH] Init modules begun");
-
-app.use(errorHandler({ dumpExceptions: true, showStack: true })); 
 app.use(serveFavicon(path.join(cwd,runtimeSettings.faviconDirectory))); //serve favicon
 
 app.use(express.static(path.join(cwd,runtimeSettings.assetsDirectory))); //define a static directory
@@ -837,22 +836,18 @@ passport.use(new LocalStrategy(
   { usernameField: 'name' },
   (name, password, done) => {
 	console.log('Passport localStrategy found, looking up user w/name: '+name+", passwd: "+password);
-	try {
-		let allUserData = db.getData("/users/");
-		for (var i=0; i<allUserData.length; i++) {
-			if (allUserData[i].name == name) {
-				return done(null, allUserData[i]);
-				if (!bcrypt.compareSync(password, allUserData[i].password)) {
-					return done(null, false, { message: 'Invalid credentials: password invalid.\n' });
-				} else {
-					return done(null, allUserData[i]);
-				}
-			}
+	axios.get(`http://localhost:5000/users?name=${name}`)
+	.then(res => {
+		let user = res.data[0]; //get the first user
+		if (!user) {
+			return done(null, false, { message: 'Invalid credentials: user not found.\n' });
+		} else if (!bcrypt.compareSync(password, user.password)) {
+			return done(null, false, { message: 'Invalid credentials: password invalid.\n' });
+		} else {
+			return done(null, user);
 		}
-		return done(null, false, { message: 'Invalid credentials: user not found (und in db).\n' });
-	} catch (e) {
-		return done(null, false, { message: 'Invalid credentials: user not found (err in db lookup).\n' });
-	}
+	})
+	.catch(error => done(error));
   }
 ));
 passport.use('openCV', new CustomStrategy( function(req, done) {
@@ -865,7 +860,6 @@ passport.use('passcode', new CustomStrategy( function(req, done) {
 	} else {
 		console.log("no psc entered?");
 	}
-	console.log("DOING CV SHIT");
 	done(null, users[0]);
 }));
 
@@ -877,18 +871,9 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser((id, done) => {
 	console.log("Deserializing user with id: "+id);
-	  try {
-		let allUserData = db.getData("/users/");
-		for (var i=0; i<allUserData.length; i++) {
-			if (allUserData[i].id == id) {
-				return done(null, allUserData[i]);
-			}
-		}
-		console.warn("Couldn't find user w/id "+id+" in db when deserializing");
-		return done("Couldn't find user in db when deserializing", false);
-	} catch (e) {
-		return done(e, false);
-	}
+	  axios.get(`http://localhost:5000/users/${id}`)
+	  .then(res => done(null, res.data) )
+	  .catch(error => done(error, false))
 });
 
 /****
@@ -1103,6 +1088,7 @@ app.use(function(req, res, next){
 	res.status(404); //crappy 404 page
 	res.send("<h1>Uhoh, you tried to go to a page that doesn't exist.</h1><br> Navigate to /client to go to the main page.");
 });
+
 
 console.log("[AUTH] Init server begun");
 server.listen(runtimeSettings.serverPort, () => {

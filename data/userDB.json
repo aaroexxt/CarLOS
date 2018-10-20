@@ -12,9 +12,5 @@
       "password": "$2a$10$2NWRAqjKGU/dXWwcFjinAelS2D1n9Z0XX7ygwfw9ar8N8vbGVq3Um",
       "isAdmin": false
     }
-  ],
-  "passcodes": [
-    "$2a$10$paxUGuiGKF0M1kOHbv4ll.KEWGu4A/yfbiA6nbT.ci/dr.g7421Pu",
-    "$2a$10$bd3oSbhnSc8OzLNgmJ43UOSdA3pBOm/IVrDtlAv7Fd2jvTUbWIqBW"
   ]
 }
