@@ -42,6 +42,8 @@
 
         "runningOnRPI": false,
 
+        "jsonDBPath": "data/userDB.json",
+
         "serverPort": 80
     },
     "soundcloudSettings": {

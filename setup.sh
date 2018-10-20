@@ -46,17 +46,24 @@ elif [ "$platform" = "mac" ]; then
     brew install portaudio;
 fi
 
+echo "Updating node and npm to correct versions...";
+sudo npm cache clean -f #update node
+sudo npm install -g n
+#sudo n 8.9.3
+sudo n stable
+#sudo npm install npm@5.5.1 -g #update npm
+sudo npm install npm@latest -g
+
 echo "Installing packages...";
 sudo npm i -g npm@latest;
 #cd ~;
-sudo npm install --unsafe-perm=true --allow-root --save-prod electron axios express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js electron;
-sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild
+sudo npm install --unsafe-perm=true --allow-root --save-prod is-root errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js;
+#sudo npm install --unsafe-perm=true --allow-root --save-prod electron@2.0.12
+#sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --save-prod serialport;
-sudo npm install --unsafe-perm=true --allow-root --save-prod socket.io@1.7.2;
 sudo npm install --unsafe-perm=true --allow-root --save-prod nodemon;
-sudo npm install --unsafe-perm=true --allow-root --save-prod json-server;
 
-if ["$platform" = "mac"]; then
+if [ "$platform" = "mac" ]; then
     sudo npm install --mpg123-backend=openal --unsafe-perm=true --allow-root --save-prod speaker;
 elif [ "$platform" = "linux"]; then
     sudo npm install --unsafe-perm=true --allow-root --save-prod speaker;
@@ -65,14 +72,25 @@ fi
 echo "Done installing packages.";
 
 #rebuild electron
-echo "Rebuilding modules for electron...";
-sudo ./node_modules/.bin/electron-rebuild
+#echo "Rebuilding modules for electron...";
+#sudo ./node_modules/.bin/electron-rebuild -v 2.0.12 -p -t "dev,prod,optional"
+# NO DONT USE THIS sudo npm rebuild --unsafe-perm=true --allow-root --runtime=electron --target=3.0.4 --disturl=https://atom.io/download/atom-shell --build-from-source
 
 echo "Changing permissions on downloaded folder";
 sudo chmod 777 -R $cwd;
-sudo npm audit fix;
-sudo pip3 install numpy;
-sudo pip3 install socketIO-client;
+sudo chmod 777 -R node_modules || echo "Couldn't chg permissions on node modules";
+echo "Patching nodeutils...";
+sudo mv nodeutils.js nodeUtils.js || echo "Couldn't move nodeUtils; is in the right location?";
+#echo "Auditing npm modules...";
+#sudo npm audit fix;
+
+
+echo "Done :)";
+echo "Run 'sudo bash $cwd/start.sh' to start the sever";
+exit;
+
+#sudo pip3 install numpy;
+#sudo pip3 install socketIO-client;
 #below code attempts to build opencv from source
 'if [ "$platform" = "mac" ]; then
     echo "Installing opencv with pip";
@@ -117,15 +135,10 @@ elif [ "$platform" = "linux" ]; then
     sudo /etc/init.d/dphys-swapfile stop
     sudo /etc/init.d/dphys-swapfile start
 fi'
-echo "Patching nodeutils...";
-sudo mv nodeutils.js nodeUtils.js || echo "Couldn't move nodeUtils; is in the right location?";
 #sudo pip3 install tensorflow;
-echo "If tensorflow module not found error occurs, delete the python and python3 folders in /usr/local/Cellar and reinstall python and python3 with 'brew install python python3'";
-sudo python3 -m pip install opencv-contrib-python==3.3.0.9; #why do you not work unless i do this???
+#echo "If tensorflow module not found error occurs, delete the python and python3 folders in /usr/local/Cellar and reinstall python and python3 with 'brew install python python3'";
+#sudo python3 -m pip install opencv-contrib-python==3.3.0.9; #why do you not work unless i do this???
 #sudo python3 -m pip install pyaudio;
 #if this doesn't work, https://stackoverflow.com/questions/44363066/error-cannot-find-module-lib-utils-unsupported-js-while-using-ionic
 #sudo rm -R /usr/local/lib/node_modules/npm; brew uninstall --force --ignore-dependencies node; brew install node;
-echo "Done :)";
-echo "Run 'sudo bash $cwd/start.sh' to start the sever";
-exit;
 #VNC STUFF BELOW
