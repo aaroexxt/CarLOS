@@ -11,6 +11,12 @@
       "name": "test@test.com",
       "password": "$2a$10$2NWRAqjKGU/dXWwcFjinAelS2D1n9Z0XX7ygwfw9ar8N8vbGVq3Um",
       "isAdmin": false
+    },
+    {
+      "id":"238djs",
+      "name": "mom",
+      "password": "$2a$10$2NWRAqjKGU/dXWwcFjinAelS2D1n9Z0XX7ygwfw9ar8N8vbGVq3Um",
+      "isAdmin": false
     }
   ],
   "passcodes": [

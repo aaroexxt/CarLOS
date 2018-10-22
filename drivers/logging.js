@@ -20,7 +20,7 @@ var loggingUtilities = {
 	errorFunctionOriginal: undefined,
 	maxLogFileLength: undefined,
 	logDirectory: undefined,
-	debugMode: true,
+	debugMode: false,
 	cwd: undefined,
 	validationInterval: -1,
 	validationTime: -1,

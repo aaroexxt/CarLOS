@@ -1,0 +1,11 @@
+PID 39984 received SIGSEGV for address: 0x1
+0   segfault-handler.node               0x00000001026f43c8 _ZL16segfault_handleriP9__siginfoPv + 312
+1   libsystem_platform.dylib            0x00007fff5b6b0f5a _sigtramp + 26
+2   ???                                 0x0000000109fe7b9a 0x0 + 4462640026
+3   segfault-handler.node               0x00000001026f3aa6 _Z22segfault_stack_frame_2v + 22
+4   segfault-handler.node               0x00000001026f3aca _Z13CauseSegfaultRKN3Nan20FunctionCallbackInfoIN2v85ValueEEE + 26
+5   segfault-handler.node               0x00000001026f60b3 _ZN3Nan3impL23FunctionCallbackWrapperERKN2v820FunctionCallbackInfoINS1_5ValueEEE + 1475
+6   node                                0x00000001002301af _ZN2v88internal25FunctionCallbackArguments4CallEPNS0_15CallHandlerInfoE + 623
+7   node                                0x000000010022f6e1 _ZN2v88internal12_GLOBAL__N_119HandleApiCallHelperILb0EEENS0_11MaybeHandleINS0_6ObjectEEEPNS0_7IsolateENS0_6HandleINS0_10HeapObjectEEESA_NS8_INS0_20FunctionTemplateInfoEEENS8_IS4_EENS0_16BuiltinArgumentsE + 689
+8   node                                0x000000010022ed69 _ZN2v88internalL26Builtin_Impl_HandleApiCallENS0_16BuiltinArgumentsEPNS0_7IsolateE + 281
+9   ???                                 0x000031067585be3d 0x0 + 53903811264061

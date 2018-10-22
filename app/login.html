@@ -1,0 +1,106 @@
+<!DOCTYPE HTML>
+<html> <!-- manifest="data.appcache" -->
+	<head>
+		<title>C.OS. Login</title>
+		<script src="/js/ajax.js"></script>
+	</head>
+	<body>
+		<form action="/login/regular" method="post">
+			Email:
+			<br>
+			<input type="text" name="name">
+			<br>
+			Password:
+			<br>
+			<input type="text" name="password">
+			<br>
+			<input type="submit" value="Submit">
+		</form>
+		<div id="login-video">
+			<video autoplay id="loginvideo"></video>
+			<canvas style="" id="loginCanvas"></canvas>
+			<center style="padding-bottom: 0px; padding-top: 0px;">
+				<hr>
+				<button class="sort" onclick="snapshot();">Take Photo</button>
+			</center>
+		</div>
+		<script>
+			var send = function (blob) {
+				var data = new FormData();
+				data.append("document", blob);
+				fetch('http://localhost/login/cv', {
+				  method: 'POST',
+				  body: data
+				})
+
+	            /*var filename = 'Test.pdf';
+	            var formdata = new FormData();
+	            formdata.append('File1', blob, filename);
+
+	            minAjax({
+	                url: 'http://localhost/login/cv',
+	                type: "POST",
+	                data: formdata,
+	                mimeType: "multipart/form-data",
+	                method: "true",
+	                debugLog: "true",
+	                success: function (result) {
+	                    console.log("Upload complete!");
+	                },
+	                error: function (error) {
+	                    console.log("Something went wrong!");
+	                }
+	            })*/
+	        }
+
+	        /*function snapshot() {
+				var canvas = ID("loginCanvas");
+		        var ctx = canvas.getContext('2d');
+		        canvas.height = globals.loginVideo.videoHeight;
+		        canvas.width = globals.loginVideo.videoWidth;
+		        ctx.drawImage(globals.loginVideo, 0, 0, canvas.width, canvas.height);
+		        var daturl = canvas.toDataURL('image/png');
+		    }*/
+
+		    var loginVideoStream,loginVideo = {};
+		    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+			navigator.mediaDevices.getUserMedia({video: true}).then(function(localMediaStream) {
+				loginVideoStream = localMediaStream;
+				loginVideo = document.getElementById("loginvideo");
+				loginVideo.srcObject = localMediaStream;
+				// Note: onloadedmetadata doesn't fire in Chrome when using it with getUserMedia.
+				// See crbug.com/110938.
+				globals.loginVideo.onloadedmetadata = function(e) {
+					console.log("Meta data for loginVideo loaded")
+				  //globals.loginVideo.snapshot();
+				};
+				globals.loginVideo.oncanplaythrough = function(e) {
+					console.log("Video loaded; sending snapshot");
+					//snapshot();
+				};
+				console.log("lms: ",localMediaStream)
+			}).catch(function(e){
+				console.error("Error getting usermedia for login video, e="+JSON.stringify(e))
+			});
+
+			function snapshot() {
+			    var canvas = document.getElementById("loginCanvas");
+		        var ctx = canvas.getContext('2d');
+		        canvas.height = loginVideo.videoHeight;
+		        canvas.width = loginVideo.videoWidth;
+		        ctx.drawImage(loginVideo, 0, 0, canvas.width, canvas.height);
+			    if (!canvas.toBlob) {
+		            var dataURL = canvas.toDataURL();
+		            var bytes = atob(dataURL.split(',')[1])
+		            var arr = new Uint8Array(bytes.length);
+		            for (var i = 0; i < bytes.length; i++) {
+		                arr[i] = bytes.charCodeAt(i);
+		            }
+		            send(new Blob([arr], { type: 'image/png' }));
+		        } else {
+		            canvas.toBlob(send);
+		        }
+		    }
+		</script>
+	</body>
+</html>

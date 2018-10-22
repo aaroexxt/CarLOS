@@ -57,7 +57,7 @@ sudo npm install npm@latest -g
 echo "Installing packages...";
 sudo npm i -g npm@latest;
 #cd ~;
-sudo npm install --unsafe-perm=true --allow-root --save-prod is-root errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js;
+sudo npm install --unsafe-perm=true --allow-root --save-prod multer is-root segfault-handler errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js;
 #sudo npm install --unsafe-perm=true --allow-root --save-prod electron@2.0.12
 #sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --save-prod serialport;

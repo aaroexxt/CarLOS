@@ -17,6 +17,7 @@
         "defaultFileDirectory": "/app",
         "defaultDataDirectory": "/data",
         "defaultClientFile": "COS.html",
+        "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
 
         "logLevel": 4,
@@ -31,7 +32,7 @@
         "arduinoSensorOverloadedInterval": 2000,
         "arduinoSensorOverloadedTimeout": 10000,
 
-        "disableToobusy": true,
+        "disableToobusy": false,
         "tooBusyLagThreshold": 100,
 
         "oledDisplayAddress": "0x3C",
@@ -85,7 +86,7 @@
         "soundcloudReady": false,
         "playMusicOnServer": true,
         "waitingClients": [],
-        "minInteractionWaitTime": 1000,
+        "minInteractionWaitTime": 2000,
         "trackSelectedWaitMultiplier": 2
     }
 }

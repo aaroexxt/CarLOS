@@ -73,16 +73,14 @@ if (!isRoot()) { //are we running as root?
 	throw "Process is not running as root. Please start with elevated permissions"
 }
 
-var catchErrors = false; //enables clean error handling. Only turn off during development
+var catchErrors = true; //enables clean error handling. Only turn off during development
 
 var cwd = __dirname;
 process.title = "CarOS V1";
-var pyimgnum = 0; //python image counter
 
 //CONFIGURING WATCHDOG
-
 var watchdog = require('native-watchdog');
-watchdog.start(60000); //will watch process
+watchdog.start(process.pid); //will watch process
 
 /**********************************
 --I2-- RUNTIME INFO/SETTINGS --I2--
@@ -156,7 +154,7 @@ if (!runtimeSettings.disableToobusy) {
 }
 
 //console.clear();
-console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\nPID: "+process.pid+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
 /*******************************
 --I3-- STATE MACHINE INIT --I3--
@@ -320,17 +318,17 @@ loggingUtils.init(cwd, runtimeSettings).then( () => {
 
 		console.error = function() {
 			loggingUtils.error(arguments,"error");
-			semiOriginalWarn.apply(null, arguments);
+			semiOriginalError.apply(null, arguments);
 		}
 
 		console.importantLog = function() {
 			loggingUtils.ilog(arguments,"ilog");
-			semiOriginalWarn.apply(null, arguments);
+			semiOriginalILog.apply(null, arguments);
 		}
 
 		console.importantInfo = function() {
 			loggingUtils.iinfo(arguments,"iinfo");
-			semiOriginalWarn.apply(null, arguments);
+			semiOriginalIInfo.apply(null, arguments);
 		}
 
 		console.importantLog("Logging commands init ok (2/4)");
@@ -551,7 +549,6 @@ stdinputListener.addPersistentListener("*",function(d) {
 	}
 });
 
-
 /************************************
 --I11-- ERROR AND EXIT HANDLING --I11--
 ************************************/
@@ -568,6 +565,12 @@ process.on('SIGINT', function (code) { //on ctrl+c or exit
 	},1500);
 });
 
+const SegfaultHandler = require('segfault-handler');
+SegfaultHandler.registerHandler("crash.log", function(signal, address, stack) {
+	console.error("SEGFAULT - Signal: "+signal+"\naddress: "+address+"\nstack: "+stack)
+	loggingUtils.error("SEGFAULT - Signal: "+signal+"\naddress: "+address+"\nstack: "+stack, "segerror");
+});
+
 if (catchErrors) {
 	process.on('uncaughtException', function (err) { //on error
 		console.importantLog("\nCRASH REPORT\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\nError:\n"+err+"\n-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~\n");
@@ -577,14 +580,13 @@ if (catchErrors) {
 		sendOledCommand("status","Error");
 		runtimeInformation.status = "Error";
 		watchdog.exit();
-		setTimeout(function(){
-			process.exit(); //exit completely
-		},1500);
+		process.exit();
 	});
 	process.on('unhandledRejection', (reason, p) => {
 	    console.error("Unhandled Promise Rejection at: Promise ", p, " reason: ", reason);
-	    // application specific logging, throwing an error, or other logic here
+	    process.exit();
 	});
+
 }
 
 /***********************************
@@ -599,6 +601,7 @@ function initSoundcloud(username) {
 		}
 		var timesLeft = soundcloudSettings.initMaxAttempts;
 
+		soundcloudSettings.soundcloudReady = false;
 		function initSCSlave() {
 			console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
 			soundcloudUtils.SCUtils.init({
@@ -765,6 +768,8 @@ const server = require('http').Server(app);
 const finalHandler = require('finalhandler');
 const serveFavicon = require('serve-favicon');
 const bodyParser = require('body-parser');
+const multer = require('multer');
+const uploadHandler = multer();
 const uuid = require('uuid/v4');
 
 //authentication deps
@@ -788,8 +793,8 @@ app.use(serveFavicon(path.join(cwd,runtimeSettings.faviconDirectory))); //serve 
 
 app.use(express.static(path.join(cwd,runtimeSettings.assetsDirectory))); //define a static directory
 
-app.use(bodyParser.urlencoded({ extended: true })) //bodyparser for getting json data
-app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' })); //bodyparser for getting json data, big limit for images
+app.use(bodyParser.json({limit: '50mb'}));
 
 const sessionFileStore = new FileStore(); //create the session file store
 
@@ -798,7 +803,7 @@ app.use(session({
 		console.log('Inside UUID-generation');
 		return uuid(); // use UUIDs for session IDs
 	},
-	store: sessionFileStore, //filestore for sessions
+	//store: sessionFileStore, //filestore for sessions
 	secret: "k3yB0ARdC@3t5s!", //set secret to new ID
 	resave: false,
 	saveUninitialized: true
@@ -818,12 +823,9 @@ app.use(function(req, res, next) {
 
 //TODODODODODODODO FINISH THIS
 app.use(function(req, res, next) { //default listener that sets session values
-	if (req.session.views) {
-		req.session.views++;
-	} else {
-		req.session.views = 1;
+	if (!req.session.videoAttemptNumber) {
+		req.session.videoAttemptNumber = 0;
 	}
-	req.session.uuuuuid = uuid();
 	next();
 });
 
@@ -856,16 +858,72 @@ passport.use(new LocalStrategy(
   }
 ));
 passport.use('openCV', new CustomStrategy( function(req, done) {
-	console.log("ig="+req.params.image)
-	done(null, users[0]);
+	let imageData = req.query.image;
+	if (typeof imageData == "undefined") {
+		return done(null, false, { message: 'Image not sent with request\n' });
+	} else {
+		console.log("image len "+imageData.length);
+		if (openCVReady) {
+	        //console.log("recv imgdata");
+	        let imageDataMatches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
+        cvtImageData = {};
+        	if (imageDataMatches.length !== 3) {
+		        return done(null, false, { message: 'Invalid image: image is not encoded correctly'});
+		    }
+		    cvtImageData.type = imageDataMatches[1];
+    		cvtImageData.data = Buffer.from(imageDataMatches[2], 'base64'); //create converted object
+
+	        let image = cv.imdecode(cvtImageData.data); //decode the buffer
+
+	        let maxVidAttempts = runtimeSettings.maxVideoAttempts;
+	        let vidAttempt = req.session.videoAttemptNumber;
+	        
+	        cvUtils.predictFaceFromData(image).then( result => { //predict the face
+	            if (result == false) {
+	                req.session.videoAttemptNumber++; //increment video attempt
+
+	                console.log("faceHandler: (no face found)");
+	                //req.send("Error: No face found"); //use new unique id database (quenum) so authkeys are not leaked between clients
+	            } else {
+
+	                let face = result[0];
+	                let confidence = result[1];
+
+	                if (runtimeSettings.faces.indexOf(face) > -1) {
+	                    console.log("faceHandler: approved "+face+", looking up");
+	                    let allUserData = db.getData("/users/");
+	                    for (var i=0; i<allUserData.length; i++) {
+							if (allUserData[i].name == face) {
+								console.log("found face "+face+" in db");
+								return done(null, allUserData[i]);
+							}
+						}
+	                    return done(null, false, { message: 'Face found has no corresponding user in database. Cannot approve, please update the user database with label '+face+'.\n' });
+	                    //req.send({confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
+	                } else {
+	                    req.session.videoAttemptNumber++;
+	                    console.log("faceHandler: not approved "+face);
+	                    return done(null, false, { message: 'Face found is not approved.\n' });
+	                }
+	            }
+
+	        }).catch( err => {
+	            req.session.videoAttemptNumber++;
+	            console.error("Error predicting image: "+err);
+	            return done(null, false, { message: 'Error: Server encoutered error \' '+err+'\' while processing\n' });
+	        })
+		} else {
+		    return done(null, false, { message: 'Error: OpenCV is not ready\n' });
+		}
+	}
 }));
+
 passport.use('passcode', new CustomStrategy( function(req, done) {
 	if (req.params.passcode) {
 		console.log("psc entered="+req.params.passcode);
 	} else {
 		console.log("no psc entered?");
 	}
-	console.log("DOING CV SHIT");
 	done(null, users[0]);
 }));
 
@@ -935,7 +993,21 @@ app.get('/login', (req, res) => {
     if (req.isAuthenticated()) {
         res.redirect("/client");
     } else {
-        res.send(`You hit login page!\n<form action="/login/regular" method="post">Email:<br><input type="text" name="name"><br>Password:<br><input type="text" name="password"><br><input type="submit" value="Submit"></form>`)
+        var done = finalHandler(req, res, {
+			onerror: function(err) {
+				console.log("[HTTP] Error: "+err.stack || err.toString())
+			}
+		});
+
+		console.log('Inside GET /login callback')
+		fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,runtimeSettings.defaultLoginFile), function (err, buf) {
+			if (err) {
+				return done(err);
+			} else {
+				//res.setHeader('Content-Type', 'text/html')
+				res.end(buf);
+			}
+		});
     }
 })
 
@@ -958,10 +1030,7 @@ AUTHrouter.post('/regular', (req, res, next) => {
 })
 
 AUTHrouter.get('/cv', (req, res, next) => {
-    res.redirect("/login");
-});
-AUTHrouter.post('/cv', (req, res, next) => {
-    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
+	console.log('Inside GET request on /loginCV, sessID: '+req.sessionID)
     passport.authenticate('openCV', (err, user, info) => {
         if(info) {return res.send(info.message)}
         if (err) { return next(err); }
@@ -969,6 +1038,37 @@ AUTHrouter.post('/cv', (req, res, next) => {
         req.login(user, (err) => {
           if (err) { return next(err); }
           console.log("You were authenticated :)")
+          return res.redirect('/authrequired');
+        })
+    })(req, res, next);
+    //res.redirect("/login");
+});
+AUTHrouter.post('/cv', uploadHandler.fields([]), (req, res, next) => {
+    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
+    console.log(JSON.stringify(req.body))
+    /*passport.authenticate('openCV', (err, user, info) => {
+        if(info) {return res.send(info.message)}
+        if (err) { return next(err); }
+        if (!user) { return res.redirect('/login'); }
+        req.login(user, (err) => {
+          if (err) { return next(err); }
+          console.log("You were authenticated :)")
+          return res.redirect('/authrequired');
+        })
+    })(req, res, next);*/
+});
+AUTHrouter.get('/passcode', (req, res, next) => {
+    res.redirect("/login");
+});
+AUTHrouter.post('/passcode', (req, res, next) => {
+    console.log('Inside POST request on /loginPasscode, sessID: '+req.sessionID)
+    passport.authenticate('passcode', (err, user, info) => {
+        if(info) {return res.send(info.message)}
+        if (err) { return next(err); }
+        if (!user) { return res.redirect('/login'); }
+        req.login(user, (err) => {
+          if (err) { return next(err); }
+          console.log("You were authenticated :)");
           return res.redirect('/authrequired');
         })
     })(req, res, next);
@@ -988,10 +1088,9 @@ APIrouter.get("/runtimeInformation", function(req, res) { //console route
 
 //Soundcloud Routes
 SCrouter.get("/clientReady", function(req, res) {
-	if (soundcloudSettings.soundcloudReady || true) {
+	if (soundcloudSettings.soundcloudReady) {
         console.log("SCClientReady request recieved; sending data");
         res.send({
-            "action": "serverDataReady",
             hasTracks: true,
             likedTracks: soundcloudSettings.likedTracks,
             trackList: soundcloudSettings.trackList,
@@ -1022,7 +1121,6 @@ SCrouter.get("/clientUpdate", function(req, res) {
         console.log("SCClientUpdate");
         var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
         res.send({
-            action: "serverPlayingTrackUpdate",
             currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack,
             percent: soundcloudUtils.SCSoundManager.getPercent(),
             playedSeconds: ps,
@@ -1043,17 +1141,55 @@ SCrouter.get("/clientUpdate", function(req, res) {
         res.end();
     }
 });
-SCrouter.get("/userEvent", function(req, res) {
-	if (data.type) {
+SCrouter.get("/event/:type", function(req, res) {
+	console.log("SCROUTER: Event type="+req.params.type+", data="+req.query.data)
+	if (req.params.type) {
 	    soundcloudUtils.SCSoundManager.processClientEvent({
-	        type: data.type,
-	        data: data.data,
+	        type: req.params.type,
+	        data: req.query.data,
 	        origin: "external"
-	    });
+	    }).then( () => {
+	    	res.send("OK");
+	    	res.end();
+	    }).catch( err => {
+	    	res.send(err);
+	    	res.end();
+	    })
 	} else {
-	    console.log("Type undefined sccliuserevent");
+	    console.error("Type undefined sccliuserevent");
+	    res.send("Error: Type is undefined in request");
+	    res.end();
 	}
 });
+
+var gettingSCUser = false;
+SCrouter.get("/changeUser/:user", function(req, res) {
+	if (req.params.user) {
+	    console.info("Restarting SC MASTER with new user "+req.params.user);
+	    if (!gettingSCUser) {
+	    	gettingSCUser = true;
+	        initSoundcloud(req.params.user).then( () => {
+	            console.importantInfo("SC INIT OK");
+	            gettingSCUser = false;
+	            res.send("OK");
+	            res.end();
+	        }).catch( err => {
+	            console.error("Error initializing SC: "+err);
+	            res.send("Error initializing SC: "+err);
+	            gettingSCUser = false;
+	            res.end();
+	        });
+	    } else {
+	    	res.send("Error: Soundcloud not ready");
+	    	res.end();
+	    }
+	} else {
+		console.error("User undefined in SC changeUser");
+	    res.send("Error: User is undefined in request");
+	    res.end();
+	}
+});
+
 /*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
@@ -1095,9 +1231,9 @@ SCrouter.get("/userEvent", function(req, res) {
 						});
 					}*/
 
-app.use('/login', AUTHrouter); //connect routers
+app.use('/login', AUTHrouter); //connect login to auth router
 APIrouter.use('/SC', SCrouter); //connect soundcloud router to api
-app.use('/api', APIrouter);
+app.use('/api', APIrouter); //connect api to main
 
 app.use(function(req, res, next){
 	res.status(404); //crappy 404 page
@@ -1106,7 +1242,7 @@ app.use(function(req, res, next){
 
 console.log("[AUTH] Init server begun");
 server.listen(runtimeSettings.serverPort, () => {
-	console.log((new Date()) + ' Node server is listening on port ' + runtimeSettings.serverPort);
+	console.log('Node server OK on port ' + runtimeSettings.serverPort);
 });
 
 //I see you all the way at the bottom... what r u doing here, go back up and code something useful!
