@@ -864,7 +864,7 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 	} else {
 		console.log("inside cv, image len "+imageData.length);
 		if (openCVReady) {
-	        //console.log("recv imgdata");
+	        //I'm going to leave this here in case this script ever needs to process base64 encoded data... probably not but hey
 	        /*let imageDataMatches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
         cvtImageData = {};
         	if (imageDataMatches.length !== 3) {
@@ -877,15 +877,16 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 
 	        let maxVidAttempts = runtimeSettings.maxVideoAttempts;
 	        let vidAttempt = req.session.videoAttemptNumber;
-	        
+	        //CHECK MAXVIDATTEMPTS
 	        cvUtils.predictFaceFromData(image).then( result => { //predict the face
 	            if (result == false) {
 	                req.session.videoAttemptNumber++; //increment video attempt
 
 	                console.log("faceHandler: (no face found)");
+	                return done(null, false, { message: 'Error: No face found in image\n' });
 	                //req.send("Error: No face found"); //use new unique id database (quenum) so authkeys are not leaked between clients
 	            } else {
-	            	console.log("Face finding result: "+JSON.stringify(result))
+	            	console.log("Face finding result: "+JSON.stringify(result));
 
 	                let face = result[0];
 	                let confidence = result[1];
@@ -1033,17 +1034,7 @@ AUTHrouter.post('/regular', (req, res, next) => {
 
 AUTHrouter.get('/cv', (req, res, next) => {
 	console.log('Inside GET request on /loginCV, sessID: '+req.sessionID)
-    passport.authenticate('openCV', (err, user, info) => {
-        if(info) {return res.send(info.message)}
-        if (err) { return next(err); }
-        if (!user) { return res.redirect('/login'); }
-        req.login(user, (err) => {
-          if (err) { return next(err); }
-          console.log("You were authenticated :)")
-          return res.redirect('/authrequired');
-        })
-    })(req, res, next);
-    //res.redirect("/login");
+    res.redirect("/login");
 });
 AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { name: 'metadata', maxCount: 1 }]), (req, res, next) => {
     console.log('Inside POST request on /loginCV, sessID: '+req.sessionID);

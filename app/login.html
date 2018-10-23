@@ -33,6 +33,9 @@
 				  method: 'POST',
 				  body: data
 				})
+				.then(response => response.text())
+				.then(response => console.log('Success:', JSON.stringify(response)))
+				.catch(error => console.error('Error:', error));
 
 	            /*var filename = 'Test.pdf';
 	            var formdata = new FormData();
