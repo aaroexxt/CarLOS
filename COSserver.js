@@ -858,22 +858,22 @@ passport.use(new LocalStrategy(
   }
 ));
 passport.use('openCV', new CustomStrategy( function(req, done) {
-	let imageData = req.query.image;
+	let imageData = req.files['photo'][0].buffer;
 	if (typeof imageData == "undefined") {
 		return done(null, false, { message: 'Image not sent with request\n' });
 	} else {
-		console.log("image len "+imageData.length);
+		console.log("inside cv, image len "+imageData.length);
 		if (openCVReady) {
 	        //console.log("recv imgdata");
-	        let imageDataMatches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
+	        /*let imageDataMatches = imageData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
         cvtImageData = {};
         	if (imageDataMatches.length !== 3) {
 		        return done(null, false, { message: 'Invalid image: image is not encoded correctly'});
 		    }
 		    cvtImageData.type = imageDataMatches[1];
-    		cvtImageData.data = Buffer.from(imageDataMatches[2], 'base64'); //create converted object
+    		cvtImageData.data = Buffer.from(imageDataMatches[2], 'base64'); //create converted object*/
 
-	        let image = cv.imdecode(cvtImageData.data); //decode the buffer
+	        let image = cv.imdecode(req.files['photo'][0].buffer);//cvtImageData.data); //decode the buffer
 
 	        let maxVidAttempts = runtimeSettings.maxVideoAttempts;
 	        let vidAttempt = req.session.videoAttemptNumber;
@@ -885,6 +885,7 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 	                console.log("faceHandler: (no face found)");
 	                //req.send("Error: No face found"); //use new unique id database (quenum) so authkeys are not leaked between clients
 	            } else {
+	            	console.log("Face finding result: "+JSON.stringify(result))
 
 	                let face = result[0];
 	                let confidence = result[1];
@@ -913,6 +914,7 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 	            return done(null, false, { message: 'Error: Server encoutered error \' '+err+'\' while processing\n' });
 	        })
 		} else {
+			console.warn("CV check requested when it's not ready");
 		    return done(null, false, { message: 'Error: OpenCV is not ready\n' });
 		}
 	}
@@ -1043,19 +1045,25 @@ AUTHrouter.get('/cv', (req, res, next) => {
     })(req, res, next);
     //res.redirect("/login");
 });
-AUTHrouter.post('/cv', uploadHandler.fields([]), (req, res, next) => {
-    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID)
-    console.log(JSON.stringify(req.body))
-    /*passport.authenticate('openCV', (err, user, info) => {
-        if(info) {return res.send(info.message)}
-        if (err) { return next(err); }
-        if (!user) { return res.redirect('/login'); }
-        req.login(user, (err) => {
-          if (err) { return next(err); }
-          console.log("You were authenticated :)")
-          return res.redirect('/authrequired');
-        })
-    })(req, res, next);*/
+AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { name: 'metadata', maxCount: 1 }]), (req, res, next) => {
+    console.log('Inside POST request on /loginCV, sessID: '+req.sessionID);
+    //console.log((typeof req.files['photo'] == "undefined")+" "+(req.files['photo'][0].size <= 1)+" "+(req.files['photo'][0].buffer.length <= 1)+" "+(req.files['photo'][0].mimetype !== "image/png"))
+    if (typeof req.files['photo'] == "undefined" || req.files['photo'][0].size <= 1 || req.files['photo'][0].buffer.length <= 1 || req.files['photo'][0].mimetype !== "image/png") {
+    	console.warn("CV image invalid");
+    	return res.end("Image invalid");
+    } else {
+    	console.log("Recieved IMAGE with size: "+req.files['photo'][0].size+", mimetype: "+req.files['photo'][0].mimetype);
+    	passport.authenticate('openCV', (err, user, info) => {
+	        if(info) {return res.send(info.message)}
+	        if (err) { return next(err); }
+	        if (!user) { return res.redirect('/login'); }
+	        req.login(user, (err) => {
+	          if (err) { return next(err); }
+	          console.log("You were authenticated :)")
+	          return res.redirect('/authrequired');
+	        })
+	    })(req, res, next);
+    }
 });
 AUTHrouter.get('/passcode', (req, res, next) => {
     res.redirect("/login");

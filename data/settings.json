@@ -32,7 +32,7 @@
         "arduinoSensorOverloadedInterval": 2000,
         "arduinoSensorOverloadedTimeout": 10000,
 
-        "disableToobusy": false,
+        "disableToobusy": true,
         "tooBusyLagThreshold": 100,
 
         "oledDisplayAddress": "0x3C",

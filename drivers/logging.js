@@ -54,7 +54,11 @@ var loggingUtilities = {
 							if (dat.length > 1) {
 								var stripArg = dat;
 								for (var j=0; j<stripArg.length; j++) {
-									stripArg[j] = stripColor(stripAnsi(stripArg[j]));
+									try {
+										stripArg[j] = stripColor(stripAnsi(stripArg[j]));
+									} catch(e) {
+										continue;
+									}
 								}
 								loggingUtilities.logRaw("["+type+"] "+JSON.stringify(stripArg));
 							} else {
