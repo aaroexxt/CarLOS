@@ -34,7 +34,11 @@
 				  body: data
 				})
 				.then(response => response.text())
-				.then(response => console.log('Success:', JSON.stringify(response)))
+				.then(response => {
+					if (response.toLowerCase() == "ok") {
+						window.location = "client"
+					}
+				})
 				.catch(error => console.error('Error:', error));
 
 	            /*var filename = 'Test.pdf';

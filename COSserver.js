@@ -631,16 +631,13 @@ function initSoundcloud(username) {
 					mreject("MaxTries reached (giving up) with error message: "+err);
 					if (username == soundcloudSettings.defaultUsername) { //first init
 						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
-								"action": "serverSoundcloudError",
-								error: "MaxTries reached (giving up) with error message: "+err
-							});
+							//TODO FINISH THIS
 						}
 					} else {
-						socketHandler.socketEmitToWeb('POST', {
+						/*socketHandler.socketEmitToWeb('POST', {
 							"action": "serverSoundcloudError",
 							error: "MaxTries reached (giving up) with error message: "+err
-						});
+						});*/ //TODO FINISH THIS
 					}
 				}
 			});
@@ -725,10 +722,6 @@ var statusUpdateInterval = setInterval(function(){
 	sessionFileStore.length(function session_count(a,len) {
 		runtimeInformation.users = len;
 	});  //rts.users
-	if (runtimeInformation.status.toLowerCase() != "running") {
-		console.log("Sending runtimeinfo because of status change");
-		socketHandler.socketEmitToAll('POST', {"action": "runtimeInformation", "information":runtimeInformation})
-	}
 },1000);
 runtimeInformation.status = "Running";
 
@@ -888,25 +881,21 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 	            } else {
 	            	console.log("Face finding result: "+JSON.stringify(result));
 
-	                let face = result[0];
+	                let face = result[0].toLowerCase();
 	                let confidence = result[1];
 
-	                if (runtimeSettings.faces.indexOf(face) > -1) {
-	                    console.log("faceHandler: approved "+face+", looking up");
-	                    let allUserData = db.getData("/users/");
-	                    for (var i=0; i<allUserData.length; i++) {
-							if (allUserData[i].name == face) {
-								console.log("found face "+face+" in db");
-								return done(null, allUserData[i]);
-							}
+                    let allUserData = db.getData("/users/");
+                    for (var i=0; i<allUserData.length; i++) {
+						if (allUserData[i].name.toLowerCase() == face) {
+							console.log("found face "+face+" in db");
+							console.log("faceHandler: approved "+face+", looking up");
+							return done(null, allUserData[i]);
 						}
-	                    return done(null, false, { message: 'Face found has no corresponding user in database. Cannot approve, please update the user database with label '+face+'.\n' });
-	                    //req.send({confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
-	                } else {
-	                    req.session.videoAttemptNumber++;
-	                    console.log("faceHandler: not approved "+face);
-	                    return done(null, false, { message: 'Face found is not approved.\n' });
-	                }
+					}
+					req.session.videoAttemptNumber++;
+					console.log("faceHandler: not approved "+face);
+                    return done(null, false, { message: 'Face found has no corresponding user in database. Cannot approve, please update the user database with label '+face+'.\n' });
+                    //req.send({confidences: confidence, buffer: imageBuffer.toString('base64'), labels: face, approved: true, totalAttempts: maxVidAttempts, attemptNumber: vidAttempt }); //use new unique id database (quenum) so authkeys are not leaked between clients
 	            }
 
 	        }).catch( err => {
@@ -955,6 +944,7 @@ passport.deserializeUser((id, done) => {
 /****
 INIT ROUTES
 *****/
+
 //MAIN ROUTES
 app.get("/client", function(req, res) { //COS main route
 	console.log(JSON.stringify(req.session)+" session");
@@ -1027,7 +1017,7 @@ AUTHrouter.post('/regular', (req, res, next) => {
         req.login(user, (err) => {
           if (err) { return next(err); }
           console.log("You were authenticated :)")
-          return res.redirect('/client');
+          return res.end("OK");
         })
     })(req, res, next);
 })
@@ -1051,7 +1041,7 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
 	        req.login(user, (err) => {
 	          if (err) { return next(err); }
 	          console.log("You were authenticated :)")
-	          return res.redirect('/authrequired');
+	          return res.end("OK");
 	        })
 	    })(req, res, next);
     }
@@ -1068,22 +1058,132 @@ AUTHrouter.post('/passcode', (req, res, next) => {
         req.login(user, (err) => {
           if (err) { return next(err); }
           console.log("You were authenticated :)");
-          return res.redirect('/authrequired');
+          //return res.redirect('/authrequired');
+          return res.end("OK");
         })
     })(req, res, next);
 });
 
 //API ROUTES
-
-//Main routes
 APIrouter.get("/isup", function(req, res) { //console route
 	res.status(200);
 	res.end();
 });
-APIrouter.get("/runtimeInformation", function(req, res) { //console route
-	res.send(JSON.stringify(runtimeInformation));
-	res.end();
+APIrouter.get("/runtime", function(req, res) { //console route
+	res.end(JSON.stringify(runtimeInformation));
 });
+APIrouter.get("/session", function(req, res) {
+	let authenticated = req.isAuthenticated();
+	let sessionData = req.session.videoAttemptNumber;
+	let id = req.sessionID;
+	return res.end(JSON.stringify({authenticated: authenticated || false, id: id || -1, videoAttemptNumber: sessionData}));
+});
+APIrouter.get("/speech/:data", function(req, res) {
+	try {
+		var speechData = JSON.parse(req.params.data);
+	} catch(e) {
+		return res.end("Error: Failed to parse speech data. Is it in the form of an array?");
+	}
+    if (speechNetReady) {
+        console.log("processing speech: '"+JSON.stringify(speechData)+"'");
+        var classifiedSpeech = []; //array to hold speech that is classified
+        if (speechData.constructor === Array) { //array of possibilities?
+            var classifications = []; //array of potential classifications
+            for (var i=0; i<speechData.length; i++) { //part 1: get all possibilities
+                console.log("running speech possibility: "+speechData[i]);
+                var classification = neuralMatcher.algorithm.classify(speechClassifierNet, speechData[i]);
+                if (classification.length > 0) {
+                    classifiedSpeech.push(speechData[i]);
+                }
+                console.log("Speech classification: "+JSON.stringify(classification));
+                for (var j=0; j<classification.length; j++) {
+                    var category = classification[j][0];
+                    var confidence = classification[j][1];
+
+                    var contains = false;
+                    var containIndex = -1;
+                    for (var b=0; b<classifications.length; b++) {
+                        if (classifications[b][0] == category) {
+                            contains = true;
+                            containIndex = b;
+                        }
+                    }
+                    if (contains) {
+                        console.log("contains, push _ cat="+category+", conf="+confidence);
+                        classifications[containIndex][1].push(confidence);
+                    } else {
+                        console.log("no contain, not averaging _ cat="+category+", conf="+confidence);
+                        classifications[classifications.length] = classification[j];
+                        classifications[classifications.length-1][1] = [classifications[classifications.length-1][1]];
+                    }
+                }
+            }
+            var max = 0;
+            for (var i=0; i<classifications.length; i++) { //part 2: total possibilities
+                if (classifications[i][1].length > 1) {
+                    console.log("averaging "+JSON.stringify(classifications[i][1]));
+                    var tot = 0;
+                    var len = classifications[i][1].length;
+                    for (var j=0; j<classifications[i][1].length; j++) {
+                        tot += classifications[i][1][j];
+                    }
+                    var avg = tot/len;
+                    if (tot > max) {
+                        max = tot;
+                    }
+                    console.log("avg="+avg+", tot="+tot)
+                    classifications[i][1] = avg*tot; //multiply by total to weight more answers (I know this results in just total)
+                }
+            }
+            for (var i=0; i<classifications.length; i++) { //part 3, scale by max
+                console.log("Scaling classification "+classifications[i][1]+" by max val "+max);
+                if (max == 0) {
+                    console.warn("Dividing factor max is 0, did you pass only a single word in an array?");
+                } else {
+                    classifications[i][1] /= max;
+                }
+            }
+            var finalClassifications = [];
+            for (var i=0; i<classifications.length; i++) {
+                if (classifications[i][1] > neuralMatcher.algorithm.cutoffOutput) {
+                    finalClassifications.push(classifications[i]);
+                }
+            }
+            console.log("classifications: "+JSON.stringify(classifications)+", cutoff filtered classifications: "+JSON.stringify(finalClassifications));
+            //pick the more likely response from the ones provided
+            var likelyResponse = ["",[0]];
+            for (var i=0; i<finalClassifications.length; i++) {
+
+                if (finalClassifications[i][1] > likelyResponse[1]) {
+                    likelyResponse = finalClassifications[i];
+                }
+            }
+            var response;
+            if (likelyResponse.constructor == Array && likelyResponse[0] !== "" && likelyResponse[1][1] !== 0) {
+                speechParser.algorithm.addRNGClass(likelyResponse[0]); //generate rng class from classification
+                response = speechParser.algorithm.dumpAndClearQueue();
+            } else {
+                console.warn("Likelyresponse is blank, what happened?")
+                response = "";
+            }
+            return res.end(JSON.stringify({status: "OK", classification: finalClassifications, likelyResponse: likelyResponse, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));;
+        } else {
+            var classification = neuralMatcher.algorithm.classify(speechClassifierNet, speechData); //classify speech
+            console.log("Speech classification: "+JSON.stringify(classification));
+            var response;
+            if (classification.constructor == Array && classification.length > 0) {
+                speechParser.algorithm.addRNGClass(classification[0][0]); //generate rng class from classification
+                response = speechParser.algorithm.dumpAndClearQueue(); //dump queue to response (if backed up w/multiple calls)
+            } else {
+                console.warn("Classification length is 0, response is nothing");
+                response = "";
+            }
+            return res.end(JSON.stringify({status: "OK", classification: classification, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));
+        }
+    } else {
+        res.end("Error: Speechnet not ready");
+    }
+})
 
 //Soundcloud Routes
 SCrouter.get("/clientReady", function(req, res) {
