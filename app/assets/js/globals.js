@@ -719,7 +719,6 @@ var login = {
     usingVideo: true,
     passcodeTracker: " ",
     approvedLogin: function(){
-        ID("login").className += " fadeout";
         ID("loading").style.display = "none";
         try {
             globals.loginVideoStream.getTracks()[0].stop();
@@ -734,7 +733,6 @@ var login = {
         // Render KITT's interface
         SpeechKITT.render();
         setTimeout(function(){
-            ID("login").style.display = "none";
             ID("login-video").style.display = "none";
         },globals.fadeInOutDelay);
     },

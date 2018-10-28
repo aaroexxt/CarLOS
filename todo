@@ -35,11 +35,9 @@ username cache
 
 load balancing
 
-arduino sensor overloading & gps handling
-
 better favicon (the a is lame)
 
-GPS+MAGNETOMETER EXT from arduino
+
 
 use external sound card on rpi with audio device set inside of speaker({}) instance?
 
@@ -73,7 +71,7 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
 
 retry button on client side
 
-electron framework?
+
 
 COOL FRAMEWORKS TO IMPLEMENT:
 progressbar.js for nice loading bar when client loads and for tracks
@@ -89,14 +87,18 @@ chartjs accelerometer data, "blackbox" data
 https://www.chartjs.org/docs/latest/developers/updates.html
 http://www.chartjs.org/docs/latest/getting-started/
 
-data logging
-state machine
+
 
 constantly scan for invalid authkeys to prevent tampering
 
 
 DONE stuff:
 
+arduino sensor overloading & gps handling DONE
+electron framework? CANCELED
+data logging DONE
+state machine CANCELED
+GPS+MAGNETOMETER EXT from arduino DONE
 also ability to switch soundcloud users DONE
 shuffle/notshuffle button DONE
 caching of soundcloud pages for low internet access DONE

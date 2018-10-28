@@ -2,7 +2,6 @@
 <html> <!-- manifest="data.appcache" -->
 	<head>
 		<title>C.OS. V1</title>
-		<script src="/js/socket.io.js"></script>
 		<script src="/js/helpLib.js"></script>
 		<script src="/js/utils.js"></script>
 		<script src="/js/speaker.js"></script>
@@ -109,100 +108,24 @@
 				</div>
 			</center>
 		</div>
-		<div id="login" style="display: none;">
-			<h1 class="logintext">Login To CarOS</h1>
-			<h3 id="attemptNumber">Login attempt: 1 of 7</h3>
-			<center>
-				<div id="login-video">
-					<video autoplay id="loginvideo"></video>
-					<canvas style="display: none" id="loginCanvas"></canvas>
-					<center style="padding-bottom: 0px; padding-top: 0px;">
-						<hr>
-						<button class="sort" onclick="login.snapshot();">Take Photo</button>
-						<button class="sort" onclick="if(login.usingVideo){login.transitionPasscode()}else{login.transitionVideo()}">Switch Login Method</button>
-					</center>
-				</div>
-				<span id="login-passcodeField" style="font-size: large; text-decoration: underline"></span>
-				<div id="login-passcode" style="display:none">
-					<div>
-						<button class="passcode" onclick="login.passcodeTracker+='1'; login.passcodeUpdate();">1</button>
-						<button class="passcode" onclick="login.passcodeTracker+='2'; login.passcodeUpdate();">2</button>
-						<button class="passcode" onclick="login.passcodeTracker+='3'; login.passcodeUpdate();">3</button>
-						<button class="passcode" onclick="login.passcodeTracker+='4'; login.passcodeUpdate();">4</button>
-						<button class="passcode" onclick="login.passcodeTracker+='5'; login.passcodeUpdate();">5</button>
-						<button class="passcode" onclick="login.passcodeTracker+='6'; login.passcodeUpdate();">6</button>
-						<button class="passcode" onclick="login.passcodeTracker+='7'; login.passcodeUpdate();">7</button>
-						<button class="passcode" onclick="login.passcodeTracker+='8'; login.passcodeUpdate();">8</button>
-						<button class="passcode" onclick="login.passcodeTracker+='9'; login.passcodeUpdate();">9</button>
-					</div>
-					<br>
-					<div>
-						<button class="sort" onclick="login.passcodeTracker = ' '; login.passcodeUpdate();">Clear</button>
-						<button class="sort" onclick="login.passcode(login.passcodeTracker);">Submit</button>
-						<hr>
-						<button class="sort" onclick="if(login.usingVideo){login.transitionPasscode()}else{login.transitionVideo()}">Switch Login Method</button>
-					</div>
-				</div>
-			</center>
-		</div>
 		<script>
-			var socket = io();
-
 			var reloadPage = false;
 
-			//SET UP SOCKET LISTENERS
-			socket.emit('initweb', { data: 'ready' });
-			var socketListener = new utils.socketListener(socket,"POST");
-			console.log("Sent ready socket"); //proper grammar lol
-
-			socket.on('connect', function (data) {
-				console.log("Connected to node.js backend");
-				if (globals.disconnected && reloadPage) {
-					console.log("Reloading in 5000ms due to reconnection");
-					setTimeout(function(){
-						window.location.reload();
-					},5000);
-				}
-				login.readySteps.nodeConnected = true;
-				globals.runtimeInformation.nodeConnected = true;
-			});
-
-			socket.on('webdata', function (data) {
-				console.log("Python script connected!");
-				login.readySteps.pythonConnected = true;
-				globals.runtimeInformation.pythonConnected = true;
-				console.log("Authkey: "+data.authkey);
-				console.log("Runtime Info: "+JSON.stringify(data.runtimeInformation));
-				if (typeof data.authkey == "undefined" || data.authkey == "undefined") {
-					console.log("Authkey undefined, not changing");
-				} else {
-					globals.authkey = data.authkey;
-					login.readySteps.validAuthkey = true;
-					login.initializeOnceAuthkeyValid();
-				}
-				if (typeof data.runtimeInformation == "undefined" || data.runtimeInformation == "undefined") {
-					console.error("RuntimeInformation recieved from server is undefined, what happened?");
-				} else {
-					var keys = Object.keys(data.runtimeInformation);
-					for (var i=0; i<keys.length; i++) {
-						//console.log("glob rti",globals.runtimeInformation,"dat rti",data.runtimeInformation)
-						globals.runtimeInformation[keys[i]] = data.runtimeInformation[keys[i]];
-					}
-					login.readySteps.runtimeInformationProvided = true;
-				}
-			});
-
-			socket.on('webready', function (data) {
-				console.log("webready recieved from python initialization")
-				socket.emit('webok', {data: "ok"});
-			});
-
-			socket.on('disconnect', function (data) {
-				globals.disconnected = true;
-				console.log("nodejs disconnect");
+			console.log("Checking if server is up...");
+			fetch('http://localhost/api/isup', {
+				method: "GET"
+			}).then( response => {
+				console.log("Server is OK");
 				login.readySteps.nodeConnected = false;
-				globals.runtimeInformation.nodeConnected = false;
-			});
+				fetch('http://localhost/api/session', {
+					method: "GET"
+				}).then( response => response.json())
+				.then(response => {
+					console.log("SESSION Data: "+JSON.stringify(response))
+				})
+			}).catch( e => {
+				console.error("Server error on connection: "+e);
+			})
 
 			socketListener.addPersistentListener("runtimeInformation", function(data) {
 			    console.log("RuntimeInfo: ",data.information);
@@ -234,11 +157,6 @@
 				} else {
 					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
 				}
-			});
-
-			socketListener.addPersistentListener("login-opencvqueue", function(data) {
-				globals.openCVQueue.push(String(data.queue));
-				console.log("opencvqueue recv "+data.queue);
 			});
 
 			socketListener.addPersistentListener('login-opencvdata', function(data) {
@@ -274,39 +192,6 @@
 	  			} else {
 	  				console.log("ignoring because client doesn't have queue")
 	  			}
-			});
-
-			socketListener.addPersistentListener("processingError", function (data) {
-				console.error("Error from nodejs: '"+data.error+"'");
-				bootbox.alert("Server Error: "+data.error);
-			});
-
-			socketListener.addPersistentListener("login-passcodeapproval", function(data) {
-				if (data.approved == true) {
-					login.approvedLogin();
-				}
-			})
-
-			navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-			navigator.mediaDevices.getUserMedia({video: true}).then(function(localMediaStream) {
-				globals.loginVideoStream = localMediaStream;
-				globals.loginVideo = ID("loginvideo");
-				globals.loginVideo.srcObject = localMediaStream;
-				// Note: onloadedmetadata doesn't fire in Chrome when using it with getUserMedia.
-				// See crbug.com/110938.
-				globals.loginVideo.onloadedmetadata = function(e) {
-					console.log("Meta data for loginVideo loaded")
-				  //globals.loginVideo.snapshot();
-				};
-				globals.loginVideo.oncanplaythrough = function(e) {
-					console.log("Video loaded; sending snapshot")
-					setTimeout(function(){
-						login.readySteps.videoLoad = true;
-					},500); //give some time for camera to adjust
-				};
-				console.log("lms: ",localMediaStream)
-			}).catch(function(e){
-				console.error("Error getting usermedia for login video, e="+JSON.stringify(e))
 			});
 
 			if (typeof annyang !== "undefined") {
