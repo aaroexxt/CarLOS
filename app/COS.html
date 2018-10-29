@@ -109,19 +109,32 @@
 			</center>
 		</div>
 		<script>
+			const SRH = new utils.serverResponseHandler("http://");
+			SRH.queryServer("api/session", response => {
+				console.log("SESS RESPONSE: ",response);
+			}, error => {
+				console.error("SESS ERROR: ",error);
+			})
+
 			var reloadPage = false;
+			var sessionData = "";
 
 			console.log("Checking if server is up...");
+			login.readySteps.nodeConnected = false;
 			fetch('http://localhost/api/isup', {
 				method: "GET"
 			}).then( response => {
 				console.log("Server is OK");
-				login.readySteps.nodeConnected = false;
+				login.readySteps.nodeConnected = true;
 				fetch('http://localhost/api/session', {
 					method: "GET"
 				}).then( response => response.json())
 				.then(response => {
-					console.log("SESSION Data: "+JSON.stringify(response))
+					console.log("SESSION Data: "+JSON.stringify(response));
+					sessionData = response;
+
+				}).catch( e=> {
+					console.error("Server error on session data: "+e);
 				})
 			}).catch( e => {
 				console.error("Server error on connection: "+e);

@@ -1,67 +1,58 @@
 var utils = {
-    socketListener: function(socket,evt) {
+    serverResponseHandler: function(baseURL) { //FETCH POLYFILL
         this.debugMode = false;
-        if (typeof socket === "undefined") {
-            console.error("[UILS] Socket undefined in initialization");
-            return "error";
-        }
-        if (typeof evt === "undefined") {
-            console.error("[UILS] Evt undefined in initialization");
-            return "error";
-        }
-        this.listeners = [];
+        this.acceptableHTTPMethods = ["GET", "POST", "PUT", "DELETE"];
+        this.acceptableHTTPPrefixes = ["http://","https://"];
+
         var _this = this;
-        this.recvData = function(data) {
-            var dat = JSON.stringify(data);
-            if (_this.debugMode) {
-                console.log("[UTILS_DEBUG] recvdata socket data: "+((dat.length > 100)?"'data too long to show'":dat)+", list "+JSON.stringify(_this.listeners));
+
+        if (typeof baseURL === "undefined") {
+            return console.error("[UTILS] baseURL undefined in initialization");
+        } else {
+            let firstChars = baseURL.substring(0,7).toLowerCase();
+            if (this.acceptableHTTPPrefixes.indexOf() < 0) {
+                //return console.error("[UTILS] Http prefix in ");
             }
-            var nonpersist = [];
-            for (var i=0; i<_this.listeners.length; i++) {
-                if (_this.listeners[i][0] == data.action || _this.listeners[i][3]) {
+            if (this.debugMode) {
+                console.log("baseURL: "+baseURL);
+            }
+            this.baseURL = baseURL;
+        }
+
+        this.queryServer = function(urlSuffix, okCallback, errCallback, method) {
+            console.log("querying "+urlSuffix)
+            if (typeof method !== "string") {
+                method = "GET";
+            } else if (typeof method !== "function") {
+                return console.error("[UTILS] AddListener fn type not function");
+            }
+
+            let concisePath = utils.pathJoin([_this.baseURL,urlSuffix]);
+            fetch(concisePath, {
+                credentials: 'include',
+                method: method
+            }).then(response => {
+                if (response.status >= 200 && response.status < 300) {
                     try {
-                        if (_this.listeners[i][2] == false || _this.listeners[i][2] == "false") { //non persistent listener
-                            nonpersist.push(i); //push it to nonpersist list to remove it later
-                        }
-                        _this.listeners[i][1](data); //run function
-                    } catch(e) {
-                        console.error("[UTILS] Error running function in listenerRecieve, e: "+e+", listener name: '"+_this.listeners[i][0]+"'");
+                        let JSONresponse = response.json();
+                        return okCallback(JSONresponse);
+                    } catch (e) {
+                        let TEXTresponse = response.text();
+                        console.log("Response cannot be parsed to json, it will be returned as "+TEXTresponse);
+                        return okCallback(TEXTresponse);
                     }
+                } else {
+                    errCallback(response.statusText);
                 }
-            }
-            if (_this.debugMode) {
-                console.log("[UTILS_DEBUG] nonpersist: "+JSON.stringify(nonpersist));
-            }
-            for (var i=0; i<nonpersist.length; i++) {
-                _this.listeners.splice(nonpersist[i],1);
-            }
+            }, reason => {
+                console.error("Error with request: "+reason)
+                errCallback(reason);
+            })
         }
-        this.addListener = function(ev,fn) {
-            if (typeof ev !== "string") {
-                console.error("[UTILS] AddListener ev type not string");
-            } else if (typeof fn !== "function") {
-                console.error("[UTILS] AddListener fn type not function");
-            } else {
-                var ignoreAction = false;
-                if (ev == "*") {
-                    ignoreAction = true;
-                }
-                this.listeners[this.listeners.length] = [ev,fn,false,ignoreAction];
-            }
-        }
-        this.addPersistentListener = function(ev,fn) {
-            if (typeof ev !== "string") {
-                console.error("[UTILS] AddListener ev type not string");
-            } else if (typeof fn !== "function") {
-                console.error("[UTILS] AddListener fn type not function");
-            } else {
-                var ignoreAction = false;
-                if (ev == "*") {
-                    ignoreAction = true;
-                }
-                this.listeners[this.listeners.length] = [ev,fn,true,ignoreAction];
-            }
-        }
-        socket.on(evt,this.recvData); //set up listener on socket
+    },
+    pathJoin: function(parts, sep){
+       var separator = sep || '/';
+       var replace   = new RegExp(separator+'{1,}', 'g');
+       return parts.join(separator).replace(replace, separator);
     }
 };

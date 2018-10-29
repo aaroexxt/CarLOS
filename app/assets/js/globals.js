@@ -1,9 +1,7 @@
 //GLOBAL VARIABLES
 var globals = {
     disconnected: false,
-    authkey: "waiting",
     openCVQueue: [],
-    loginVideo: ID("loginvideo"),
     MainPopup: {
         dialogObject: null,
         displayMain: function(){
@@ -168,18 +166,6 @@ var globals = {
     },
     runtimeInfoUpdateTimeout: null,
     defaultApp: "music",
-    loginVideoSnapshot: function() {
-        var canvas = ID("loginCanvas");
-        var ctx = canvas.getContext('2d');
-        canvas.height = globals.loginVideo.videoHeight;
-        canvas.width = globals.loginVideo.videoWidth;
-        ctx.drawImage(globals.loginVideo, 0, 0, canvas.width, canvas.height);
-        var daturl = canvas.toDataURL('image/png');
-        /*var raw = datatoraw(daturl);
-        var blob = raw.blob;
-        var rawdata = raw.rawarr;*/
-        socket.emit("GET",{action: "login-imageready", raw: daturl, authkey: globals.authkey});//blob: blob, raw: rawdata});
-    },
     music: {
         
         noArtworkUrl: "/images/noAlbumArt.png",
@@ -708,60 +694,13 @@ yuri
 google uk english male
 google us english
 */
-
-//LOGIN SETUP SCRIPTS
-var login = {
-    snapshot: globals.loginVideoSnapshot,
-    passcode: function(psc) {
-        console.log("psc submit "+psc);
-        socket.emit("GET",{action: "login-passcodeready", authkey: globals.authkey, passcode: psc.trim()});
-    },
-    usingVideo: true,
-    passcodeTracker: " ",
-    approvedLogin: function(){
-        ID("loading").style.display = "none";
-        try {
-            globals.loginVideoStream.getTracks()[0].stop();
-        } catch(e) {
-            console.log("Error stopping login video stream; was it started?");
-        }
-        ID("main").className += " fadein";
-        var loaders = document.getElementsByClassName("loader");
-        for (var i=0; i<loaders.length; i++) {
-            loaders[i].style.display = "none";
-        }
-        // Render KITT's interface
-        SpeechKITT.render();
-        setTimeout(function(){
-            ID("login-video").style.display = "none";
-        },globals.fadeInOutDelay);
-    },
-    transitionPasscode: function(){
-        login.usingVideo = false;
-        ID("login-passcode").style.display = "block";
-        ID("login-video").className = "fadeout";
-        ID("login-passcode").className = "fadein";
-        setTimeout(function(){
-            ID("login-video").style.display = "none";
-        },globals.fadeInOutDelay);
-    },
-    transitionVideo: function(){
-        login.usingVideo = true;
-        ID("login-video").style.display = "block";
-        ID("login-video").className = "fadein";
-        ID("login-passcode").className = "fadeout";
-        setTimeout(function(){
-            ID("login-passcode").style.display = "none";
-        },globals.fadeInOutDelay);
-    },
+const login = {
     pageReady: function(){
-        globals.loginVideoSnapshot();
         ID("loading").style.display = "none";
         var loaders = document.getElementsByClassName("loader");
         for (var i=0; i<loaders.length; i++) {
             loaders[i].style.display = "none";
         }
-        ID("login").style.display = "block";
         ID("loginvideo").style.display = "block";
     },
     readySteps: {
@@ -847,9 +786,6 @@ var login = {
     imageNoCheckPath: "/images/nocheck.png",
     imageWidth: 16,
     imageHeight: 16,
-    passcodeUpdate: function(){
-        ID("login-passcodeField").innerHTML = login.passcodeTracker;
-    },
     initializeMap: function(){
         ID("mainMap").innerHTML = "";
         globals.map.mapReference = new google.maps.Map(ID('mainMap'), { //setup map
@@ -973,25 +909,6 @@ var login = {
         globals.initTimeIndicator("time");
         login.initializeStats();
         login.initializeMap();
-
-        setInterval(function(){ //validate key listener
-            socket.emit('GET', {action: "validatekey", authkey: globals.authkey})
-            socketListener.addListener("validatekey",function (data){
-                console.log("Authkey valid?: "+data.valid);
-                if (data.valid == "false" && globals.authkey != "") {
-                    console.error("Authkey invalid");
-                    /*if (confirm("Authkey has expired. Reload page?")) {
-                        window.location.reload();
-                    }*/
-                    if (reloadPage) {
-                        window.location.reload();
-                    }
-                } else if (data.valid == "false") {
-                    console.log("Still waiting on python for valid authkey, not prompting user");
-                    //alert("Python is not initialized, waiting for authkey from server...")
-                }
-            })
-        }, 25000);
 
         if (typeof Speech !== "undefined") {
             if (Speech.isSupported) {
