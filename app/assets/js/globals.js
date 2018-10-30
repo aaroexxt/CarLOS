@@ -367,10 +367,10 @@ var globals = {
                 SRH.request("/api/sc/event/playPause");
             },
             volUp: function() {
-                SRH.request("/api/sc/event/volUp");
+                SRH.request("/api/sc/event/volumeUp");
             },
             volDown: function() {
-                SRH.request("/api/sc/event/volDown");
+                SRH.request("/api/sc/event/volumeDown");
             },
             backTrack: function() {
                 SRH.request("/api/sc/event/trackBackward");
