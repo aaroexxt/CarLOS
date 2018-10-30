@@ -122,9 +122,15 @@
 						.then(response => {
 							if (response.toLowerCase() == "ok") {
 								login.redirectOK();
+							} else {
+								console.error("Recieved non-ok response from CV: "+response);
+								alert("Recieved error when trying to login with OpenCV: "+response);
 							}
 						})
-						.catch(error => console.error('Error:', error));
+						.catch(error => {
+							console.error('Error thrown in request:', error);
+							alert("Error thrown on CV login: "+response);
+						});
 			        },
 			        snapshotCanvas: function() {
 					    var canvas = document.getElementById("loginCanvas");
@@ -156,6 +162,41 @@
 
 			login.cvHandles.init();
 			//login.passcodeHandles.init();
+
+			/*socketListener.addPersistentListener('login-opencvdata', function(data) {
+				var canvas = ID("loginCanvas");
+				canvas.style.display = "block";
+				var ctx = canvas.getContext('2d');
+				var buffer = data.buffer;
+				var queue = data.queue;
+				var labels = data.labels;
+				var confidences = data.confidences;
+				var approved = data.approved;
+				var attempt = data.attemptNumber;
+				var totalAttempts = data.totalAttempts;
+				console.log("opencv pic queue: "+queue);
+				console.log("ihavequeues: "+JSON.stringify(globals.openCVQueue));
+				console.log("confidences: "+JSON.stringify(confidences)+"\nlabels: "+JSON.stringify(labels)+"\napproved: "+approved);
+				console.log("recieved opencv buffer");
+				//console.log(buffer);
+				if (globals.openCVQueue.indexOf(String(queue)) !== -1) {
+					globals.openCVQueue.splice(globals.openCVQueue.indexOf(String(queue)),1); //remove from opencvqueue list
+					var img = new Image();
+					img.src = 'data:image/jpg;base64,' + buffer;
+					img.onload = function(){
+						console.log("onload img");
+						ctx.drawImage(this, 0, 0);
+					}
+					if (approved) {
+						login.approvedLogin();
+					} else {
+						canvas.style.display = "none";
+						ID("attemptNumber").innerHTML = "Login attempt: "+attempt+" of "+totalAttempts;
+					}
+	  			} else {
+	  				console.log("ignoring because client doesn't have queue")
+	  			}
+			});*/
 		</script>
 	</body>
 </html>

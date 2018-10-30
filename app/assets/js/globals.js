@@ -18,7 +18,7 @@ var globals = {
                         <br>Arduino Connected: `+globals.runtimeInformation.arduinoConnected+`
                         <br>Heartbeat Timeout (s): `+(globals.runtimeInformation.heartbeatMS/1000)+`
                         </p>
-                        <button onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){globals.MainPopup.dialogObject.modal('hide'); setTimeout(function(){globals.MainPopup.displayMain()},300);});">Update Runtime Information</button>
+                        <button onclick="globals.MainPopup.displayMain()">Update Runtime Information</button>
                         <br>
                         <h3>Car Stats</h3>
                     </center>
@@ -148,10 +148,6 @@ var globals = {
             }
         }
     },
-    updateRuntimeInformation: function() {
-        console.log("requesting runtime info")
-        socket.emit("GET", {"action": "requestRuntimeInformation"});
-    },
     runtimeInformation: {
         frontendVersion: "? (Should Not Happen)",
         backendVersion: "? (Should Not Happen)",
@@ -182,7 +178,7 @@ var globals = {
         oldSettingsData: {},
 
         init: function() {
-            if (!globals.music.setListeners) {
+            /*if (!globals.music.setListeners) {
                 globals.music.setListeners = true;
                 socketListener.addPersistentListener("serverDataReady", data => {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
@@ -280,7 +276,7 @@ var globals = {
 
             }
 
-            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
+            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});*/
         },
 
         togglePlayerOutput: function() {
@@ -368,27 +364,27 @@ var globals = {
                 },200)
             },
             playPauseTrack: function() {
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "playPause", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/playPause");
             },
             volUp: function() {
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "volumeUp", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/volUp");
             },
             volDown: function() {
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "volumeDown", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/volDown");
             },
             backTrack: function() {
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "trackBackward", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/trackBackward");
             },
             forwardTrack: function() { //can go forward one or shuffle to get to next track
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "trackForward", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/trackForward");
             },
             changeLoopState: function() {
                 globals.music.nextTrackLoop = !globals.music.nextTrackLoop;
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "changeTrackLoopState", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/changeTrackLoopState");
             },
             changeShuffleState: function() {
                 globals.music.nextTrackShuffle = !globals.music.nextTrackShuffle;
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "changeTrackShuffleState", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/changeTrackShuffleState");
             },
             updateCanvas: function() {
                 var canvas = document.getElementById('main');
@@ -438,7 +434,7 @@ var globals = {
                 bootbox.prompt("New soundcloud user? (Enter nothing if you don't want to change users)",function(user) {
                     if (user != "" && typeof user != "undefined" && user != null) {
                         console.log("Changing soundcloud user to: "+user);
-                        socket.emit("GET", {action: "SCClientChangeUser", newUser: user, authkey: globals.authkey});
+                        SRH.request("/api/sc/changeUser/"+user);
                         globals.music.setListeners = false;
                     }
                 });
@@ -586,9 +582,34 @@ var globals = {
     },
     voice: {
         speaker: Speech.speak,
+        sKitListeningTextID: "skitt-listening-text",
         onSpeech: function(data) {
-            //console.log("recieved speech data: "+data);
-            socket.emit("GET",{action: "processSpeech", authkey: globals.authkey, speech: data});
+            console.log("recieved speech data: "+data);
+            SRH.request(("api/speech/"+JSON.stringify(data)), data => {
+                if (data.status == "OK") {
+                    console.log("recieved speech matching result: "+JSON.stringify(data));
+                    if (data.response == "" || data.response == " ") {
+                        data.response = "I'm sorry, I didn't quite catch that. Try again.";
+                    }
+                    var skittLT = document.getElementById(globals.voice.sKitListeningTextID);
+                    globals.voice.speaker(data.response, function(){
+                        setTimeout(function(){
+                            if (typeof skittLT == "undefined" || skittLT == null) {
+                                console.error("Couldn't locate SKitt text on speech");
+                            } else {
+                                skittLT.innerHTML = globals.voice.defaultInstructions;
+                            }
+                        },globals.voice.defaultTextDelay);
+                    });
+                    if (typeof skittLT == "undefined" || skittLT == null) {
+                        console.error("Couldn't locate SKitt text on speech");
+                    } else {
+                        skittLT.innerHTML = data.response;
+                    }
+                } else {
+                    console.error("Speech matching data status is not ok, it is: "+data.status);
+                }
+            })
         },
         defaultInstructions: "What can I help you with?",
         defaultTextDelay: 1000
@@ -701,13 +722,11 @@ const login = {
         for (var i=0; i<loaders.length; i++) {
             loaders[i].style.display = "none";
         }
-        ID("loginvideo").style.display = "block";
+        ID("main").style.display = "block";
     },
     readySteps: {
         pageLoad: true,
-        videoLoad: false,
         nodeConnected: false,
-        pythonConnected: false,
         validAuthkey: false,
         internetConnected: false,
         runtimeInformationProvided: false
@@ -900,7 +919,7 @@ const login = {
             }
         });
     }, initialize: function() {
-
+        console.log("Login initialize called")
         setTimeout(function(){
             globals.initWifiIndicator("wifilevel"); //init wifi, time and map
             globals.initSpeedIndicator("wifispeed");
@@ -935,7 +954,7 @@ const login = {
         } else {
             console.error("Speech not defined; annyang is active however")
         }
-    }, initializeOnceAuthkeyValid: function(){
+    }, initializeOnceServerConnected: function(){
         //setTimeout(()=>{login.approvedLogin()},2000);
         globals.music.init(globals.music.defaultUsername);
         globals.menu.changeState(globals.defaultApp);

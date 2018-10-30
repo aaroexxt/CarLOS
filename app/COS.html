@@ -109,42 +109,39 @@
 			</center>
 		</div>
 		<script>
-			const SRH = new utils.serverResponseHandler("http://");
-			SRH.queryServer("api/session", response => {
-				console.log("SESS RESPONSE: ",response);
-			}, error => {
-				console.error("SESS ERROR: ",error);
-			})
+			const SRH = new utils.serverResponseHandler("http://localhost"); //setup server response handler
+			SRH.debugMode = false;
 
-			var reloadPage = false;
 			var sessionData = "";
 
-			console.log("Checking if server is up...");
 			login.readySteps.nodeConnected = false;
-			fetch('http://localhost/api/isup', {
-				method: "GET"
-			}).then( response => {
-				console.log("Server is OK");
+			login.readySteps.validAuthkey = false;
+			SRH.request("api/isup", response => {
+				console.log("Server is up");
 				login.readySteps.nodeConnected = true;
-				fetch('http://localhost/api/session', {
-					method: "GET"
-				}).then( response => response.json())
-				.then(response => {
-					console.log("SESSION Data: "+JSON.stringify(response));
-					sessionData = response;
+				SRH.request("api/session", sessionDat => {
+					console.log("sessionData: "+JSON.stringify(sessionDat));
+					if (sessionDat.id) {
+						login.readySteps.validAuthkey = true;
+					}
+					sessionData = sessionDat;
+				});
+				login.initializeOnceServerConnected(); //run login starters
+			}, error => {
+				console.error("Server is not up. Cannot continue with initialization.");
+			});
 
-				}).catch( e=> {
-					console.error("Server error on session data: "+e);
-				})
-			}).catch( e => {
-				console.error("Server error on connection: "+e);
+			login.readySteps.runtimeInformationProvided = false;
+			SRH.request("/api/runtime", data => {
+				login.readySteps.runtimeInformationProvided = true;
+				handleRuntimeInfo(data);
 			})
 
-			socketListener.addPersistentListener("runtimeInformation", function(data) {
-			    console.log("RuntimeInfo: ",data.information);
-			    var keys = Object.keys(data.information); //only override keys from jsondat
+			function handleRuntimeInfo(data) {
+				console.log("RuntimeInfo: ",data);
+			    var keys = Object.keys(data); //only override keys from jsondat
 			    for (var i=0; i<keys.length; i++) {
-			        globals.runtimeInformation[keys[i]] = data.information[keys[i]];
+			        globals.runtimeInformation[keys[i]] = data[keys[i]];
 			    }
 			    try {
 				    clearTimeout(globals.runtimeInfoUpdateTimeout);
@@ -157,7 +154,9 @@
 				    console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
 				    globals.runtimeInfoUpdateTimeout = setTimeout(function(){
 				        console.log("[HB] Heartbeat request runtimeinfo");
-				        globals.updateRuntimeInformation();
+				        SRH.request("/api/runtime", data => {
+							handleRuntimeInfo(data);
+						})
 				    },globals.runtimeInformation.heartbeatMS);
 				}
 				if (typeof globals.runtimeInformation.outsideTemp == "undefined") {
@@ -170,42 +169,7 @@
 				} else {
 					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
 				}
-			});
-
-			socketListener.addPersistentListener('login-opencvdata', function(data) {
-				var canvas = ID("loginCanvas");
-				canvas.style.display = "block";
-				var ctx = canvas.getContext('2d');
-				var buffer = data.buffer;
-				var queue = data.queue;
-				var labels = data.labels;
-				var confidences = data.confidences;
-				var approved = data.approved;
-				var attempt = data.attemptNumber;
-				var totalAttempts = data.totalAttempts;
-				console.log("opencv pic queue: "+queue);
-				console.log("ihavequeues: "+JSON.stringify(globals.openCVQueue));
-				console.log("confidences: "+JSON.stringify(confidences)+"\nlabels: "+JSON.stringify(labels)+"\napproved: "+approved);
-				console.log("recieved opencv buffer");
-				//console.log(buffer);
-				if (globals.openCVQueue.indexOf(String(queue)) !== -1) {
-					globals.openCVQueue.splice(globals.openCVQueue.indexOf(String(queue)),1); //remove from opencvqueue list
-					var img = new Image();
-					img.src = 'data:image/jpg;base64,' + buffer;
-					img.onload = function(){
-						console.log("onload img");
-						ctx.drawImage(this, 0, 0);
-					}
-					if (approved) {
-						login.approvedLogin();
-					} else {
-						canvas.style.display = "none";
-						ID("attemptNumber").innerHTML = "Login attempt: "+attempt+" of "+totalAttempts;
-					}
-	  			} else {
-	  				console.log("ignoring because client doesn't have queue")
-	  			}
-			});
+			}
 
 			if (typeof annyang !== "undefined") {
 				annyang.debug(true);
@@ -248,29 +212,7 @@
 				console.error("Annyang is not defined; was it included in the source code?");
 			}
 
-			socketListener.addPersistentListener("speechMatchingResult", function(data) {
-				console.log("recieved speech matching result: "+JSON.stringify(data));
-				if (data.response == "" || data.response == " ") {
-					data.response = "I'm sorry, I didn't quite catch that. Try again.";
-				}
-				var skittLT = document.getElementById("skitt-listening-text");
-				globals.voice.speaker(data.response, function(){
-					setTimeout(function(){
-						if (typeof skittLT == "undefined" || skittLT == null) {
-							console.error("Couldn't locate SKitt text on speech");
-						} else {
-							skittLT.innerHTML = globals.voice.defaultInstructions;
-						}
-					},globals.voice.defaultTextDelay);
-				});
-				if (typeof skittLT == "undefined" || skittLT == null) {
-					console.error("Couldn't locate SKitt text on speech");
-				} else {
-					skittLT.innerHTML = data.response;
-				}
-			});
-
-			//login.initialize() //init because im on a plane and at bottom because it shouldnt interfere
+			setTimeout(login.initialize, 1000); //init because im on a plane and at bottom because it shouldnt interfere
 
 		</script>
 		<!--Google maps script-->

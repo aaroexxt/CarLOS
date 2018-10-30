@@ -759,6 +759,7 @@ var SCSoundManager = {
                             console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
                             break;
                         default:
+                            console.warn("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
                             return reject("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
                             break;
                     }
