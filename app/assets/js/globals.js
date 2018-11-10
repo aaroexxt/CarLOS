@@ -174,12 +174,17 @@ var globals = {
         trackList: [],
         setListeners: false,
         playMusicOnServer: true,
+        initListener: undefined,
 
         oldSettingsData: {},
 
         init: function() {
-            /*if (!globals.music.setListeners) {
+            if (!globals.music.setListeners) {
                 globals.music.setListeners = true;
+
+                initListener = setInterval(function() {
+                    
+                })
                 socketListener.addPersistentListener("serverDataReady", data => {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
@@ -276,7 +281,7 @@ var globals = {
 
             }
 
-            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});*/
+            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
         },
 
         togglePlayerOutput: function() {

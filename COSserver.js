@@ -629,16 +629,6 @@ function initSoundcloud(username) {
 				} else {
 					console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
 					mreject("MaxTries reached (giving up) with error message: "+err);
-					if (username == soundcloudSettings.defaultUsername) { //first init
-						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-							//TODO FINISH THIS
-						}
-					} else {
-						/*socketHandler.socketEmitToWeb('POST', {
-							"action": "serverSoundcloudError",
-							error: "MaxTries reached (giving up) with error message: "+err
-						});*/ //TODO FINISH THIS
-					}
 				}
 			});
 		}
@@ -774,6 +764,31 @@ const bcrypt = require('bcrypt');
 const jsonDB = require('node-json-db');
 
 const db = new jsonDB(runtimeSettings.jsonDBPath, true, false); //connect to json-database
+
+/****
+CONSTANTS
+****/
+
+const RequestHandler = {
+	SUCCESS: function(message) {
+		if (typeof message == "undefined") {
+			message = "";
+		}
+		return JSON.stringify({"error": false, "wait": false, "message": message});
+	},
+	FAIL: function(message) {
+		if (typeof message == "undefined") {
+			message = "";
+		}
+		return JSON.stringify({"error": true, "wait": false, "message": message});
+	},
+	WAIT: function(message) {
+		if (typeof message == "undefined") {
+			message = "";
+		}
+		return JSON.stringify({"error": false, "wait": true, "message": message});
+	}
+}
 
 /****
 INIT MODS
@@ -977,8 +992,7 @@ app.get("/console", function(req, res) { //console route
 		}
 	});
 
-	res.send("Umm... It's not made yet, so check back later");
-	res.end();
+	res.end("Umm... It's not made yet, so check back later");
 });
 
 app.get('/login', (req, res) => {
@@ -1017,7 +1031,7 @@ AUTHrouter.post('/regular', (req, res, next) => {
         req.login(user, (err) => {
           if (err) { return next(err); }
           console.log("You were authenticated :)")
-          return res.end("OK");
+          return res.end(RequestHandler.SUCCESS());
         })
     })(req, res, next);
 })
@@ -1031,7 +1045,7 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
     //console.log((typeof req.files['photo'] == "undefined")+" "+(req.files['photo'][0].size <= 1)+" "+(req.files['photo'][0].buffer.length <= 1)+" "+(req.files['photo'][0].mimetype !== "image/png"))
     if (typeof req.files['photo'] == "undefined" || req.files['photo'][0].size <= 1 || req.files['photo'][0].buffer.length <= 1 || req.files['photo'][0].mimetype !== "image/png") {
     	console.warn("CV image invalid");
-    	return res.end("Image invalid");
+    	return res.end(RequestHandler.FAIL("Image invalid"));
     } else {
     	console.log("Recieved IMAGE with size: "+req.files['photo'][0].size+", mimetype: "+req.files['photo'][0].mimetype);
     	passport.authenticate('openCV', (err, user, info) => {
@@ -1041,7 +1055,7 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
 	        req.login(user, (err) => {
 	          if (err) { return next(err); }
 	          console.log("You were authenticated :)")
-	          return res.end("OK");
+	          return res.end(RequestHandler.SUCCESS());
 	        })
 	    })(req, res, next);
     }
@@ -1059,7 +1073,7 @@ AUTHrouter.post('/passcode', (req, res, next) => {
           if (err) { return next(err); }
           console.log("You were authenticated :)");
           //return res.redirect('/authrequired');
-          return res.end("OK");
+          return res.end(RequestHandler.SUCCESS());
         })
     })(req, res, next);
 });
@@ -1067,22 +1081,22 @@ AUTHrouter.post('/passcode', (req, res, next) => {
 //API ROUTES
 APIrouter.get("/isup", function(req, res) { //console route
 	res.status(200);
-	res.end();
+	res.end(RequestHandler.SUCCESS());
 });
 APIrouter.get("/runtime", function(req, res) { //console route
-	res.end(JSON.stringify(runtimeInformation));
+	res.end(RequestHandler.SUCCESS(runtimeInformation));
 });
 APIrouter.get("/session", function(req, res) {
 	let authenticated = req.isAuthenticated();
 	let sessionData = req.session.videoAttemptNumber;
 	let id = req.sessionID;
-	return res.end(JSON.stringify({authenticated: authenticated || false, id: id || -1, videoAttemptNumber: sessionData}));
+	return res.end(RequestHandler.SUCCESS({authenticated: authenticated || false, id: id || -1, videoAttemptNumber: sessionData}));
 });
 APIrouter.get("/speech/:data", function(req, res) {
 	try {
 		var speechData = JSON.parse(req.params.data);
 	} catch(e) {
-		return res.end("Error: Failed to parse speech data. Is it in the form of an array?");
+		return res.end(RequestHandler.FAIL("Error: Failed to parse speech data. Is it in the form of an array?"));
 	}
     if (speechNetReady) {
         console.log("processing speech: '"+JSON.stringify(speechData)+"'");
@@ -1166,7 +1180,7 @@ APIrouter.get("/speech/:data", function(req, res) {
                 console.warn("Likelyresponse is blank, what happened?")
                 response = "";
             }
-            return res.end(JSON.stringify({status: "OK", classification: finalClassifications, likelyResponse: likelyResponse, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));;
+            return res.end(RequestHandler.SUCCESS({classification: finalClassifications, likelyResponse: likelyResponse, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));;
         } else {
             var classification = neuralMatcher.algorithm.classify(speechClassifierNet, speechData); //classify speech
             console.log("Speech classification: "+JSON.stringify(classification));
@@ -1178,10 +1192,10 @@ APIrouter.get("/speech/:data", function(req, res) {
                 console.warn("Classification length is 0, response is nothing");
                 response = "";
             }
-            return res.end(JSON.stringify({status: "OK", classification: classification, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));
+            return res.end(RequestHandler.SUCCESS({classification: classification, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));
         }
     } else {
-        res.end("Error: Speechnet not ready");
+        res.end(RequestHandler.FAIL("Error: Speechnet not ready"));
     }
 })
 
@@ -1189,7 +1203,7 @@ APIrouter.get("/speech/:data", function(req, res) {
 SCrouter.get("/clientReady", function(req, res) {
 	if (soundcloudSettings.soundcloudReady) {
         console.log("SCClientReady request recieved; sending data");
-        res.send({
+        res.end(RequestHandler.SUCCESS({
             hasTracks: true,
             likedTracks: soundcloudSettings.likedTracks,
             trackList: soundcloudSettings.trackList,
@@ -1206,20 +1220,17 @@ SCrouter.get("/clientReady", function(req, res) {
                 nextTrackLoop: soundcloudSettings.nextTrackLoop,
                 soundcloudReady: soundcloudSettings.soundcloudReady
             }
-        });
-        res.end();
+        }));
     } else {
         console.log("SCClientReady request recieved; soundcloud is not ready");
-        res.send("serverLoadingTracklist");
-        soundcloudSettings.waitingClients.push(req.session.id);
-        res.end();
+        res.end(RequestHandler.WAIT("serverLoadingTracklist"));
     }
 });
 SCrouter.get("/clientUpdate", function(req, res) {
 	if (soundcloudSettings.soundcloudReady) {
         console.log("SCClientUpdate");
         var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
-        res.send({
+        res.end(RequestHandler.SUCCESS({
             currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack,
             percent: soundcloudUtils.SCSoundManager.getPercent(),
             playedSeconds: ps,
@@ -1231,13 +1242,10 @@ SCrouter.get("/clientUpdate", function(req, res) {
                 nextTrackShuffle: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackShuffle,
                 nextTrackLoop: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackLoop
             }
-        });
-        res.end();
+        }));
     } else {
         console.log("SC not ready on clientUpdate");
-        res.send("serverLoadingTracklist");
-        soundcloudSettings.waitingClients.push(req.session.id);
-        res.end();
+        res.end(RequestHandler.WAIT("serverLoadingTracklist"));
     }
 });
 SCrouter.get("/event/:type", function(req, res) {
@@ -1248,16 +1256,13 @@ SCrouter.get("/event/:type", function(req, res) {
 	        data: req.query.data,
 	        origin: "external"
 	    }).then( () => {
-	    	res.send("OK");
-	    	res.end();
+	    	res.end(RequestHandler.SUCCESS());
 	    }).catch( err => {
-	    	res.send(err);
-	    	res.end();
+	    	res.end(RequestHandler.FAILURE(err));
 	    })
 	} else {
 	    console.error("Type undefined sccliuserevent");
-	    res.send("Error: Type is undefined in request");
-	    res.end();
+	    res.end(RequestHandler.FAILURE("Error: Type is undefined in request"));
 	}
 });
 
@@ -1270,22 +1275,18 @@ SCrouter.get("/changeUser/:user", function(req, res) {
 	        initSoundcloud(req.params.user).then( () => {
 	            console.importantInfo("SC INIT OK");
 	            gettingSCUser = false;
-	            res.send("OK");
-	            res.end();
+	            res.end(RequestHandler.SUCCESS());
 	        }).catch( err => {
 	            console.error("Error initializing SC: "+err);
-	            res.send("Error initializing SC: "+err);
 	            gettingSCUser = false;
-	            res.end();
+	            res.end(RequestHandler.FAILURE(err));
 	        });
 	    } else {
-	    	res.send("Error: Soundcloud not ready");
-	    	res.end();
+	    	res.end(RequestHandler.FAILURE("Error: Soundcloud not ready"));
 	    }
 	} else {
 		console.error("User undefined in SC changeUser");
-	    res.send("Error: User is undefined in request");
-	    res.end();
+	    res.end(RequestHandler.FAILURE("Error: User is undefined in request"));
 	}
 });
 
@@ -1296,23 +1297,6 @@ SCrouter.get("/changeUser/:user", function(req, res) {
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingTracksUpdate", track: likedTracks[trackIndex].title, percent: ((tracksLoaded+1)/tracksToLoad)*100});
-                        if (username == soundcloudSettings.defaultUsername) { //first init
-						for (var i=0; i<soundcloudSettings.waitingClients.length; i++) { //send data to clients who were waiting for it
-							socketHandler.socketEmitToID(soundcloudSettings.waitingClients[i], 'POST', {
-								"action": "serverDataReady",
-								hasTracks: true,
-								likedTracks: soundcloudSettings.likedTracks,
-								trackList: soundcloudSettings.trackList,
-								settingsData: {
-									currentUser: soundcloudSettings.currentUser,
-									noArtworkUrl: soundcloudSettings.noArtworkUrl,
-									defaultVolume: soundcloudSettings.defaultVolume,
-									volStep: soundcloudSettings.volStep,
-									currentVolume: soundcloudSettings.currentVolume,
-									tracksFromCache: soundcloudSettings.tracksFromCache
-								}
-							});
-						}
 					} else {
 						socketHandler.socketEmitToWeb('POST', {
 							"action": "serverDataReady",
