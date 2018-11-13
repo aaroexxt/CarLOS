@@ -176,6 +176,7 @@ var SCUtils = {
             scSettings.userID = data.id;
             scSettings.likedTracks = [];
             scSettings.trackList = [];
+            scSettings.tracksToLoad = -1;
 
             if (scSettings.tracksPerRequest > scSettings.maxTracksInRequest) {
                 scSettings.tracksPerRequest = scSettings.maxTracksInRequest;
@@ -192,6 +193,8 @@ var SCUtils = {
             }
             tracksToLoad*=scSettings.tracksPerRequest;
             tracksToLoad = Math.round(tracksToLoad);
+
+            scSettings.tracksToLoad = tracksToLoad;
             var requestCounter = 0;
             console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
             if (requiredRequestTimes == 0) {
@@ -219,6 +222,7 @@ var SCUtils = {
                     //console.log("REQUEST_COUNTER: "+requestCounter+", likedtracks ",scSettings.likedTracks);
                     
                     if (scSettings.trackList.length >= tracksToLoad || requestCounter >= requiredRequestTimes) { //does loaded tracklist length equal tracks to load (equates for partial requests)
+                        scSettings.tracksToLoad = scSettings.trackList.length; //didn't load all so change len
                         console.log(colors.green("Processed "+colors.underline(scSettings.likedTracks.length)+" tracks for soundcloud"));
                         scSettings.tracksFromCache = false;
                         console.log("Saving SC cache...");

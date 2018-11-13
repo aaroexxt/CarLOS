@@ -104,6 +104,35 @@ var utils = {
                 errCallback(error);
             })
         }
+
+        this.requestUntilNoWait
+
+        this.requestInterval = (interval, urlSuffix, doneCallback, waitCallback, errCallback, method) => {
+            if (_this.debugMode) {
+                console.log("req interval querying "+urlSuffix+" timeout "+interval);
+            }
+
+            if (isNaN(interval)) {
+                return console.error("Interval is not a number");
+            }
+
+
+            this.interval = setInterval(() => {
+                _this.request(urlSuffix, data => { //query the request
+                    if (typeof data.wait == "undefined" || typeof data.error == "undefined") {
+                        doneCallback(data);
+                    } else if (data.wait && !data.error) {
+                        waitCallback(data);
+                    } else if (!data.wait && !data.error) {
+                        doneCallback(data);
+                    } else {
+                        errCallback(data);
+                    }
+                }, error => {
+                    errCallback(error);
+                }, method);
+            }, interval);
+        }
     },
     pathJoin: function(parts, sep){
        let separator = sep || '/';

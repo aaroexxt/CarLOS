@@ -60,6 +60,7 @@
 
         "initErrorDelay": 1000,
         "initMaxAttempts": 3,
+        "tracksToLoad": -1,
 
         "noArtworkUrl": "/images/noAlbumArt.png",
         "defaultVolume": 25,
@@ -69,7 +70,7 @@
         "maxLikedTracks": 0,
         "maxTracksInRequest": 200,
         "tracksPerRequest": 40,
-        "requestConstraint": 2,
+        "requestConstraint": 10,
         "trackUpdateInterval": 0,
         "nextTrackShuffle": false,
         "nextTrackLoop": false,

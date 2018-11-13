@@ -1045,7 +1045,7 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
     //console.log((typeof req.files['photo'] == "undefined")+" "+(req.files['photo'][0].size <= 1)+" "+(req.files['photo'][0].buffer.length <= 1)+" "+(req.files['photo'][0].mimetype !== "image/png"))
     if (typeof req.files['photo'] == "undefined" || req.files['photo'][0].size <= 1 || req.files['photo'][0].buffer.length <= 1 || req.files['photo'][0].mimetype !== "image/png") {
     	console.warn("CV image invalid");
-    	return res.end(RequestHandler.FAIL("Image invalid"));
+    	return res.end(RequestHandler.FAILURE("Image invalid"));
     } else {
     	console.log("Recieved IMAGE with size: "+req.files['photo'][0].size+", mimetype: "+req.files['photo'][0].mimetype);
     	passport.authenticate('openCV', (err, user, info) => {
@@ -1096,7 +1096,7 @@ APIrouter.get("/speech/:data", function(req, res) {
 	try {
 		var speechData = JSON.parse(req.params.data);
 	} catch(e) {
-		return res.end(RequestHandler.FAIL("Error: Failed to parse speech data. Is it in the form of an array?"));
+		return res.end(RequestHandler.FAILURE("Error: Failed to parse speech data. Is it in the form of an array?"));
 	}
     if (speechNetReady) {
         console.log("processing speech: '"+JSON.stringify(speechData)+"'");
@@ -1195,7 +1195,7 @@ APIrouter.get("/speech/:data", function(req, res) {
             return res.end(RequestHandler.SUCCESS({classification: classification, transcript: speechData, classifiedTranscript: classifiedSpeech, response: response}));
         }
     } else {
-        res.end(RequestHandler.FAIL("Error: Speechnet not ready"));
+        res.end(RequestHandler.FAILURE("Error: Speechnet not ready"));
     }
 })
 
@@ -1223,7 +1223,8 @@ SCrouter.get("/clientReady", function(req, res) {
         }));
     } else {
         console.log("SCClientReady request recieved; soundcloud is not ready");
-        res.end(RequestHandler.WAIT("serverLoadingTracklist"));
+        let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
+        res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
     }
 });
 SCrouter.get("/clientUpdate", function(req, res) {
@@ -1245,7 +1246,8 @@ SCrouter.get("/clientUpdate", function(req, res) {
         }));
     } else {
         console.log("SC not ready on clientUpdate");
-        res.end(RequestHandler.WAIT("serverLoadingTracklist"));
+       	let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
+        res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
     }
 });
 SCrouter.get("/event/:type", function(req, res) {
@@ -1289,7 +1291,6 @@ SCrouter.get("/changeUser/:user", function(req, res) {
 	    res.end(RequestHandler.FAILURE("Error: User is undefined in request"));
 	}
 });
-
 /*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
