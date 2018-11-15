@@ -22,5 +22,10 @@
   "passcodes": [
     "$2a$10$paxUGuiGKF0M1kOHbv4ll.KEWGu4A/yfbiA6nbT.ci/dr.g7421Pu",
     "$2a$10$bd3oSbhnSc8OzLNgmJ43UOSdA3pBOm/IVrDtlAv7Fd2jvTUbWIqBW"
-  ]
+  ],
+  "passcodeUser": {
+    "id":"P3sc0de",
+    "name:":"PASSCODE_INTERNAL",
+    "isAdmin": false
+  }
 }

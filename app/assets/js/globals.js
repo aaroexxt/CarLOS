@@ -182,9 +182,13 @@ var globals = {
             if (!globals.music.setListeners) {
                 globals.music.setListeners = true;
 
-                initListener = setInterval(function() {
-                    
-                })
+                SRH.requestInterval(1000, "api/SC/clientReady", done => {
+                    console.log("reqInterval done ",done);
+                }, wait => {
+                    console.log("reqInterval wait ",wait);
+                }, err => {
+                    console.log("reqInterval err ",err);
+                }, -1);
                 socketListener.addPersistentListener("serverDataReady", data => {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
@@ -280,14 +284,12 @@ var globals = {
                 });
 
             }
-
-            socket.emit("GET",{action: "SCClientReady", authkey: globals.authkey});
         },
 
         togglePlayerOutput: function() {
             if (globals.music.soundcloudReady) {
                 globals.music.playMusicOnServer = !globals.music.playMusicOnServer;
-                socket.emit("GET", {action: "SCClientUserEvent", type: "togglePlayerOutput", origin: "client-"+globals.authkey});
+                SRH.request("/api/sc/event/togglePlayerOutput");
             }
         },
 
@@ -329,12 +331,22 @@ var globals = {
                 });
             },
             playTrackRequested: function(track) {
-                globals.music.soundManager.currentPlayingTrack = track;
-                ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
-                ID("music_waveformArt").src = track.artwork.waveformUrl;
-                ID("music_trackTitle").innerHTML = track.title;
-                ID("music_trackAuthor").innerHTML = "By: "+track.author;
-                socket.emit("GET", {action: "SCClientUserEvent", authkey: globals.authkey, type: "clientTrackSelected", data: {trackID: track.id}, origin: "client-"+globals.authkey});
+                try{
+                    globals.music.soundManager.playerObject.pause();
+                } catch(e){}
+                SRH.request("/api/sc/event/clientTrackSelected?data="+track.id)
+                .then(data => {
+                    globals.music.soundManager.currentPlayingTrack = track;
+                    ID("music_trackArt").src = (!track.artwork.artworkUrl) ? globals.music.noArtworkUrl : track.artwork.artworkUrl;
+                    ID("music_waveformArt").src = track.artwork.waveformUrl;
+                    ID("music_trackTitle").innerHTML = track.title;
+                    ID("music_trackAuthor").innerHTML = "By: "+track.author;
+                })
+                .catch(error => {
+                    console.error("Couldn't play track: "+error);
+                    ID("music_trackTitle").innerHTML = "";
+                    ID("music_trackAuthor").innerHTML = "Failed to play track because: "+((error.error)?(error.message):error);
+                })
             },
             setPlayerVolume: function(vol) {
                 if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
@@ -590,30 +602,29 @@ var globals = {
         sKitListeningTextID: "skitt-listening-text",
         onSpeech: function(data) {
             console.log("recieved speech data: "+data);
-            SRH.request(("api/speech/"+JSON.stringify(data)), data => {
-                if (data.status == "OK") {
-                    console.log("recieved speech matching result: "+JSON.stringify(data));
-                    if (data.response == "" || data.response == " ") {
-                        data.response = "I'm sorry, I didn't quite catch that. Try again.";
-                    }
-                    var skittLT = document.getElementById(globals.voice.sKitListeningTextID);
-                    globals.voice.speaker(data.response, function(){
-                        setTimeout(function(){
-                            if (typeof skittLT == "undefined" || skittLT == null) {
-                                console.error("Couldn't locate SKitt text on speech");
-                            } else {
-                                skittLT.innerHTML = globals.voice.defaultInstructions;
-                            }
-                        },globals.voice.defaultTextDelay);
-                    });
-                    if (typeof skittLT == "undefined" || skittLT == null) {
-                        console.error("Couldn't locate SKitt text on speech");
-                    } else {
-                        skittLT.innerHTML = data.response;
-                    }
-                } else {
-                    console.error("Speech matching data status is not ok, it is: "+data.status);
+            SRH.request("api/speech/"+JSON.stringify(data))
+            .then(data => {
+                console.log("recieved speech matching result: "+JSON.stringify(data));
+                if (data.response == "" || data.response == " ") {
+                    data.response = "I'm sorry, I didn't quite catch that. Try again.";
                 }
+                var skittLT = document.getElementById(globals.voice.sKitListeningTextID);
+                globals.voice.speaker(data.response, function(){
+                    setTimeout(function(){
+                        if (typeof skittLT == "undefined" || skittLT == null) {
+                            console.error("Couldn't locate SKitt text on speech");
+                        } else {
+                            skittLT.innerHTML = globals.voice.defaultInstructions;
+                        }
+                    },globals.voice.defaultTextDelay);
+                });
+                if (typeof skittLT == "undefined" || skittLT == null) {
+                    console.error("Couldn't locate SKitt text on speech");
+                } else {
+                    skittLT.innerHTML = data.response;
+                }
+            }).catch(error => {
+                console.error("Speech matching data status is not ok, it is: "+data.message);
             })
         },
         defaultInstructions: "What can I help you with?",

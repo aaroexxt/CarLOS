@@ -535,6 +535,12 @@ var sendArduinoMode = false;
 stdinputListener.addPersistentListener("*",function(d) {
 	var uI = d.toString().trim();
 	console.log("you entered: [" + uI + "]");
+	if (uI == "sI") {
+		soundcloudReady = false;
+	}
+	if (uI == "nI") {
+		soundcloudReady = true;
+	}
 	if (uI == "help") {
 		console.importantLog("Right now, sA or sendArduinoMode toggles sending raw to arduino.")
 	} else if (uI == "sA" || uI == "sendArduinoMode") {

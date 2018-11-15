@@ -6,15 +6,6 @@ var utils = {
         this.HTTPprefix = "";
         this.baseURL = "";
 
-        this.defaultErrorCallback = function(error) {
-            console.error("[UTILS] Error in a request function: '"+error+"' that had no default error callback specified");
-        }
-        this.defaultOKCallback = function(response) {
-            if (_this.debugMode) {
-                console.log("[UTILS] Default OK callback since none was specified, response="+response);
-            }
-        }
-
         var _this = this;
 
         if (typeof baseURL === "undefined") {
@@ -41,68 +32,77 @@ var utils = {
             this.HTTPprefix = firstChars;
         }
 
-        this.request = function(urlSuffix, okCallback, errCallback, method) {
-            if (_this.debugMode) {
-                console.log("srh querying "+urlSuffix);
-            }
-            if (typeof method !== "string") {
-                method = "GET";
-            } else if (_this.acceptableHTTPPrefixes.indexOf(method.toUpperCase()) < 0) {
-                return console.error("HTTP method "+method+" is invalid");
-            }
-            if (typeof urlSuffix !== "string") {
-                return console.error("URLSuffix "+urlSuffix+" is invalid");
-            }
-            if (typeof okCallback !== "function") {
-                okCallback = _this.defaultOKCallback; //set to default ok callback for fallback
-            }
-            if (typeof errCallback !== "function") {
-                errCallback = _this.defaultErrorCallback; //set to default error callback
-            }
-
-            if (_this.debugMode) {
-                console.log("srh baseurl: "+_this.baseURL+", prefix: "+_this.HTTPprefix+", urlsuffix: "+urlSuffix)
-            }
-            let concisePath = _this.HTTPprefix+utils.pathJoin([_this.baseURL,urlSuffix]); //allows for trailing slashes to make full url while maintaining integrity of http:// and http:// statements
-            console.log("srh concisePath: "+concisePath);
-            fetch(concisePath, {
-                credentials: 'include',
-                method: method
-            }).then(response => {
-                if (response.status >= 200 && response.status < 300) {
-                    if (response.headers.get('Content-Length') == 0) { //did the server return anything? if so no point trying to convert it
-                        return okCallback("");
-                    } else {
-                        let responseClone = response.clone();
-                        let JSONresponse = response.json() //cvt to json
-                        .then( json => {
-                            return okCallback(json);
-                        }).catch(e => {
-                            let TEXTresponse = responseClone.text() //need to clone to remove lock
-                            .then( text => {
-                                if (typeof text == "undefined") {
-                                    return okCallback("");
-                                }
-                                console.log("Response cannot be parsed to json, it will be returned as ",TEXTresponse);
-                                return okCallback(TEXTresponse);
-                            }).catch(ie => {
-                                console.error("Response could not be converted to json or text because: "+ie);
-                                return errCallback(ie); //couldn't convert to text or json
-                            })
-                        });
-                    }
-                } else {
-                    errCallback(response.statusText);
+        this.request = function(urlSuffix, method, stripServerRequests) {
+            return new Promise( (resolve, reject) => {
+                if (_this.debugMode) {
+                    console.log("srh querying "+urlSuffix);
                 }
-            }, reason => {
-                reason = reason.toString(); //cvt to string
-                console.error("Error with request (reqok): "+reason);
-                errCallback(reason);
-            }).catch( error => {
-                error = error.toString();
-                console.error("Error with request (reqNok): "+error);
-                errCallback(error);
-            })
+                if (typeof method !== "string") {
+                    method = "GET";
+                } else if (_this.acceptableHTTPPrefixes.indexOf(method.toUpperCase()) < 0) {
+                    return reject("HTTP method "+method+" is invalid");
+                }
+                if (typeof urlSuffix !== "string") {
+                    return reject("URLSuffix "+urlSuffix+" is invalid");
+                }
+                if (typeof stripServerRequests == "undefined") { //decides whether request should strip the header off the server request or nah
+                    stripServerRequests = true;
+                }
+
+                if (_this.debugMode) {
+                    console.log("srh baseurl: "+_this.baseURL+", prefix: "+_this.HTTPprefix+", urlsuffix: "+urlSuffix)
+                }
+                let concisePath = _this.HTTPprefix+utils.pathJoin([_this.baseURL,urlSuffix]); //allows for trailing slashes to make full url while maintaining integrity of http:// and http:// statements
+                console.log("srh concisePath: "+concisePath);
+                fetch(concisePath, {
+                    credentials: 'include',
+                    method: method
+                }).then(response => {
+                    if (response.status >= 200 && response.status < 300) {
+                        if (response.headers.get('Content-Length') == 0) { //did the server return anything? if so no point trying to convert it
+                            return resolve("");
+                        } else {
+                            let TEXTresponse = response.text() //cvt to text
+                            .then( text => {
+                                text = text.trim();
+                                try {
+                                    let json = JSON.parse(text); //yay it parses
+                                    if (!stripServerRequests || typeof json.error == "undefined" || typeof json.message == "undefined" || typeof json.wait == "undefined") {
+                                        return resolve(json); //not from server/don't want parsing so just return
+                                    } else {
+                                        if (json.error) {
+                                            return reject(json);
+                                        } else {
+                                            let message = json.message;
+                                            try {
+                                                return resolve(JSON.parse(message));
+                                            } catch(e) {
+                                                return resolve(message);
+                                            }
+                                        }
+                                    }
+                                } catch(e) {
+                                    if (typeof text == "undefined") {
+                                        return resolve("");
+                                    }
+                                    console.log("Response cannot be parsed to json, it will be returned as ",text,"because "+e);
+                                    return resolve(text);
+                                }
+                            })
+                        }
+                    } else {
+                        return reject(response.statusText);
+                    }
+                }, reason => {
+                    reason = reason.toString(); //cvt to string
+                    console.error("Error with request (reqok): "+reason);
+                    return reject(reason);
+                }).catch( error => {
+                    error = error.toString();
+                    console.error("Error with request (reqNok): "+error);
+                    return reject(error);
+                })
+            });
         }
 
         this.requestUntilNoWait
@@ -116,21 +116,40 @@ var utils = {
                 return console.error("Interval is not a number");
             }
 
+            this.noRequestCount = 0;
+            this.maxNoRequest = 5;
 
             this.interval = setInterval(() => {
-                _this.request(urlSuffix, data => { //query the request
-                    if (typeof data.wait == "undefined" || typeof data.error == "undefined") {
-                        doneCallback(data);
-                    } else if (data.wait && !data.error) {
-                        waitCallback(data);
-                    } else if (!data.wait && !data.error) {
+                _this.request(urlSuffix, method, false)
+                .then(data => { //query the request
+                    if (_this.debugMode) {
+                        console.log("Data from reqInterval on dom "+urlSuffix+": ",data,data.message)
+                    }
+                    if (typeof data.message == "undefined" || typeof data.error == "undefined" || typeof data.wait == "undefined") {
+                        clearInterval(this.interval); //we can't wait because it wasn't from server
                         doneCallback(data);
                     } else {
-                        errCallback(data);
+                        if (data.wait && !data.error) { //waiting
+                            waitCallback(data);
+                        } else if (!data.wait && !data.error) { //no error
+                            clearInterval(this.interval);
+                            doneCallback(data);
+                        } else { //error
+                            clearInterval(this.interval);
+                            errCallback(data);
+                        }
                     }
-                }, error => {
-                    errCallback(error);
-                }, method);
+                })
+                .catch(error => {
+                    this.noRequestCount++;
+                    if (this.noRequestCount>this.maxNoRequest) {
+                        console.error("No request got from server or it is null :( (e="+error+")");
+                        clearInterval(this.interval);
+                        errCallback(data);
+                    } else {
+                        console.warn("NORQ")
+                    }
+                });
             }, interval);
         }
     },

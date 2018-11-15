@@ -116,10 +116,12 @@
 
 			login.readySteps.nodeConnected = false;
 			login.readySteps.validAuthkey = false;
-			SRH.request("api/isup", response => {
+			SRH.request("api/isup")
+			.then(response => {
 				console.log("Server is up");
 				login.readySteps.nodeConnected = true;
-				SRH.request("api/session", sessionDat => {
+				SRH.request("api/session")
+				.then(sessionDat => {
 					console.log("sessionData: "+JSON.stringify(sessionDat));
 					if (sessionDat.id) {
 						login.readySteps.validAuthkey = true;
@@ -127,15 +129,17 @@
 					sessionData = sessionDat;
 				});
 				login.initializeOnceServerConnected(); //run login starters
-			}, error => {
-				console.error("Server is not up. Cannot continue with initialization.");
-			});
+			})
+			.catch(error => {
+				console.error("Server is not up. Cannot continue with initialization (e="+error+")");
+			})
 
 			login.readySteps.runtimeInformationProvided = false;
-			SRH.request("/api/runtime", data => {
+			SRH.request("/api/runtime")
+			.then(data => {
 				login.readySteps.runtimeInformationProvided = true;
 				handleRuntimeInfo(data);
-			})
+			});
 
 			function handleRuntimeInfo(data) {
 				console.log("RuntimeInfo: ",data);
@@ -154,7 +158,9 @@
 				    console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
 				    globals.runtimeInfoUpdateTimeout = setTimeout(function(){
 				        console.log("[HB] Heartbeat request runtimeinfo");
-				        SRH.request("/api/runtime", data => {
+				        SRH.request("/api/runtime")
+						.then(data => {
+							login.readySteps.runtimeInformationProvided = true;
 							handleRuntimeInfo(data);
 						})
 				    },globals.runtimeInformation.heartbeatMS);

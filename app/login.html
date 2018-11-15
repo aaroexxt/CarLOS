@@ -18,28 +18,28 @@
 					<center style="padding-bottom: 0px; padding-top: 0px;">
 						<hr>
 						<button class="sort" onclick="login.cvHandles.snapshotCanvas();">Take Photo</button>
-						<button class="sort" onclick="if(login.usingVideo){login.transitionPasscode()}else{login.transitionVideo()}">Switch Login Method</button>
+						<button class="sort" onclick="login.transition.next();">Switch Login Method</button>
 					</center>
 				</div>
 				<div id="login-passcode" style="display:none">
 					<span id="login-passcodeField" style="font-size: large; text-decoration: underline"></span>
 					<div>
-						<button class="passcode" onclick="login.passcodeTracker+='1'; login.passcodeUpdate();">1</button>
-						<button class="passcode" onclick="login.passcodeTracker+='2'; login.passcodeUpdate();">2</button>
-						<button class="passcode" onclick="login.passcodeTracker+='3'; login.passcodeUpdate();">3</button>
-						<button class="passcode" onclick="login.passcodeTracker+='4'; login.passcodeUpdate();">4</button>
-						<button class="passcode" onclick="login.passcodeTracker+='5'; login.passcodeUpdate();">5</button>
-						<button class="passcode" onclick="login.passcodeTracker+='6'; login.passcodeUpdate();">6</button>
-						<button class="passcode" onclick="login.passcodeTracker+='7'; login.passcodeUpdate();">7</button>
-						<button class="passcode" onclick="login.passcodeTracker+='8'; login.passcodeUpdate();">8</button>
-						<button class="passcode" onclick="login.passcodeTracker+='9'; login.passcodeUpdate();">9</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='1'; login.passcodeHandles.update();">1</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='2'; login.passcodeHandles.update();">2</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='3'; login.passcodeHandles.update();">3</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='4'; login.passcodeHandles.update();">4</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='5'; login.passcodeHandles.update();">5</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='6'; login.passcodeHandles.update();">6</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='7'; login.passcodeHandles.update();">7</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='8'; login.passcodeHandles.update();">8</button>
+						<button class="passcode" onclick="login.passcodeHandles.tracker+='9'; login.passcodeHandles.update();">9</button>
 					</div>
 					<br>
 					<div>
-						<button class="sort" onclick="login.passcodeTracker = ' '; login.passcodeUpdate();">Clear</button>
-						<button class="sort" onclick="login.passcode(login.passcodeTracker);">Submit</button>
+						<button class="sort" onclick="login.passcodeHandles.tracker = ' '; login.passcodeHandles.update();">Clear</button>
+						<button class="sort" onclick="login.passcodeHandles.enterPasscode(login.passcodeHandles.tracker);">Submit</button>
 						<hr>
-						<button class="sort" onclick="if(login.usingVideo){login.transitionPasscode()}else{login.transitionVideo()}">Switch Login Method</button>
+						<button class="sort" onclick="login.transition.next();">Switch Login Method</button>
 					</div>
 				</div>
 				<div id="login-email" style="display: none;">
@@ -54,6 +54,11 @@
 						<br>
 						<input type="submit" value="Submit">
 					</form>
+					<br>
+					<div>
+						<hr>
+						<button class="sort" onclick="login.transition.next();">Switch Login Method</button>
+					</div>
 				</div>
 			</center>
 		</div>
@@ -83,7 +88,8 @@
 				emailEID: "login-email",
 				passcodeEID: "login-passcode",
 				videoEID: "login-video",
-				loginVideoID: "loginVideo"
+				loginVideoID: "loginVideo",
+				passcodeFieldID: "login-passcodeField"
 			}
 			const login = {
 				cvHandles: {
@@ -118,9 +124,9 @@
 						  method: 'POST',
 						  body: data
 						})
-						.then(response => response.text())
+						.then(response => response.json())
 						.then(response => {
-							if (response.toLowerCase() == "ok") {
+							if (!response.error && !response.wait && response.message == "") {
 								login.redirectOK();
 							} else {
 								console.error("Recieved non-ok response from CV: "+response);
@@ -155,13 +161,75 @@
 				        }
 			        }
 				},
+				passcodeHandles: {
+					tracker: "",
+					update: function() {
+						document.getElementById(config.passcodeFieldID).innerHTML = login.passcodeHandles.tracker;
+					},
+					init: function() {
+						login.passcodeHandles.tracker = "";
+						login.passcodeHandles.update();
+					},
+					enterPasscode: function(passcode) {
+						fetch('http://localhost/login/passcode', {
+						  method: 'POST',
+						  body: passcode
+						})
+						.then(response => response.json())
+						.then(response => {
+							if (!response.error && !response.wait && response.message == "") {
+								login.redirectOK();
+							} else {
+								console.error("Recieved non-ok response from passcode: "+response);
+								alert("Recieved error when trying to login with passcode: "+response);
+							}
+						})
+						.catch(error => {
+							console.error('Error thrown in request:', error);
+							alert("Error thrown on passcode login: "+response);
+						});
+					}
+				},
+				transition: {
+					passcode: function() {
+						login.transition.state = "passcode";
+						document.getElementById(config.emailEID).style.display = "none";
+						document.getElementById(config.passcodeEID).style.display = "block";
+						document.getElementById(config.videoEID).style.display = "none";
+					},
+					video: function() {
+						login.transition.state = "video";
+						document.getElementById(config.emailEID).style.display = "none";
+						document.getElementById(config.passcodeEID).style.display = "none";
+						document.getElementById(config.videoEID).style.display = "block";
+					},
+					email: function() {
+						login.transition.state = "email";
+						document.getElementById(config.emailEID).style.display = "block";
+						document.getElementById(config.passcodeEID).style.display = "none";
+						document.getElementById(config.videoEID).style.display = "none";
+					},
+					state: "video",
+					next: function() {
+						let lt = login.transition;
+						if (lt.state == "email") {
+							lt.passcode();
+						} else if (lt.state == "video") {
+							lt.email();
+						} else {
+							lt.video();
+						}
+					}
+
+				},
 				redirectOK: function() {
 					window.location = "client";
 				}
 			}
 
 			login.cvHandles.init();
-			//login.passcodeHandles.init();
+			login.passcodeHandles.init();
+			login.transition.video();
 
 			/*socketListener.addPersistentListener('login-opencvdata', function(data) {
 				var canvas = ID("loginCanvas");
