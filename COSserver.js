@@ -782,7 +782,7 @@ const RequestHandler = {
 		}
 		return JSON.stringify({"error": false, "wait": false, "message": message});
 	},
-	FAIL: function(message) {
+	FAILURE: function(message) {
 		if (typeof message == "undefined") {
 			message = "";
 		}
@@ -807,8 +807,8 @@ app.use(serveFavicon(path.join(cwd,runtimeSettings.faviconDirectory))); //serve 
 
 app.use(express.static(path.join(cwd,runtimeSettings.assetsDirectory))); //define a static directory
 
-app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' })); //bodyparser for getting json data, big limit for images
-app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({ extended: true })); //, limit: '50mb' })); //bodyparser for getting json data, big limit for images
+app.use(bodyParser.json());
 
 const sessionFileStore = new FileStore(); //create the session file store
 
@@ -857,7 +857,6 @@ passport.use(new LocalStrategy(
 		let allUserData = db.getData("/users/");
 		for (var i=0; i<allUserData.length; i++) {
 			if (allUserData[i].name == name) {
-				return done(null, allUserData[i]);
 				if (!bcrypt.compareSync(password, allUserData[i].password)) {
 					return done(null, false, { message: 'Invalid credentials: password invalid.\n' });
 				} else {
@@ -932,12 +931,20 @@ passport.use('openCV', new CustomStrategy( function(req, done) {
 }));
 
 passport.use('passcode', new CustomStrategy( function(req, done) {
-	if (req.params.passcode) {
-		console.log("psc entered="+req.params.passcode);
+	if (typeof req.body.passcode !== "undefined") {
+		console.log("psc entered="+req.body.passcode);
+		let passcodes = db.getData("/passcodes/");
+		let pscUser = db.getData("/passcodeUser/");
+		for (var i=0; i<passcodes.length; i++) {
+			if (bcrypt.compareSync(String(req.body.passcode), passcodes[i])) {
+				return done(null, pscUser);
+			}
+		}
+		return done(null, false, { message: 'Passcode invalid.\n' });
 	} else {
 		console.log("no psc entered?");
+		return done(null, false, { message: 'No passcode entered\n' });
 	}
-	done(null, users[0]);
 }));
 
 //User serialization and deserialization
@@ -949,14 +956,19 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser((id, done) => {
 	console.log("Deserializing user with id: "+id);
 	  try {
-		let allUserData = db.getData("/users/");
-		for (var i=0; i<allUserData.length; i++) {
-			if (allUserData[i].id == id) {
-				return done(null, allUserData[i]);
+	  	let pscUser = db.getData("/passcodeUser/");
+	  	if (id == pscUser.id) {
+	  		return done(null, pscUser);
+	  	} else {
+			let allUserData = db.getData("/users/");
+			for (var i=0; i<allUserData.length; i++) {
+				if (allUserData[i].id == id) {
+					return done(null, allUserData[i]);
+				}
 			}
+			console.warn("Couldn't find user w/id "+id+" in db when deserializing");
+			return done("Couldn't find user in db when deserializing", false);
 		}
-		console.warn("Couldn't find user w/id "+id+" in db when deserializing");
-		return done("Couldn't find user in db when deserializing", false);
 	} catch (e) {
 		return done(e, false);
 	}
@@ -1031,7 +1043,7 @@ AUTHrouter.get('/regular', (req, res, next) => {
 AUTHrouter.post('/regular', (req, res, next) => {
     console.log('Inside POST request on /loginRegular, sessID: '+req.sessionID)
     passport.authenticate('local', (err, user, info) => {
-        if(info) {return res.send(info.message)}
+        if(info) {return res.send(RequestHandler.FAILURE(info.message))}
         if (err) { return next(err); }
         if (!user) { return res.redirect('/login'); }
         req.login(user, (err) => {
@@ -1055,7 +1067,7 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
     } else {
     	console.log("Recieved IMAGE with size: "+req.files['photo'][0].size+", mimetype: "+req.files['photo'][0].mimetype);
     	passport.authenticate('openCV', (err, user, info) => {
-	        if(info) {return res.send(info.message)}
+	        if(info) {return res.send(RequestHandler.FAILURE(info.message))}
 	        if (err) { return next(err); }
 	        if (!user) { return res.redirect('/login'); }
 	        req.login(user, (err) => {
@@ -1069,10 +1081,10 @@ AUTHrouter.post('/cv', uploadHandler.fields([{ name: 'photo', maxCount: 1 }, { n
 AUTHrouter.get('/passcode', (req, res, next) => {
     res.redirect("/login");
 });
-AUTHrouter.post('/passcode', (req, res, next) => {
+AUTHrouter.post('/passcode', bodyParser.json(), (req, res, next) => {
     console.log('Inside POST request on /loginPasscode, sessID: '+req.sessionID)
     passport.authenticate('passcode', (err, user, info) => {
-        if(info) {return res.send(info.message)}
+        if(info) {return res.send(RequestHandler.FAILURE(info.message))}
         if (err) { return next(err); }
         if (!user) { return res.redirect('/login'); }
         req.login(user, (err) => {

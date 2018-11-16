@@ -657,6 +657,9 @@ var SCSoundManager = {
     },
     lookupTrackByID: trackID => {
         return new Promise((resolve, reject) => {
+            if (typeof trackID == "undefined") {
+                return reject("[ERROR] TrackID undefined");
+            }
             var lt = SCUtils.localSoundcloudSettings.likedTracks;
             for (var i=0; i<lt.length; i++) {
                 if (lt[i].id == trackID) {
@@ -670,6 +673,10 @@ var SCSoundManager = {
         return new Promise( (resolve, reject) => {
             if (ev && ev.type) {
                 console.log("[SCSoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
+                try {
+                    ev.data = JSON.parse(ev.data);
+                } catch(e) {}
+
                 if (SCSoundManager.canInteractTrack || ev.type.indexOf("volume") > -1 || ev.type.indexOf("changeTrack") > -1 || ev.type == "togglePlayerOutput") {
                     
                     if (ev.type.indexOf("volume") == -1 && ev.type.indexOf("changeTrack") == -1 && ev.type != "togglePlayerOutput") { //vol changetrackstate and toggleoutput no limits
@@ -741,12 +748,16 @@ var SCSoundManager = {
                             break;
                         case "clientTrackSelected":
                             if (ev.data) {
-                                var trackID = ev.data.trackID;
-                                SCSoundManager.lookupTrackByID(trackID).then( trackData => {
-                                    SCSoundManager.playTrackLogic(trackData);
-                                }).catch( err => {
-                                    return reject("Error looking up track with id "+trackID+": "+err);
-                                })
+                                var trackID = ev.data;
+                                if (typeof trackID == "undefined") {
+                                    return reject("ClientTrackSelected event fired but no trackID data was provided");
+                                } else {
+                                    SCSoundManager.lookupTrackByID(trackID).then( trackData => {
+                                        SCSoundManager.playTrackLogic(trackData);
+                                    }).catch( err => {
+                                        return reject("Error looking up track with id "+trackID+": "+err);
+                                    })
+                                }
                                 
                             } else {
                                 return reject("ClientTrackSelected event fired but no data provided");

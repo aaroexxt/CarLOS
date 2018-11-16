@@ -182,14 +182,7 @@ var globals = {
             if (!globals.music.setListeners) {
                 globals.music.setListeners = true;
 
-                SRH.requestInterval(1000, "api/SC/clientReady", done => {
-                    console.log("reqInterval done ",done);
-                }, wait => {
-                    console.log("reqInterval wait ",wait);
-                }, err => {
-                    console.log("reqInterval err ",err);
-                }, -1);
-                socketListener.addPersistentListener("serverDataReady", data => {
+                SRH.requestInterval(1000, "api/SC/clientReady", data => {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
                         globals.music.trackList = data.trackList;
@@ -259,7 +252,11 @@ var globals = {
                             ID("music_trackAuthor").innerHTML = "By: "+nTrack.author;
                         }
                     });
-                });
+                }, wait => {
+                    console.log("reqInterval wait ",wait);
+                }, err => {
+                    console.log("reqInterval err ",err);
+                }, -1);
 
                 socketListener.addPersistentListener("serverNoTrackCache", data => {
                     console.warn("TrackCache has no tracks; no music playing possible");

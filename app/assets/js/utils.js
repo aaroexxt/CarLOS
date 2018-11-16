@@ -130,13 +130,13 @@ var utils = {
                         doneCallback(data);
                     } else {
                         if (data.wait && !data.error) { //waiting
-                            waitCallback(data);
+                            waitCallback(data.message);
                         } else if (!data.wait && !data.error) { //no error
                             clearInterval(this.interval);
-                            doneCallback(data);
+                            doneCallback(data.message);
                         } else { //error
                             clearInterval(this.interval);
-                            errCallback(data);
+                            errCallback(data.message);
                         }
                     }
                 })

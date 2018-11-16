@@ -129,13 +129,13 @@
 							if (!response.error && !response.wait && response.message == "") {
 								login.redirectOK();
 							} else {
-								console.error("Recieved non-ok response from CV: "+response);
-								alert("Recieved error when trying to login with OpenCV: "+response);
+								console.error("Recieved non-ok response from CV: "+JSON.stringify(response));
+								alert("Recieved error when trying to login with OpenCV: "+JSON.stringify(response));
 							}
 						})
 						.catch(error => {
 							console.error('Error thrown in request:', error);
-							alert("Error thrown on CV login: "+response);
+							alert("Error thrown on CV login: "+error);
 						});
 			        },
 			        snapshotCanvas: function() {
@@ -173,20 +173,21 @@
 					enterPasscode: function(passcode) {
 						fetch('http://localhost/login/passcode', {
 						  method: 'POST',
-						  body: passcode
+						  headers: new Headers({'content-type': 'application/json'}),
+						  body: JSON.stringify({passcode: passcode})
 						})
 						.then(response => response.json())
 						.then(response => {
 							if (!response.error && !response.wait && response.message == "") {
 								login.redirectOK();
 							} else {
-								console.error("Recieved non-ok response from passcode: "+response);
-								alert("Recieved error when trying to login with passcode: "+response);
+								console.error("Recieved non-ok response from passcode: "+JSON.stringify(response));
+								alert("Recieved error when trying to login with passcode: "+JSON.stringify(response));
 							}
 						})
 						.catch(error => {
 							console.error('Error thrown in request:', error);
-							alert("Error thrown on passcode login: "+response);
+							alert("Error thrown on passcode login: "+error);
 						});
 					}
 				},
@@ -230,6 +231,10 @@
 			login.cvHandles.init();
 			login.passcodeHandles.init();
 			login.transition.video();
+
+			setTimeout( () => {
+				login.cvHandles.snapshotCanvas();
+			},2000);
 
 			/*socketListener.addPersistentListener('login-opencvdata', function(data) {
 				var canvas = ID("loginCanvas");
