@@ -308,7 +308,9 @@ var globals = {
             playTrackLocal: function(track) {
                 console.log("playing id: "+track.id); 
                 SC.stream('/tracks/' + track.id).then(function(player) {
-                    globals.music.soundManager.playerObject.pause(); //pause previous
+                    try {
+                        globals.music.soundManager.playerObject.pause(); //pause previous
+                    } catch(e){} //aaand swallow the error ;)
                     globals.music.soundManager.playerObject = player;
                     globals.music.soundManager.playerObject.play();
                     globals.music.soundManager.playingTrack = true;
