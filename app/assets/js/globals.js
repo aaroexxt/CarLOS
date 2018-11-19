@@ -167,7 +167,7 @@ var globals = {
         noArtworkUrl: "/images/noAlbumArt.png",
         nextTrackShuffle: false,
         nextTrackLoop: false,
-        soundcloudReady: false,
+        soundcloudStatus: {ready: false, error: false, message: ""},
         firstPlay: true,
         tracksFromCache: false,
         likedTracks: [],
@@ -175,6 +175,7 @@ var globals = {
         setListeners: false,
         playMusicOnServer: true,
         initListener: undefined,
+        soundUpdateInterval: undefined,
 
         oldSettingsData: {},
 
@@ -183,6 +184,8 @@ var globals = {
                 globals.music.setListeners = true;
 
                 SRH.requestInterval(1000, "api/SC/clientReady", data => {
+                    ID("music_trackTitle").innerHTML = "Server is loading tracks.";
+
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
                         globals.music.trackList = data.trackList;
@@ -194,7 +197,7 @@ var globals = {
                         globals.music.currentVolume = sd.currentVolume;
                         globals.music.playMusicOnServer = sd.playMusicOnServer;
                         globals.music.nextTrackShuffle = sd.nextTrackShuffle;
-                        globals.music.soundcloudReady = sd.soundcloudReady;
+                        globals.music.soundcloudStatus = sd.soundcloudStatus;
                         globals.music.nextTrackLoop = sd.nextTrackLoop;
                         globals.music.tracksFromCache = sd.tracksFromCache;
 
@@ -217,74 +220,60 @@ var globals = {
                     } else {
                         console.error("Server said that it had tracks but there are no tracks provided (track response may be malformed)");
                     }
-                    socketListener.addPersistentListener("serverPlayingTrackUpdate", data => {
-                        console.log("PLAYINGTRACKUPDATE: ",data);
-                        if (JSON.stringify(globals.music.oldSettingsData) != JSON.stringify(data.settingsData)) {
-                            console.log("DataChange");
-                            globals.music.currentUser = data.settingsData.currentUser;
-                            globals.music.currentVolume = data.settingsData.currentVolume;
-                            if (globals.music.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) {
-                                globals.music.nextTrackShuffle = data.settingsData.nextTrackShuffle;
-                                if (globals.music.nextTrackShuffle) {
-                                    ID("music_shuffleButton").className+=' activeLoopShuffle';
-                                } else {
-                                    ID("music_shuffleButton").className = "controlButton";
+
+                    globals.music.soundUpdateInterval = setInterval( () => {
+                        SRH.request("api/SC/clientUpdate").then(data => {
+                            console.log("PLAYINGTRACKUPDATE: ",data);
+                            if (JSON.stringify(globals.music.oldSettingsData) != JSON.stringify(data.settingsData)) {
+                                console.log("DataChange");
+                                globals.music.currentUser = data.settingsData.currentUser;
+                                globals.music.currentVolume = data.settingsData.currentVolume;
+                                if (globals.music.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) {
+                                    globals.music.nextTrackShuffle = data.settingsData.nextTrackShuffle;
+                                    if (globals.music.nextTrackShuffle) {
+                                        ID("music_shuffleButton").className+=' activeLoopShuffle';
+                                    } else {
+                                        ID("music_shuffleButton").className = "controlButton";
+                                    }
                                 }
-                            }
-                            if (globals.music.oldSettingsData.nextTrackLoop != data.settingsData.nextTrackLoop) {
-                                globals.music.nextTrackLoop = data.settingsData.nextTrackLoop;
-                                if (globals.music.nextTrackLoop) {
-                                    ID("music_loopButton").className+=' activeLoopShuffle';
-                                } else {
-                                    ID("music_loopButton").className = "controlButton";
+                                if (globals.music.oldSettingsData.nextTrackLoop != data.settingsData.nextTrackLoop) {
+                                    globals.music.nextTrackLoop = data.settingsData.nextTrackLoop;
+                                    if (globals.music.nextTrackLoop) {
+                                        ID("music_loopButton").className+=' activeLoopShuffle';
+                                    } else {
+                                        ID("music_loopButton").className = "controlButton";
+                                    }
                                 }
+                                globals.music.oldSettingsData = data.settingsData;
                             }
-                            globals.music.oldSettingsData = data.settingsData;
-                        }
-                        
-                        if (JSON.stringify(globals.music.soundManager.currentPlayingTrack) != JSON.stringify(data.currentPlayingTrack)) {
-                            console.log("TrackChange");
-                            var nTrack = data.currentPlayingTrack;
-                            globals.music.soundManager.currentPlayingTrack = nTrack;
-                            ID("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? globals.music.noArtworkUrl : nTrack.artwork.artworkUrl;
-                            ID("music_waveformArt").src = nTrack.artwork.waveformUrl;
-                            ID("music_trackTitle").innerHTML = nTrack.title;
-                            ID("music_trackAuthor").innerHTML = "By: "+nTrack.author;
-                        }
-                    });
+                            
+                            if (JSON.stringify(globals.music.soundManager.currentPlayingTrack) != JSON.stringify(data.currentPlayingTrack)) {
+                                console.log("TrackChange");
+                                var nTrack = data.currentPlayingTrack;
+                                globals.music.soundManager.currentPlayingTrack = nTrack;
+                                ID("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? globals.music.noArtworkUrl : nTrack.artwork.artworkUrl;
+                                ID("music_waveformArt").src = nTrack.artwork.waveformUrl;
+                                ID("music_trackTitle").innerHTML = nTrack.title;
+                                ID("music_trackAuthor").innerHTML = "By: "+nTrack.author;
+                            }
+                        }).catch( err => {
+                            console.error("Error getting sound update: "+err);
+                            clearInterval(globals.music.soundUpdateInterval);
+                        })
+                    }, 1000)
                 }, wait => {
-                    console.log("reqInterval wait ",wait);
-                }, err => {
-                    console.log("reqInterval err ",err);
+                    console.log("Waiting for server to be ready for soundcloud...");
+                    ID("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent+" (Loading track: "+wait.track+")";
+                }, error => {
+                    console.error("Soundcloud Server Error: "+error);
+                    bootbox.alert("Soundcloud Server Error: "+error);
                 }, -1);
-
-                socketListener.addPersistentListener("serverNoTrackCache", data => {
-                    console.warn("TrackCache has no tracks; no music playing possible");
-                    ID("music_trackTitle").innerHTML = "No tracks in cache; can't load tracks (no internet?)";
-                });
-
-                socketListener.addPersistentListener("serverLoadingCachedTracks", data => {
-                    ID("music_trackTitle").innerHTML = "Requesting cached tracks (can't fetch new)";
-                });
-
-                socketListener.addPersistentListener("serverLoadingTracklist", data => {
-                    ID("music_trackTitle").innerHTML = "Server is loading tracks.";
-                });
-
-                socketListener.addPersistentListener("serverLoadingTracksUpdate", data => {
-                    ID("music_trackAuthor").innerHTML = "Loading percent: "+data.percent+" (Loading track: "+data.track+")";
-                });
-
-                socketListener.addPersistentListener("serverSoundcloudError", data => {
-                    console.error("Soundcloud Server Error: "+data.error);
-                    bootbox.alert("Soundcloud Server Error: "+data.error);
-                });
 
             }
         },
 
         togglePlayerOutput: function() {
-            if (globals.music.soundcloudReady) {
+            if (globals.music.soundcloudStatus.ready) {
                 globals.music.playMusicOnServer = !globals.music.playMusicOnServer;
                 SRH.request("/api/sc/event/togglePlayerOutput");
             }

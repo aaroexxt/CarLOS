@@ -535,12 +535,6 @@ var sendArduinoMode = false;
 stdinputListener.addPersistentListener("*",function(d) {
 	var uI = d.toString().trim();
 	console.log("you entered: [" + uI + "]");
-	if (uI == "sI") {
-		soundcloudReady = false;
-	}
-	if (uI == "nI") {
-		soundcloudReady = true;
-	}
 	if (uI == "help") {
 		console.importantLog("Right now, sA or sendArduinoMode toggles sending raw to arduino.")
 	} else if (uI == "sA" || uI == "sendArduinoMode") {
@@ -607,7 +601,7 @@ function initSoundcloud(username) {
 		}
 		var timesLeft = soundcloudSettings.initMaxAttempts;
 
-		soundcloudSettings.soundcloudReady = false;
+		soundcloudSettings.soundcloudStatus = {ready: false, error: false, message: ""};
 		function initSCSlave() {
 			console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
 			soundcloudUtils.SCUtils.init({
@@ -618,7 +612,7 @@ function initSoundcloud(username) {
 				console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
 				soundcloudUtils.SCSoundManager.init().then( () => {
 					console.log(colors.green("Initialized trackManager successfully!"));
-					soundcloudSettings.soundcloudReady = true;
+					soundcloudSettings.soundcloudStatus = {ready: true, error: false, message: ""};
 					mresolve();
 
 				}).catch( e => {
@@ -634,6 +628,7 @@ function initSoundcloud(username) {
 					}, soundcloudSettings.initErrorDelay);
 				} else {
 					console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
+					soundcloudSettings.soundcloudStatus = {ready: false, error: true, message: err};
 					mreject("MaxTries reached (giving up) with error message: "+err);
 				}
 			});
@@ -1219,7 +1214,7 @@ APIrouter.get("/speech/:data", function(req, res) {
 
 //Soundcloud Routes
 SCrouter.get("/clientReady", function(req, res) {
-	if (soundcloudSettings.soundcloudReady) {
+	if (soundcloudSettings.soundcloudStatus.ready) {
         console.log("SCClientReady request recieved; sending data");
         res.end(RequestHandler.SUCCESS({
             hasTracks: true,
@@ -1236,17 +1231,19 @@ SCrouter.get("/clientReady", function(req, res) {
                 playMusicOnServer: soundcloudSettings.playMusicOnServer,
                 nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
                 nextTrackLoop: soundcloudSettings.nextTrackLoop,
-                soundcloudReady: soundcloudSettings.soundcloudReady
+                soundcloudStatus: soundcloudSettings.soundcloudStatus
             }
         }));
-    } else {
+    } else if (!soundcloudSettings.soundcloudStatus.ready && !soundcloudSettings.soundcloudStatus.error) {
         console.log("SCClientReady request recieved; soundcloud is not ready");
         let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
         res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
+    } else {
+    	res.end(RequestHandler.FAILURE(soundcloudSettings.soundcloudStatus.message));
     }
 });
 SCrouter.get("/clientUpdate", function(req, res) {
-	if (soundcloudSettings.soundcloudReady) {
+	if (soundcloudSettings.soundcloudStatus.ready) {
         console.log("SCClientUpdate");
         var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
         res.end(RequestHandler.SUCCESS({
@@ -1262,10 +1259,12 @@ SCrouter.get("/clientUpdate", function(req, res) {
                 nextTrackLoop: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackLoop
             }
         }));
-    } else {
+    } else if (!soundcloudSettings.soundcloudStatus.ready && !soundcloudSettings.soundcloudStatus.error) {
         console.log("SC not ready on clientUpdate");
        	let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
         res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
+    } else {
+    	res.end(RequestHandler.FAILURE(soundcloudSettings.soundcloudStatus.message));
     }
 });
 SCrouter.get("/event/:type", function(req, res) {

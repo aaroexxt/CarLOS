@@ -103,8 +103,9 @@ var SCUtils = {
             }
             var cf = scSettings.soundcloudUserdataCacheFile;
             console.log("Retreiving soundcloudUserdataCache from '"+path.join(SCUtils.CWD,(cf+"-"+username+".json'")));
-            fs.readFile(path.join(SCUtils.CWD,(cf+"-"+username+".json")), function(err, data) { //include userID so caches are user specific
+            fs.readFile(path.join(SCUtils.CWD,(cf+"-"+username+".json")), (err, data) => { //include userID so caches are user specific
                 if (err) {
+                    console.error("No trackCache file found :(")
                     return reject("No soundcloud userdata cache file found");
                 } else {
                     try {
@@ -340,7 +341,8 @@ var SCUtils = {
     failedToLoadTracks: function (e, scSettings) {
         return new Promise((resolve, reject) => {
             if (this.failedToLoadTracksFirstRun == false) { //so it only can run once
-                return reject("FailedToLoadTracks already called");
+                console.warn("FailedToLoadTracks already called on init");
+                return resolve();
             }
             if (typeof scSettings == "undefined") {
                 return reject("failedToLoadTracks scSettings not specified");

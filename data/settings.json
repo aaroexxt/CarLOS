@@ -84,7 +84,7 @@
 
         "clientUpdateTime": 500,
         "requestTimeout": 21000,
-        "soundcloudReady": false,
+        "soundcloudStatus": {"ready": false, "error": false, "message": ""},
         "playMusicOnServer": true,
         "waitingClients": [],
         "minInteractionWaitTime": 2000,
