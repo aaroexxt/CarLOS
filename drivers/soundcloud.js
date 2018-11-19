@@ -178,6 +178,7 @@ var SCUtils = {
             scSettings.likedTracks = [];
             scSettings.trackList = [];
             scSettings.tracksToLoad = -1;
+            scSettings.tracksLoaded = 0;
 
             if (scSettings.tracksPerRequest > scSettings.maxTracksInRequest) {
                 scSettings.tracksPerRequest = scSettings.maxTracksInRequest;
@@ -195,7 +196,6 @@ var SCUtils = {
             tracksToLoad*=scSettings.tracksPerRequest;
             tracksToLoad = Math.round(tracksToLoad);
 
-            scSettings.tracksToLoad = tracksToLoad;
             var requestCounter = 0;
             console.log("Making "+requiredRequestTimes+" request(s) for trackdata; results in "+tracksToLoad+" tracks being loaded");
             if (requiredRequestTimes == 0) {
@@ -399,6 +399,8 @@ var SCUtils = {
 
                 //function does not execute yet, check below
                 function loadTrackIndex(trackIndex) {
+                    scSettings.tracksToLoad = tracksToLoad;
+                    scSettings.tracksLoaded = tracksLoaded;
                     if (!likedTracks[trackIndex].id || !likedTracks[trackIndex].title) {
                         return reject("TrackObject is invalid")
                     }
@@ -563,6 +565,16 @@ var SCUtils = {
 
             var unfinTrackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+"-UNFINISHED.mp3"));
             var trackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+".mp3"));
+            var trackFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+            console.log("Checking if track folder exists @path="+trackFolderPath+"...");
+            if (!fs.existsSync(trackFolderPath)) {
+                console.log("Track folder doesn't exist... WTF (why u break my code) but okay?");
+                try {
+                    fs.mkdirSync(trackFolderPath);
+                } catch(e) {
+                    return reject("Track folder did not exist and attempted to make one and encountered error: "+e);
+                }
+            }
             //console.log("Checking if track exists at path "+trackPath);
             fs.readFile(trackPath, (err, data) => {
                 if (err) {

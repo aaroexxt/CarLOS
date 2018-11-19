@@ -30,7 +30,7 @@
 				<li class="menubreaker">|</li>
 				<li><img src="/images/browser.png" width="35" height="35" id="menuButtonBrowser" onclick="globals.menu.changeState('browser');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
-				<li><img src="/images/a.png" width="40" height="40" onclick="globals.updateRuntimeInformation(); socketListener.addListener('runtimeInformation', function(){setTimeout(function(){globals.MainPopup.displayMain()},50);});"></img></li>
+				<li><img src="/images/a.png" width="40" height="40" onclick="globals.requestRuntimeInformation(function(){globals.MainPopup.displayMain();});"></img></li>
 				<li class="menubreaker">|</li>
 				<li><img src="/images/stats.png" width="35" height="35" id="menuButtonStats" onclick="globals.menu.changeState('stats');" class="circle"></img></li>
 				<li class="menubreaker">|</li>
@@ -135,47 +135,9 @@
 			})
 
 			login.readySteps.runtimeInformationProvided = false;
-			SRH.request("/api/runtime")
-			.then(data => {
+			globals.requestRuntimeInformation( () => {
 				login.readySteps.runtimeInformationProvided = true;
-				handleRuntimeInfo(data);
 			});
-
-			function handleRuntimeInfo(data) {
-				console.log("RuntimeInfo: ",data);
-			    var keys = Object.keys(data); //only override keys from jsondat
-			    for (var i=0; i<keys.length; i++) {
-			        globals.runtimeInformation[keys[i]] = data[keys[i]];
-			    }
-			    try {
-				    clearTimeout(globals.runtimeInfoUpdateTimeout);
-				} catch(e) {
-				    console.error("Error clearing global runtime info update timeout")
-				}
-				if (typeof globals.runtimeInformation.heartbeatMS == "undefined") {
-				    console.warn("HeartbeatMS not defined in globals; not setting timeout");
-				} else {
-				    console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
-				    globals.runtimeInfoUpdateTimeout = setTimeout(function(){
-				        console.log("[HB] Heartbeat request runtimeinfo");
-				        SRH.request("/api/runtime")
-						.then(data => {
-							login.readySteps.runtimeInformationProvided = true;
-							handleRuntimeInfo(data);
-						})
-				    },globals.runtimeInformation.heartbeatMS);
-				}
-				if (typeof globals.runtimeInformation.outsideTemp == "undefined") {
-					console.warn("OutsideTemp not defined in globals; not setting dashboard extTemp");
-				} else {
-					ID("extTemp").innerHTML = "EXT: "+globals.runtimeInformation.outsideTemp+"°F";
-				}
-				if (typeof globals.runtimeInformation.insideTemp == "undefined") {
-					console.warn("InsideTemp not defined in globals; not setting dashboard intTemp");
-				} else {
-					ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
-				}
-			}
 
 			if (typeof annyang !== "undefined") {
 				annyang.debug(true);

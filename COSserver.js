@@ -1236,7 +1236,7 @@ SCrouter.get("/clientReady", function(req, res) {
         }));
     } else if (!soundcloudSettings.soundcloudStatus.ready && !soundcloudSettings.soundcloudStatus.error) {
         console.log("SCClientReady request recieved; soundcloud is not ready");
-        let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
+        let tp = +((soundcloudSettings.tracksLoaded/soundcloudSettings.tracksToLoad)*100).toFixed(2); //cool maths to use 2 decimal places
         res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
     } else {
     	res.end(RequestHandler.FAILURE(soundcloudSettings.soundcloudStatus.message));
@@ -1261,7 +1261,7 @@ SCrouter.get("/clientUpdate", function(req, res) {
         }));
     } else if (!soundcloudSettings.soundcloudStatus.ready && !soundcloudSettings.soundcloudStatus.error) {
         console.log("SC not ready on clientUpdate");
-       	let tp = soundcloudSettings.trackList.length/soundcloudSettings.tracksToLoad;
+       	let tp = +((soundcloudSettings.tracksLoaded/soundcloudSettings.tracksToLoad)*100).toFixed(2);
         res.end(RequestHandler.WAIT({message:"serverLoadingTracklist", percent: tp}));
     } else {
     	res.end(RequestHandler.FAILURE(soundcloudSettings.soundcloudStatus.message));

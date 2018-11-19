@@ -1,7 +1,47 @@
 //GLOBAL VARIABLES
 var globals = {
-    disconnected: false,
-    openCVQueue: [],
+    requestRuntimeInformation: function(callback) {
+        SRH.request("api/runtime")
+        .then(data => {
+            console.log("RuntimeInfo: ",data);
+            var keys = Object.keys(data); //only override keys from jsondat
+            for (var i=0; i<keys.length; i++) {
+                globals.runtimeInformation[keys[i]] = data[keys[i]];
+            }
+            try {
+                clearTimeout(globals.runtimeInfoUpdateTimeout);
+            } catch(e) {
+                console.error("Error clearing global runtime info update timeout")
+            }
+            if (typeof globals.runtimeInformation.heartbeatMS == "undefined") {
+                console.warn("HeartbeatMS not defined in globals; not setting timeout");
+            } else {
+                console.log("[HB] set heartbeat timeout: "+globals.runtimeInformation.heartbeatMS);
+                globals.runtimeInfoUpdateTimeout = setTimeout(function(){
+                    console.log("[HB] Heartbeat request runtimeinfo");
+                    SRH.request("/api/runtime")
+                    .then(data => {
+                        login.readySteps.runtimeInformationProvided = true;
+                        handleRuntimeInfo(data);
+                    })
+                },globals.runtimeInformation.heartbeatMS);
+            }
+            if (typeof globals.runtimeInformation.outsideTemp == "undefined") {
+                console.warn("OutsideTemp not defined in globals; not setting dashboard extTemp");
+            } else {
+                ID("extTemp").innerHTML = "EXT: "+globals.runtimeInformation.outsideTemp+"°F";
+            }
+            if (typeof globals.runtimeInformation.insideTemp == "undefined") {
+                console.warn("InsideTemp not defined in globals; not setting dashboard intTemp");
+            } else {
+                ID("intTemp").innerHTML = "INT: "+globals.runtimeInformation.insideTemp+"°F";
+            }
+            callback();
+        }).catch( err => {
+            console.error("Error fetching runtime information: "+err);
+            callback();
+        })
+    },
     MainPopup: {
         dialogObject: null,
         displayMain: function(){
@@ -43,6 +83,7 @@ var globals = {
                     <br>
                     <center>
                         <h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
+                        <h4>A big thanks to Andrew Cummings for the name "CarLOS"</h4>
                         <h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
                     </center>
                 `,
@@ -138,7 +179,7 @@ var globals = {
                 } else if (!globals.runtimeInformation.dynamicMusicMenu) { //no dynamic music menu so hide it
                     ID("music_bottomMenu").style.display = "none";
                 } else {
-                    if (!globals.music.soundManager.playingTrack) {
+                    if (!globals.music.soundManager.playingTrack && !globals.music.playingServer) {
                         ID("music_bottomMenu").style.display = "none";
                     }
                 }
@@ -163,7 +204,6 @@ var globals = {
     runtimeInfoUpdateTimeout: null,
     defaultApp: "music",
     music: {
-        
         noArtworkUrl: "/images/noAlbumArt.png",
         nextTrackShuffle: false,
         nextTrackLoop: false,
@@ -176,6 +216,7 @@ var globals = {
         playMusicOnServer: true,
         initListener: undefined,
         soundUpdateInterval: undefined,
+        playingServer: false,
 
         oldSettingsData: {},
 
@@ -189,7 +230,7 @@ var globals = {
                     if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) {
                         globals.music.likedTracks = data.likedTracks;
                         globals.music.trackList = data.trackList;
-                        
+
                         var sd = data.settingsData;
                         globals.music.currentUser = sd.currentUser;
                         globals.music.noArtworkUrl = sd.noArtworkUrl;
@@ -223,11 +264,14 @@ var globals = {
 
                     globals.music.soundUpdateInterval = setInterval( () => {
                         SRH.request("api/SC/clientUpdate").then(data => {
-                            console.log("PLAYINGTRACKUPDATE: ",data);
+                            console.log(data.playing)
+                            globals.music.playingServer = data.playing; //upd playing since it's not in the settings part
+
                             if (JSON.stringify(globals.music.oldSettingsData) != JSON.stringify(data.settingsData)) {
                                 console.log("DataChange");
                                 globals.music.currentUser = data.settingsData.currentUser;
                                 globals.music.currentVolume = data.settingsData.currentVolume;
+
                                 if (globals.music.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) {
                                     globals.music.nextTrackShuffle = data.settingsData.nextTrackShuffle;
                                     if (globals.music.nextTrackShuffle) {
@@ -262,8 +306,8 @@ var globals = {
                         })
                     }, 1000)
                 }, wait => {
-                    console.log("Waiting for server to be ready for soundcloud...");
-                    ID("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent+" (Loading track: "+wait.track+")";
+                    console.log("Waiting for server to be ready for soundcloud...",wait);
+                    ID("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent;
                 }, error => {
                     console.error("Soundcloud Server Error: "+error);
                     bootbox.alert("Soundcloud Server Error: "+error);
