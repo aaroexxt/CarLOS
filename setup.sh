@@ -40,7 +40,8 @@ elif [ "$platform" = "mac" ]; then
     echo "Installing node (mac)...";
     brew install node
     echo "Installing python and pip (mac)...";
-    brew install python python3;
+    brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb;
+    brew install python;
     sudo easy_install pip;
     brew remove portaudio;
     brew install portaudio;
