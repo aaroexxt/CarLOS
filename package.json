@@ -26,6 +26,7 @@
   "homepage": "https://github.com/aaroexxt/CarOS#readme",
   "dependencies": {
     "bcrypt": "^3.0.2",
+    "big-json": "^2.0.2",
     "brain.js": "^1.4.2",
     "colors": "^1.3.2",
     "csv-write-stream": "^2.0.0",
@@ -34,6 +35,7 @@
     "express": "^4.16.4",
     "express-session": "^1.15.6",
     "finalhandler": "^1.1.1",
+    "geojson-vt": "^3.2.1",
     "is-root": "^2.0.0",
     "json-server": "^0.14.0",
     "lame": "^1.2.4",

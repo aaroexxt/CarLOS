@@ -1346,6 +1346,25 @@ MAProuter.get("/", function(req, res) {
 			res.end(buf);
 		}
 	})
+});
+
+MAProuter.get("/tile", function(req, res) {
+	let x = req.query.x;
+	let y = req.query.y;
+	let z = req.query.z; //zoom
+	console.log("Fetching tile @x="+x+" y="+y+" zoom="+z);
+	if (mapReady) {
+		mapUtils.fetchTile(z, x, y)
+		.then( tileData => {
+			return res.end(RequestHandler.SUCCESS(tileData));	
+		})
+		.catch( err => {
+			console.warn("TileData is null or undefined");
+			return res.end(RequestHandler.FAILURE("TileData is null or undefined"));
+		})	
+	} else {
+		return res.end(RequestHandler.WAIT());
+	}
 })
 /*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks

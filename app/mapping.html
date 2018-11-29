@@ -3,24 +3,149 @@
 	<head>
 		<title>C.OS. MapTest</title>
 		<link rel="shortcut icon" href="/favicon.ico" />
-		<link rel="stylesheet" type="text/css" media="screen" href="/css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="/css/leaflet.css">
-		<link rel="stylesheet" type="text/css" media="screen" href="/js/leaflet.js">
-		<link rel="stylesheet" type="text/css" media="screen" href="/js/ajax.js">
+		<script src="/js/ajax.js"></script>
+		<script src="/js/leaflet.js"></script>
 	</head>
 	<body>
 		<div id="map"></div>
+		<canvas id="canv" style="z-index: 1000000 !important; position: absolute;" height="495px" width="495px"></canvas>
 		<script>
-			var map = L.map('map').setView([#{lat},#{lng}], 14);
-        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+			//return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
+			document.getElementById("map").style.height = window.innerHeight+"px";
+			const canvas = document.getElementById("canv");
+			const ctx = canvas.getContext("2d");
+			ctx.lineWidth = 1;
+			var padding = 8 / 512;
+    		var totalExtent = 4096 * (1 + padding * 2);
+			var height = canvas.height = canvas.width = window.innerHeight - 5;
+    		var ratio = height / totalExtent;
+    		var pad = 4096 * padding * ratio;
+
+
+			var map = L.map('map', {
+				preferCanvas: true,
+				center: [37.57,-122.34],
+				zoom: 13
+			});
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
+        	var geoJSONLayer = L.geoJSON().addTo(map);
+
+        	map.on("moveend", function () {
+				console.log("map moved, getting visible tiles...");
+
+				/*
+				let dataObject = {zoom: map.getZoom(), tiles: visibleTiles};
+				let sendObject = JSON.stringify(dataObject);
+				console.log(sendObject)
+				*/
+
+
+
+				let visibleTiles = getVisibleTilesCoords(map);
+				let zoom = map.getZoom();
+				console.log("tiles: "+JSON.stringify(visibleTiles)+" @zoom="+zoom);
+				console.log("getting geojson...");
+				ctx.clearRect(0, 0, height, height);
+				for (var i=0; i<visibleTiles.length; i++) {
+					fetch('http://localhost/api/map/tile?x='+visibleTiles[i].x+"&y="+visibleTiles[i].y+"&z="+zoom, {
+						method: 'GET'
+					})
+					.then(response => response.json())
+					.then(response => {
+						if (!response.error && !response.wait) { //ok
+							let features = response.message;
+							if (!features[0]) {
+								console.log("Tile found but no features returned");
+							} else {
+
+							    ctx.strokeStyle = 'red';
+							    ctx.fillStyle = 'rgba(255,0,0,0.05)';
+							    console.log(features)
+							    for (var i = 0; i < features.length; i++) {
+							        var feature = features[i],
+							            type = feature.type;
+
+							        console.log(feature, type)
+
+							        ctx.beginPath();
+
+							        for (var j = 0; j < feature.geometry.length; j++) {
+							            var geom = feature.geometry[j];
+
+							            if (type === 1) {
+							                ctx.arc(geom[0] * ratio + pad, geom[1] * ratio + pad, 2, 0, 2 * Math.PI, false);
+							                continue;
+							            }
+
+							            for (var k = 0; k < geom.length; k++) {
+							                var p = geom[k];
+							                if (k) ctx.lineTo(p[0] * ratio + pad, p[1] * ratio + pad);
+							                else ctx.moveTo(p[0] * ratio + pad, p[1] * ratio + pad);
+							            }
+							        }
+
+							        if (type === 3 || type === 1) ctx.fill('evenodd');
+							        ctx.stroke();
+							    }
+								//geoJSONLayer.addData(features);
+							}
+						} else if (!response.error) {
+							console.log("Need to wait for server to be ready...");
+						} else {
+							console.error(response.message);
+						}
+					})
+				}
+			});
+
+        	function getVisibleTilesCoords(map) {
+		      
+		      // get bounds, zoom and tileSize        
+		      var bounds = map.getPixelBounds();
+		      var zoom = map.getZoom();
+		      var tileSize = 256;
+		      var tileCoordsContainer = [];
+
+
+		      // get NorthWest and SouthEast points
+		      var nwTilePoint = new L.Point(Math.floor(bounds.min.x / tileSize),
+		          Math.floor(bounds.min.y / tileSize));
+
+		      var seTilePoint = new L.Point(Math.floor(bounds.max.x / tileSize),
+		          Math.floor(bounds.max.y / tileSize));
+
+		      // get max number of tiles in this zoom level
+		      var max = map.options.crs.scale(zoom) / tileSize; 
+
+		      // enumerate visible tiles 
+		      for (var x = nwTilePoint.x; x <= seTilePoint.x; x++) 
+		      {
+		         for (var y = nwTilePoint.y; y <= seTilePoint.y; y++) 
+		         {
+
+		            var xTile = Math.abs(x % max);
+		            var yTile = Math.abs(y % max);
+		            
+		            tileCoordsContainer.push({x: xTile, y: yTile});
+
+		            //console.log('tile ' + xTile + ' ' + yTile);
+		          }
+		      }
+		      
+		      return tileCoordsContainer;
+		      
+		    };
         
-        $.getJSON('/maplayers',function(result){
+
+
+
+
+        /*$.getJSON('/maplayers',function(result){
             $.each(result, function(i, mlayer){
                 $.getJSON('/mapjson/' + mlayer.name, function(data) { addLayer(data, mlayer.name ) });
             });
-        });
+        });*/
 
         function addLayer(layer, name) {
             var leaf_layer;
