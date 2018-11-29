@@ -30,10 +30,7 @@ playlist support
 
 cache neural network weights for more efficient starting of server(brain.js toFunction)
 
-reverse proxy cache
-username cache
 
-load balancing
 
 better favicon (the a is lame)
 
@@ -81,15 +78,18 @@ canvas gages for realtime sensor data? https://canvas-gauges.com/documentation/e
 
 put frame data on image opencv
 
-node-festival for speech generation, or tacotron?
+node-festival for speech generation, or tacotron? tacotron
 
 chartjs accelerometer data, "blackbox" data
 https://www.chartjs.org/docs/latest/developers/updates.html
 http://www.chartjs.org/docs/latest/getting-started/
 
 
+List of stuff to do:
+Get offline tilemaprenderer to work
+Get path planning to work
+Tackle tensorflow in javascript for speech generation https://github.com/tensorflow/tfjs
 
-constantly scan for invalid authkeys to prevent tampering
 
 
 DONE stuff:
@@ -97,8 +97,12 @@ DONE stuff:
 arduino sensor overloading & gps handling DONE
 electron framework? CANCELED
 data logging DONE
+constantly scan for invalid authkeys to prevent tampering NOPE
 state machine CANCELED
 GPS+MAGNETOMETER EXT from arduino DONE
+reverse proxy cache CANCELED
+username cache CANCELED
+load balancing CANCELED
 also ability to switch soundcloud users DONE
 shuffle/notshuffle button DONE
 caching of soundcloud pages for low internet access DONE

@@ -19,6 +19,7 @@
         "defaultClientFile": "COS.html",
         "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
+        "mapDataDirectory": "/data/mapping/",
 
         "logLevel": 4,
         "logDirectory": "logs",
@@ -52,9 +53,9 @@
         "defaultUsername": "bexterdubs",
         "currentUser": "bexterdubs",
 
-        "soundcloudTrackCacheFile": "SCcache/soundcloudTrackCache",
-        "soundcloudUserdataCacheFile": "SCcache/soundcloudUserdataCache",
-        "soundcloudTrackCacheDirectory": "SCcache/tracks",
+        "soundcloudTrackCacheFile": "data/SCcache/soundcloudTrackCache",
+        "soundcloudUserdataCacheFile": "data/SCcache/soundcloudUserdataCache",
+        "soundcloudTrackCacheDirectory": "data/SCcache/tracks",
 
         "soundcloudCacheExpiryTime": 86400000,
 
@@ -82,11 +83,9 @@
         "likedTracks": [],
         "trackList": [],
 
-        "clientUpdateTime": 500,
         "requestTimeout": 21000,
         "soundcloudStatus": {"ready": false, "error": false, "message": ""},
         "playMusicOnServer": true,
-        "waitingClients": [],
         "minInteractionWaitTime": 2000,
         "trackSelectedWaitMultiplier": 2
     }

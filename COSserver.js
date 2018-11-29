@@ -33,31 +33,34 @@
 ---- CODE LAYOUT ----
 
 This descriptor describes the layout of the code in this file.
-2 main phases: Initialization (I1-I13) and Runtime Code (R1-R2)
-	Sub-phase: SocketIO Subsections (R2:S1-R2:S2)
+2 main phases: Initialization (I1-I16) and Runtime Code (R1)
 
-Initialization (12 steps):
-1) Module Initialization: initalizes modules that are required later on
-2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file
+Initialization (16 steps):
+1) Module Initialization: initalizes modules that are required later on, root check, very early stuff
+2) Runtime Info/Settings: Reads and parses runtime information and settings from external JSON file, essential for later on
 3) State Machine Init: Initializes state machine that keeps track of the state of each module
 4) Console Colors: overrides prototypes for console to provide colors in console
-5) File Logging Setup: Initializes file logging handlers for functions that output to console46 Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
-5) Arduino Command Handling: defines handling of arduino commands
-6) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
-7) Neural Network Setup: sets up and trains neural network for processing of speech commands
-8) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
-9) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
-10) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
-11) OpenCV Init Code: Initializes and trains OpenCV model for facial recognition
-12) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
-13) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize. Also sends information to oled
+5) File Logging Setup: Initializes file logging handlers for functions that output to console
+6) Serial Device Logic: Reads command line arguments and determines valid serial devices to connect to. Also opens a serial port if a valid device is found
+7) Arduino Command Handling: defines handling of arduino commands
+8) Data File Parsers: parses files that contain information like data for commands and responses for speech matching
+9) Neural Network Setup: sets up and trains neural network for processing of speech commands
+10) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
+11) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
+12) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
+13) OpenCV Init Code: Initializes and trains OpenCV model for facial recognition
+14) Mapping Init Code: Initializes and loads offline map data for display in Leaflet maps
+15) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
+16) Misc. Init Code: Initializes loops for tracking runtimeInformation and sending to clients, as well as listener for terminal resize. Also sends information to oled
 
-Runtime Code (2 steps):
-1) HTTP Server Setup/Handling: sets up the HTTP server, also sets up socket.io connection
-2) Socket.IO Connection Logic: large chunk of code which responds to client websocket connections
-	--SocketIO Subsections--
-	1) Web/Python Init Logic: Connection logic for determining type of connection
-	2) Action Handlers: Handlers for requests from web and python clients
+Runtime Code (1 step):
+1) HTTP Server Setup/Handling: sets up server
+-Initializes all dependencies for secure server, including
+	- Passport.js
+	- Express.js
+	- and a bunch of other stuff
+-Initializes all HTTP paths and exposes API
+-Initializes Passport.JS and sets up routing to user database
 */
 
 /**********************************
@@ -663,7 +666,23 @@ cvUtils.init(cwd, runtimeSettings).then( () => {
 }); //initialize (async)
 
 /*******************************
---I14-- OLED Driver Init --I14--
+--I14-- Mapping Init Code --I14--
+*******************************/
+
+var mapReady = false;
+
+console.log("Initializing Mapping");
+const mapUtils = require('./drivers/mapping.js');
+mapUtils.init(cwd, runtimeSettings).then( () => {
+	console.importantInfo("MAP INIT OK");
+	mapReady = true; //set ready flag
+}).catch( err => {
+	console.error("Error initializing map: "+err);
+	mapReady = false;
+}); //initialize (async)
+
+/*******************************
+--I15-- OLED Driver Init --I15--
 *******************************/
 
 console.log("Initializing OLED");
@@ -703,7 +722,7 @@ if (runtimeSettings.runningOnRPI) {
 }
 
 /******************************
---I15-- MISC. INIT CODE --I15--
+--I16-- MISC. INIT CODE --I16--
 ******************************/
 
 var statusUpdateInterval = setInterval(function(){
@@ -736,10 +755,11 @@ DEPS
 //express deps
 const express = require("express");
 const errorHandler = require('errorhandler');
+//init the routers
 var APIrouter = express.Router();
 var SCrouter = express.Router();
-
 var AUTHrouter = express.Router();
+var MAProuter = express.Router();
 
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
@@ -1308,6 +1328,25 @@ SCrouter.get("/changeUser/:user", function(req, res) {
 	    res.end(RequestHandler.FAILURE("Error: User is undefined in request"));
 	}
 });
+
+//Map Routes
+MAProuter.get("/", function(req, res) {
+	console.log(JSON.stringify(req.session)+" session");
+	var done = finalHandler(req, res, {
+		onerror: function(err) {
+			console.log("[HTTP] Error: "+err.stack || err.toString())
+		}
+	});
+
+	fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,"mapping.html"), function (err, buf) {
+		if (err) {
+			return done(err);
+		} else {
+			//res.setHeader('Content-Type', 'text/html')
+			res.end(buf);
+		}
+	})
+})
 /*
                         SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
                         this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
@@ -1334,6 +1373,7 @@ SCrouter.get("/changeUser/:user", function(req, res) {
 
 app.use('/login', AUTHrouter); //connect login to auth router
 APIrouter.use('/SC', SCrouter); //connect soundcloud router to api
+APIrouter.use("/map", MAProuter); //connect map router to api
 app.use('/api', APIrouter); //connect api to main
 
 app.use(function(req, res, next){
