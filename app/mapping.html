@@ -4,7 +4,6 @@
 		<title>C.OS. MapTest</title>
 		<link rel="shortcut icon" href="/favicon.ico" />
 		<link rel="stylesheet" type="text/css" media="screen" href="/css/leaflet.css">
-		<script src="/js/ajax.js"></script>
 		<script src="/js/leaflet.js"></script>
 	</head>
 	<body>
@@ -13,15 +12,6 @@
 		<script>
 			//return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
 			document.getElementById("map").style.height = window.innerHeight+"px";
-			const canvas = document.getElementById("canv");
-			const ctx = canvas.getContext("2d");
-			ctx.lineWidth = 1;
-			var padding = 8 / 512;
-    		var totalExtent = 4096 * (1 + padding * 2);
-			var height = canvas.height = canvas.width = window.innerHeight - 5;
-    		var ratio = height / totalExtent;
-    		var pad = 4096 * padding * ratio;
-
 
 			var map = L.map('map', {
 				preferCanvas: true,
@@ -29,75 +19,155 @@
 				zoom: 13
 			});
 			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
-        	var geoJSONLayer = L.geoJSON().addTo(map);
+        	
 
-        	map.on("moveend", function () {
-				console.log("map moved, getting visible tiles...");
+        	L.GridLayer.customGeoRender = L.GridLayer.extend({
+			    options: {
+			        async: false
+			    },
 
-				/*
-				let dataObject = {zoom: map.getZoom(), tiles: visibleTiles};
-				let sendObject = JSON.stringify(dataObject);
-				console.log(sendObject)
-				*/
+			    initialize: function (options) {
+			        L.setOptions(this, options);
+			        L.GridLayer.prototype.initialize.call(this, options);
+			    },
 
 
-
-				let visibleTiles = getVisibleTilesCoords(map);
-				let zoom = map.getZoom();
-				console.log("tiles: "+JSON.stringify(visibleTiles)+" @zoom="+zoom);
-				console.log("getting geojson...");
-				ctx.clearRect(0, 0, height, height);
-				for (var i=0; i<visibleTiles.length; i++) {
-					fetch('http://localhost/api/map/tile?x='+visibleTiles[i].x+"&y="+visibleTiles[i].y+"&z="+zoom, {
+			    createTile: function (coords) {
+			        // create a <canvas> element for drawing
+			        var tile = L.DomUtil.create('canvas', 'leaflet-tile');
+			        // setup tile width and height according to the options
+			        var size = this.getTileSize();
+			        tile.width = size.x;
+			        tile.height = size.y;
+			        // get a canvas context and draw something on it using coords.x, coords.y and coords.z
+			        var ctx = tile.getContext('2d');
+			        // return the tile so it can be rendered on screen
+			        fetch('http://'+window.location.host+'/api/map/tile?x='+coords.x+"&y="+coords.y+"&z="+coords.z, {
 						method: 'GET'
 					})
 					.then(response => response.json())
 					.then(response => {
 						if (!response.error && !response.wait) { //ok
-							let features = response.message;
-							if (!features[0]) {
-								console.log("Tile found but no features returned");
-							} else {
-
-							    ctx.strokeStyle = 'red';
-							    ctx.fillStyle = 'rgba(255,0,0,0.05)';
-							    console.log(features)
-							    for (var i = 0; i < features.length; i++) {
-							        var feature = features[i],
-							            type = feature.type;
-
-							        console.log(feature, type)
-
-							        ctx.beginPath();
-
-							        for (var j = 0; j < feature.geometry.length; j++) {
-							            var geom = feature.geometry[j];
-
-							            if (type === 1) {
-							                ctx.arc(geom[0] * ratio + pad, geom[1] * ratio + pad, 2, 0, 2 * Math.PI, false);
-							                continue;
-							            }
-
-							            for (var k = 0; k < geom.length; k++) {
-							                var p = geom[k];
-							                if (k) ctx.lineTo(p[0] * ratio + pad, p[1] * ratio + pad);
-							                else ctx.moveTo(p[0] * ratio + pad, p[1] * ratio + pad);
-							            }
-							        }
-
-							        if (type === 3 || type === 1) ctx.fill('evenodd');
-							        ctx.stroke();
-							    }
-								//geoJSONLayer.addData(features);
-							}
+							var features = response.message ? response.message : [];
+							for (var i = 0; i < features.length; i++) {
+					            var feature = features[i];
+					            this.drawFeature(ctx, feature);
+					        }
 						} else if (!response.error) {
 							console.log("Need to wait for server to be ready...");
 						} else {
 							console.error(response.message);
 						}
 					})
-				}
-			});
+			        
+			        return tile;
+			    },
+
+
+			    drawFeature: function (ctx, feature) {
+			        var typeChanged = type !== feature.type,
+			            type = feature.type;
+			        ctx.beginPath();
+			        if (this.options.style) this.setStyle(ctx, this.options.style);
+			        if (type === 2 || type === 3) {
+			            for (var j = 0; j < feature.geometry.length; j++) {
+			                var ring = feature.geometry[j];
+			                for (var k = 0; k < ring.length; k++) {
+			                    var p = ring[k];
+			                    if (k) ctx.lineTo(p[0] / 16.0, p[1] / 16.0);
+			                    else ctx.moveTo(p[0] / 16.0, p[1] / 16.0);
+			                }
+			            }
+			        } else if (type === 1) {
+			            for (var j = 0; j < feature.geometry.length; j++) {
+			                var p = feature.geometry[j];
+			                ctx.arc(p[0] / 16.0, p[1] / 16.0, 2, 0, Math.PI * 2, true);
+			            }
+			        }
+			        if (type === 3) ctx.fill(this.options.style.fillRule || 'evenodd');
+
+			        ctx.stroke();
+			    },
+
+			    setStyle: function (ctx, style) {
+			        var stroke = style.stroke || true;
+			        if (stroke) {
+			            ctx.lineWidth = style.weight || 5;
+			            var color = this.setOpacity(style.color, style.opacity);
+			            ctx.strokeStyle = color;
+
+			        } else {
+			            ctx.lineWidth = 0;
+			            ctx.strokeStyle = {};
+			        }
+			        var fill = style.fill || true;
+			        if (fill) {
+			            ctx.fillStyle = style.fillColor || '#03f';
+			            var color = this.setOpacity(style.fillColor, style.fillOpacity);
+			            ctx.fillStyle = color;
+			        } else {
+			            ctx.fillStyle = {};
+			        }
+			    },
+
+			    setOpacity: function (color, opacity) {
+			        if (opacity) {
+			            var color = color || '#03f';
+			            if (color.iscolorHex()) {
+			                var colorRgb = color.colorRgb();
+			                return "rgba(" + colorRgb[0] + "," + colorRgb[1] + "," + colorRgb[2] + "," + opacity + ")";
+			            } else {
+			                return color;
+			            }
+			        } else {
+			            return color;
+			        }
+
+			    }
+			})
+
+			L.gridLayer.customGeoRenderer = function (options) {
+			    return new L.GridLayer.customGeoRender(options);
+			};
+
+			String.prototype.iscolorHex = function () {
+			    var sColor = this.toLowerCase();
+			    var reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
+			    return reg.test(sColor);
+			}
+
+
+			String.prototype.colorRgb = function () {
+			    var sColor = this.toLowerCase();
+			    if (sColor.length === 4) {
+			        var sColorNew = "#";
+			        for (var i = 1; i < 4; i += 1) {
+			            sColorNew += sColor.slice(i, i + 1).concat(sColor.slice(i, i + 1));
+			        }
+			        sColor = sColorNew;
+			    }
+			    var sColorChange = [];
+			    for (var i = 1; i < 7; i += 2) {
+			        sColorChange.push(parseInt("0x" + sColor.slice(i, i + 2)));
+			    }
+			    return sColorChange;
+			};  
+
+			var options = {
+			    style: {
+			        fillColor: '#1EB300',
+			        fillOpacity: 0.5,
+			        color: '#F2FF00',
+			        weight: 2
+			    }
+			};
+
+			var canvasLayer = L.gridLayer.customGeoRenderer(options).addTo(map);
+
+
+
+
+
 
         	function getVisibleTilesCoords(map) {
 		      
@@ -136,49 +206,6 @@
 		      return tileCoordsContainer;
 		      
 		    };
-        
-
-
-
-
-        /*$.getJSON('/maplayers',function(result){
-            $.each(result, function(i, mlayer){
-                $.getJSON('/mapjson/' + mlayer.name, function(data) { addLayer(data, mlayer.name ) });
-            });
-        });*/
-
-        function addLayer(layer, name) {
-            var leaf_layer;
-            if (layer.type == "MultiPoint") {
-                leaf_layer = L.geoJson(layer, { pointToLayer: function (feature, latlng) {return L.circleMarker(latlng, layer.style); }})
-                leaf_layer.bindPopup(layer.type);
-            } else if (layer.type == "MultiLineString") {
-                leaf_layer = L.geoJson(layer, {style: layer.style });
-                leaf_layer.bindPopup(layer.type);
-            } else  {
-                leaf_layer = L.geoJson(layer, {
-                    style: function(feature) {
-                        switch (feature.properties.style) {
-                        case 'Orange': return {color: "#ff0000"};
-                        case 'Blue': return {color: "#0000ff"};
-                    }
-                    },
-                    onEachFeature: function (feature, layer) {
-                         layer.bindPopup(feature.properties.name);
-                     }
-                 });
-            }
-            leaf_layer.addTo(map);
-            
-            /*$('#' + name).click(function(e) {
-                
-                if (map.hasLayer(leaf_layer)) {
-                    map.removeLayer(leaf_layer);
-                } else {
-                    map.addLayer(leaf_layer);
-                }
-            });*/
-        }
     </script>
 	</body>
 </html>

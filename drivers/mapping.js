@@ -26,13 +26,37 @@ const mapUtils = {
 			let mdr = path.join(cwd,settings.mapDataDirectory,settings.defaultMapdataFile);
 			console.log("Fetching mapdata via read stream from dir: "+mdr);
 			
+			if (!fs.existsSync(mdr)) {
+				return reject("Map file does not exist, check settings");
+			}
+
 			let readStream = fs.createReadStream(mdr);
 			let parseStream = bigJson.createParseStream(); //parse stream for json
+
+			let procSize = 0;
+			let totalSize;
+			fs.stat(mdr, function (err, stats) {
+				if (err) {
+					return reject("Error getting size of zip file");
+				} else {
+					totalSize = stats.size;
+				}
+			});
+
+			readStream.on('data', function(buffer) {
+		        let segmentLength = buffer.length;
+		        // Increment the uploaded data counter
+		        procSize += segmentLength;
+
+		        // Display the upload percentage
+		        console.log("Progress:\t",((uploadedSize/zipSize*100).toFixed(2)+"%"));
+		    });
 
 			parseStream.on('data', gdc => {
 				console.log("Mapping: loaded geoJson data, running tile preprocessor...");
 				mapUtils.tileIndex = tileIndexing(gdc, {
-					debug: 1
+					debug: 1,
+					maxZoom: 20
 				});
 				console.log("Tile preprocessor created successfully");
 				return resolve();

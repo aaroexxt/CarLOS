@@ -19,8 +19,8 @@
         "defaultClientFile": "COS.html",
         "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
-        "mapDataDirectory": "/data/mapping/norcal",
-        "defaultMapdataFile": "gis_osm_roads_free_1.json",
+        "mapDataDirectory": "/data/mapping/",
+        "defaultMapdataFile": "/norcal/roads.json",
 
         "logLevel": 4,
         "logDirectory": "logs",
