@@ -21,6 +21,8 @@
         "assetsDirectory": "/app/assets",
         "mapDataDirectory": "/data/mapping/",
         "defaultMapdataFile": "/norcal/roads.json",
+        "defaultMapdata1": {"file": "hrr.geo.json", "color": "#F00000"},
+        "defaultMapdata1": {"file": "/norcal/pois.json", "color": "#000000"},
 
         "logLevel": 4,
         "logDirectory": "logs",

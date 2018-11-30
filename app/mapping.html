@@ -5,16 +5,69 @@
 		<link rel="shortcut icon" href="/favicon.ico" />
 		<link rel="stylesheet" type="text/css" media="screen" href="/css/leaflet.css">
 		<script src="/js/leaflet.js"></script>
+		<script src="/js/progressbar.min.js"></script>
 	</head>
 	<body>
-		<div id="map"></div>
-		<canvas id="canv" style="z-index: 1000000 !important; position: absolute;" height="495px" width="495px"></canvas>
+		<div id="map" style="opacity: 0"></div>
+		<div id="loading" style="z-index: 1000000000; position: absolute; top: 0; left: 0;">
+			<h3>Loading Map Data...</h3>
+			<div id="loadBar"></div>
+		</div>
 		<script>
 			//return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
 			document.getElementById("map").style.height = window.innerHeight+"px";
+			var loadBar = new ProgressBar.Line('#loadBar', {
+				strokeWidth: 2,
+				easing: 'easeInOut',
+				duration: 1400,
+				color: '#FFEA82',
+				trailColor: '#eee',
+				trailWidth: 1,
+				svgStyle: {width: '100%', height: '100%'},
+				text: {
+					style: {
+					  // Text color.
+					  // Default: same as stroke color (options.color)
+					  color: '#999',
+					  position: 'absolute',
+					  right: '0',
+					  top: '30px',
+					  padding: 0,
+					  margin: 0,
+					  transform: null
+					},
+					autoStyleContainer: false
+				},
+				from: {color: '#FFEA82'},
+				to: {color: '#ED6A5A'},
+				step: (state, bar) => {
+					bar.setText(Math.round(bar.value() * 100) + ' %');
+				}
+			});
+			var loadListener = setInterval( () => {
+				fetch('http://'+window.location.host+'/api/map/tile?x=1311&y=1372&z=13', {
+					method: 'GET'
+				})
+				.then(response => response.json())
+				.then( response => {
+					if (!response.error && !response.wait) {
+						console.log("Loaded map; rendering");
+						document.getElementById("map").style.opacity = 1;
+						clearInterval(loadListener);
+						document.getElementById("loading").parentNode.removeChild(document.getElementById("loading"));
+					} else if (!response.error) {
+						console.log("loading: "+response.message+"%");
+						loadBar.animate(Number(response.message)*0.01);
+					} else {
+						document.getElementById("map").style.opacity = 1;
+						clearInterval(loadListener);
+						document.getElementById("loading").parentNode.removeChild(document.getElementById("loading"));
+					}
+				})
+				
+			},1200)
 
 			var map = L.map('map', {
-				preferCanvas: true,
 				center: [37.57,-122.34],
 				zoom: 13
 			});
@@ -157,7 +210,7 @@
 			    style: {
 			        fillColor: '#1EB300',
 			        fillOpacity: 0.5,
-			        color: '#F2FF00',
+			        color: '#F00000',
 			        weight: 2
 			    }
 			};

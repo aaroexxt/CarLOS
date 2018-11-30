@@ -1363,7 +1363,7 @@ MAProuter.get("/tile", function(req, res) {
 			return res.end(RequestHandler.FAILURE("TileData is null or undefined"));
 		})	
 	} else {
-		return res.end(RequestHandler.WAIT());
+		return res.end(RequestHandler.WAIT(mapUtils.loadPercent));
 	}
 })
 /*

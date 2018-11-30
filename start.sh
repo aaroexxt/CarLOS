@@ -344,7 +344,8 @@ echo "FOUND DEVICE?: find type: $foundDevice, devicename $device"
 echo "";
 echo "Killing previous node processes...";
 sudo killall node;
-echo "Killing previous inspector processes...";
+echo "Killing previous inspector processes & servers running on port $port...";
+lsof -n -i4TCP:$port | grep LISTEN | tr -s ' ' | cut -f 2 -d ' ' | xargs kill -9
 echo "Inspector processes:" `sudo lsof -t -i:9229`;
 sudo kill -kill $(sudo lsof -t -i:9229) || echo "No processes found"; #kill option makes sure it is ded
 echo "Starting node server with file...";

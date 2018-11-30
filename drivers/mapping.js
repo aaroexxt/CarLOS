@@ -15,6 +15,7 @@ const bigJson = require('big-json');
 
 const mapUtils = {
 	tileIndex: undefined,
+	loadPercent: 0,
 	init: (cwd, settings) => {
 		return new Promise( (resolve, reject) => {
 			if (typeof cwd == "undefined" || typeof settings == "undefined") {
@@ -49,14 +50,15 @@ const mapUtils = {
 		        procSize += segmentLength;
 
 		        // Display the upload percentage
-		        console.log("Progress:\t",((uploadedSize/zipSize*100).toFixed(2)+"%"));
+		        mapUtils.loadPercent = Number((procSize/totalSize*100).toFixed(2));
 		    });
 
 			parseStream.on('data', gdc => {
 				console.log("Mapping: loaded geoJson data, running tile preprocessor...");
 				mapUtils.tileIndex = tileIndexing(gdc, {
-					debug: 1,
-					maxZoom: 20
+					debug: 2,
+					maxZoom: 18,
+					indexMaxZoom: 10
 				});
 				console.log("Tile preprocessor created successfully");
 				return resolve();
