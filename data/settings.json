@@ -20,9 +20,10 @@
         "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
         "mapDataDirectory": "/data/mapping/",
-        "defaultMapdataFile": "/norcal/roads.json",
-        "defaultMapdata1": {"file": "hrr.geo.json", "color": "#F00000"},
-        "defaultMapdata1": {"file": "/norcal/pois.json", "color": "#000000"},
+        "defaultMapdataFiles": [
+            {"file": "county.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2},
+            {"file": "/norcal/landuse.json", "strokeColor": "#000000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2}
+        ],
 
         "logLevel": 4,
         "logDirectory": "logs",

@@ -1338,7 +1338,7 @@ MAProuter.get("/", function(req, res) {
 		}
 	});
 
-	fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,"mapping.html"), function (err, buf) {
+	fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,"mapping.html"), function (err, buf) { //temp solution
 		if (err) {
 			return done(err);
 		} else {
@@ -1348,13 +1348,27 @@ MAProuter.get("/", function(req, res) {
 	})
 });
 
-MAProuter.get("/tile", function(req, res) {
+MAProuter.get("/ready", function(req, res) {
+	console.log("Checking if map is ready: "+mapReady);
+	if (mapReady) {
+		let tileLayersData = [];
+		for (var i=0; i<mapUtils.mapIndexingData.length; i++) { //compile the data
+			tileLayersData.push(mapUtils.mapIndexingData[i].settings);
+		}
+		return res.end(RequestHandler.SUCCESS(tileLayersData));
+	} else {
+		return res.end(RequestHandler.WAIT(mapUtils.loadPercent));
+	}
+});
+
+MAProuter.get("/tile/:layerIndex/", function(req, res) {
+	let layer = req.params.layerIndex;
 	let x = req.query.x;
 	let y = req.query.y;
 	let z = req.query.z; //zoom
-	console.log("Fetching tile @x="+x+" y="+y+" zoom="+z);
+	console.log("Fetching tile (layer="+layer+") @x="+x+" y="+y+" zoom="+z);
 	if (mapReady) {
-		mapUtils.fetchTile(z, x, y)
+		mapUtils.fetchTile(layer, z, x, y)
 		.then( tileData => {
 			return res.end(RequestHandler.SUCCESS(tileData));	
 		})
@@ -1366,29 +1380,7 @@ MAProuter.get("/tile", function(req, res) {
 		return res.end(RequestHandler.WAIT(mapUtils.loadPercent));
 	}
 })
-/*
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
-                        this.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingCachedTracks"}); //send serverloadedtracks
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadedTracks", trackList: scSettings.trackList, likedTracks: scSettings.trackList, hasTracks: true}); //send serverloadedtracks
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverNoTrackCache"}); //send serverloadedtracks
-                        SCUtils.extSocketHandler.socketEmitToWeb("POST", {action: "serverLoadingTracksUpdate", track: likedTracks[trackIndex].title, percent: ((tracksLoaded+1)/tracksToLoad)*100});
-					} else {
-						socketHandler.socketEmitToWeb('POST', {
-							"action": "serverDataReady",
-							hasTracks: true,
-							likedTracks: soundcloudSettings.likedTracks,
-							trackList: soundcloudSettings.trackList,
-							settingsData: {
-								currentUser: soundcloudSettings.currentUser,
-								noArtworkUrl: soundcloudSettings.noArtworkUrl,
-								defaultVolume: soundcloudSettings.defaultVolume,
-								volStep: soundcloudSettings.volStep,
-								currentVolume: soundcloudSettings.currentVolume,
-								tracksFromCache: soundcloudSettings.tracksFromCache
-							}
-						});
-					}*/
+
 
 app.use('/login', AUTHrouter); //connect login to auth router
 APIrouter.use('/SC', SCrouter); //connect soundcloud router to api

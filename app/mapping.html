@@ -44,34 +44,6 @@
 					bar.setText(Math.round(bar.value() * 100) + ' %');
 				}
 			});
-			var loadListener = setInterval( () => {
-				fetch('http://'+window.location.host+'/api/map/tile?x=1311&y=1372&z=13', {
-					method: 'GET'
-				})
-				.then(response => response.json())
-				.then( response => {
-					if (!response.error && !response.wait) {
-						console.log("Loaded map; rendering");
-						document.getElementById("map").style.opacity = 1;
-						clearInterval(loadListener);
-						document.getElementById("loading").parentNode.removeChild(document.getElementById("loading"));
-					} else if (!response.error) {
-						console.log("loading: "+response.message+"%");
-						loadBar.animate(Number(response.message)*0.01);
-					} else {
-						document.getElementById("map").style.opacity = 1;
-						clearInterval(loadListener);
-						document.getElementById("loading").parentNode.removeChild(document.getElementById("loading"));
-					}
-				})
-				
-			},1200)
-
-			var map = L.map('map', {
-				center: [37.57,-122.34],
-				zoom: 13
-			});
-			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
         	
 
         	L.GridLayer.customGeoRender = L.GridLayer.extend({
@@ -95,13 +67,14 @@
 			        // get a canvas context and draw something on it using coords.x, coords.y and coords.z
 			        var ctx = tile.getContext('2d');
 			        // return the tile so it can be rendered on screen
-			        fetch('http://'+window.location.host+'/api/map/tile?x='+coords.x+"&y="+coords.y+"&z="+coords.z, {
+			        fetch('http://'+window.location.host+'/api/map/tile/'+this.options.layerIndex+'?x='+coords.x+"&y="+coords.y+"&z="+coords.z, {
 						method: 'GET'
 					})
 					.then(response => response.json())
 					.then(response => {
 						if (!response.error && !response.wait) { //ok
 							var features = response.message ? response.message : [];
+							console.log(features.length+" features loaded")
 							for (var i = 0; i < features.length; i++) {
 					            var feature = features[i];
 					            this.drawFeature(ctx, feature);
@@ -206,20 +179,57 @@
 			    return sColorChange;
 			};  
 
-			var options = {
-			    style: {
-			        fillColor: '#1EB300',
-			        fillOpacity: 0.5,
-			        color: '#F00000',
-			        weight: 2
-			    }
-			};
-
-			var canvasLayer = L.gridLayer.customGeoRenderer(options).addTo(map);
 
 
+			//Real code starts here
+			let layerInfo = [];
+			var loadListener = setInterval( () => {
+				fetch('http://'+window.location.host+'/api/map/ready', {
+					method: 'GET'
+				})
+				.then(response => response.json())
+				.then( response => {
+					function wrapUp() {
+						document.getElementById("map").style.opacity = 1;
+						clearInterval(loadListener);
+						document.getElementById("loading").parentNode.removeChild(document.getElementById("loading"));
+					}
 
 
+					if (!response.error && !response.wait) {
+						console.log("Loaded map; rendering");
+						let layerData = response.message;
+						console.log("Creating "+layerData.length+" layers...");
+						for (var i=0; i<layerData.length; i++) {
+							let opts = {
+								layerIndex: layerData[i].index,
+							    style: {
+							        fillColor: layerData[i].fillColor,//'#1EB300',
+							        fillOpacity: layerData[i].opacity,
+							        color: layerData[i].strokeColor,
+							        weight: layerData[i].strokeWeight
+							    }
+							};
+							let canvasLayer = L.gridLayer.customGeoRenderer(opts).addTo(map);
+						}
+						wrapUp();
+					} else if (!response.error) {
+						console.log("loading: "+response.message+"%");
+						loadBar.animate(Number(response.message)*0.01);
+					} else {
+						wrapUp();
+					}
+				})
+				
+			},1200)
+
+			var map = L.map('map', {
+				center: [37.57,-122.34],
+				zoom: 13
+			});
+			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
+
+			
 
 
         	function getVisibleTilesCoords(map) {
