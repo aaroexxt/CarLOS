@@ -13,6 +13,27 @@
 			<h3>Loading Map Data...</h3>
 			<div id="loadBar"></div>
 		</div>
+		<style type="text/css">
+			.custom-popup .leaflet-popup-content-wrapper {
+				background:#2c3e50;
+				color:#fff;
+				font-size:16px;
+				line-height:24px;
+				border-radius: 0px;
+			}
+				.custom-popup .leaflet-popup-content-wrapper a {
+				color:rgba(255,255,255,0.1);
+			}
+				.custom-popup .leaflet-popup-tip-container {
+				width:30px;
+				height:15px;
+			}
+				.custom-popup .leaflet-popup-tip {
+				background: transparent;
+				border: none;
+				box-shadow: none;
+			}
+		</style>
 		<script>
 			//return "https://tile.openstreetmap.org/" + zoom + "/" + x + "/" + coord.y + ".png";
 			document.getElementById("map").style.height = window.innerHeight+"px";
@@ -77,7 +98,8 @@
 							console.log(features.length+" features loaded")
 							for (var i = 0; i < features.length; i++) {
 					            var feature = features[i];
-					            this.drawFeature(ctx, feature);
+					            var text = feature.tags;
+					            this.drawFeature(ctx, feature, text);
 					        }
 						} else if (!response.error) {
 							console.log("Need to wait for server to be ready...");
@@ -90,11 +112,12 @@
 			    },
 
 
-			    drawFeature: function (ctx, feature) {
+			    drawFeature: function (ctx, feature, text) {
 			        var typeChanged = type !== feature.type,
 			            type = feature.type;
 			        ctx.beginPath();
 			        if (this.options.style) this.setStyle(ctx, this.options.style);
+			        console.log(feature.tags)
 			        if (type === 2 || type === 3) {
 			            for (var j = 0; j < feature.geometry.length; j++) {
 			                var ring = feature.geometry[j];
@@ -108,6 +131,12 @@
 			            for (var j = 0; j < feature.geometry.length; j++) {
 			                var p = feature.geometry[j];
 			                ctx.arc(p[0] / 16.0, p[1] / 16.0, 2, 0, Math.PI * 2, true);
+			                if (text && text.name) {
+			                	ctx.font="10px Georgia";
+			                	ctx.fillStyle = "#000";
+			                	ctx.fillText(text.name, p[0] / 16.0, p[1] / 16.0);
+			                	if (this.options.style) this.setStyle(ctx, this.options.style);
+			                }
 			            }
 			        }
 			        if (type === 3) ctx.fill(this.options.style.fillRule || 'evenodd');

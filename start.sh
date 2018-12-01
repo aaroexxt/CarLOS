@@ -383,7 +383,7 @@ if [ "$usenodemon" = "true" ]; then
         if [ "$platform" = "linux" ]; then
             DEBUG=$debugval nodemon --max-old-space-size=8192 -L $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         else
-            DEBUG=$debugval nodemon --max-old-space-size=8192 --inspect -L $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
+            DEBUG=$debugval nodemon --max-old-space-size=12288 --inspect -L $nodeloc listtype=$foundDevice serial=$device || printf "\n\n\n\nAn error has occurred! Try using 'ps aux | grep node' and killing a process to kill a not properly shutdown node runtime! (then use kill PID) It usually works :)\n";
         fi
     fi
 else

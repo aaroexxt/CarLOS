@@ -21,8 +21,9 @@
         "assetsDirectory": "/app/assets",
         "mapDataDirectory": "/data/mapping/",
         "defaultMapdataFiles": [
-            {"file": "county.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2},
-            {"file": "/norcal/landuse.json", "strokeColor": "#000000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2}
+            {"file": "/features.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2},
+            {"file": "/sf.geo.json", "strokeColor": "#FFF", "fillColor": "", "opacity": 0.2, "strokeWeight": 1},
+            {"file": "/sm.geo.json", "strokeColor": "#FFF", "fillColor": "", "opacity": 0.2, "strokeWeight": 1}
         ],
 
         "logLevel": 4,

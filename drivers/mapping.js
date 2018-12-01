@@ -54,7 +54,7 @@ const mapUtils = {
 
 			        // Display the upload percentage
 			        mapUtils.loadPercentSingleFile = Number((procSize/totalSize*100).toFixed(2));
-			        mapUtils.loadPercent = Number(((procSize/totalSize*100)/settings.defaultMapdataFiles.length).toFixed(2)); //upload percentage of all files
+			        mapUtils.loadPercent = Number((((index/settings.defaultMapdataFiles.length)+((procSize/totalSize)/settings.defaultMapdataFiles.length))*100).toFixed(2)); //upload percentage of all files
 			    });
 
 				parseStream.on('data', gdc => {
@@ -106,7 +106,7 @@ const mapUtils = {
 				console.warn("Tried to lookup layer "+layerIndex+" but couldn't find it for some reason??");
 				return reject("Layer lookup failed");
 			} else {
-				let tileData = mapUtils.mapIndexingData[realLindex].getTile(Number(zoom), Number(x), Number(y)); //return the cache from the correct layer
+				let tileData = mapUtils.mapIndexingData[realLindex].tileIndex.getTile(Number(zoom), Number(x), Number(y)); //return the cache from the correct layer
 				if (typeof tileData == "undefined" || tileData === null || !tileData) {
 					return reject();
 				} else {

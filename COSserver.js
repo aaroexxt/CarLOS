@@ -1349,7 +1349,7 @@ MAProuter.get("/", function(req, res) {
 });
 
 MAProuter.get("/ready", function(req, res) {
-	console.log("Checking if map is ready: "+mapReady);
+	console.log("Checking if map is ready: "+mapReady+", load%="+mapUtils.loadPercent+", load%Single="+mapUtils.loadPercentSingleFile);
 	if (mapReady) {
 		let tileLayersData = [];
 		for (var i=0; i<mapUtils.mapIndexingData.length; i++) { //compile the data
