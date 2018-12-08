@@ -104,6 +104,8 @@ const mapUtils = {
 				} else {
 					console.log("mbtiles object ok, loading annotation data...");
 					mapUtils.mapTileData = mbtiles;
+
+					console.log(mbtiles);
 					loadAnnotationData(0); //start load process for annotation geojson
 				}
 			});
@@ -138,7 +140,7 @@ const mapUtils = {
 				if (err) {
 					return reject(err);
 				} else {
-					return resolve(err);
+					return resolve(tile);
 				}
 	        });
 		})
@@ -149,7 +151,7 @@ const mapUtils = {
 				if (err) {
 					return reject(err);
 				} else {
-					return resolve(err);
+					return resolve(grid);
 				}
 			});
 		})

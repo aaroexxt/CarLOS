@@ -1393,7 +1393,6 @@ MAProuter.get('/dataTile/:z/:x/:y.*', function(req, res) {
 			case "png":
 				mapUtils.fetchDataTile(z, x, y)
 				.then( tileData => {
-					console.log(tileData)
 					res.header("Content-Type", "image/png")
 					res.send(tileData);
 				})
