@@ -88,7 +88,7 @@
 			        // get a canvas context and draw something on it using coords.x, coords.y and coords.z
 			        var ctx = tile.getContext('2d');
 			        // return the tile so it can be rendered on screen
-			        fetch('http://'+window.location.host+'/api/map/tile/'+this.options.layerIndex+'?x='+coords.x+"&y="+coords.y+"&z="+coords.z, {
+			        fetch('http://'+window.location.host+'/api/map/annotationTile/'+this.options.layerIndex+"/"+coords.z+'/'+coords.x+"/"+coords.y, {
 						method: 'GET'
 					})
 					.then(response => response.json())
@@ -117,7 +117,7 @@
 			            type = feature.type;
 			        ctx.beginPath();
 			        if (this.options.style) this.setStyle(ctx, this.options.style);
-			        console.log(feature.tags)
+			        //console.log(feature.tags)
 			        if (type === 2 || type === 3) {
 			            for (var j = 0; j < feature.geometry.length; j++) {
 			                var ring = feature.geometry[j];
@@ -130,6 +130,7 @@
 			        } else if (type === 1) {
 			            for (var j = 0; j < feature.geometry.length; j++) {
 			                var p = feature.geometry[j];
+			                //console.log(p[0]/16, p[1]/16)
 			                ctx.arc(p[0] / 16.0, p[1] / 16.0, 2, 0, Math.PI * 2, true);
 			                if (text && text.name) {
 			                	ctx.font="10px Georgia";
@@ -256,7 +257,8 @@
 				center: [37.57,-122.34],
 				zoom: 13
 			});
-			L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
+			//L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
+			L.tileLayer("http://"+window.location.host+'/api/map/dataTile/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '<a href="http://osm.org/copyright">OpenStreetMap</a>'}).addTo(map);
 
 			
 

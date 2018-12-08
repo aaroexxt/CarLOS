@@ -1352,8 +1352,8 @@ MAProuter.get("/ready", function(req, res) {
 	console.log("Checking if map is ready: "+mapReady+", load%="+mapUtils.loadPercent+", load%Single="+mapUtils.loadPercentSingleFile);
 	if (mapReady) {
 		let tileLayersData = [];
-		for (var i=0; i<mapUtils.mapIndexingData.length; i++) { //compile the data
-			tileLayersData.push(mapUtils.mapIndexingData[i].settings);
+		for (var i=0; i<mapUtils.mapAnnotationData.length; i++) { //compile the data
+			tileLayersData.push(mapUtils.mapAnnotationData[i].settings);
 		}
 		return res.end(RequestHandler.SUCCESS(tileLayersData));
 	} else {
@@ -1361,14 +1361,14 @@ MAProuter.get("/ready", function(req, res) {
 	}
 });
 
-MAProuter.get("/tile/:layerIndex/", function(req, res) {
+MAProuter.get("/annotationTile/:layerIndex/:z/:x/:y", function(req, res) {
 	let layer = req.params.layerIndex;
-	let x = req.query.x;
-	let y = req.query.y;
-	let z = req.query.z; //zoom
-	console.log("Fetching tile (layer="+layer+") @x="+x+" y="+y+" zoom="+z);
+	let x = req.params.x;
+	let y = req.params.y;
+	let z = req.params.z; //zoom
+	console.log("Fetching annotationTile (layer="+layer+") @x="+x+" y="+y+" zoom="+z);
 	if (mapReady) {
-		mapUtils.fetchTile(layer, z, x, y)
+		mapUtils.fetchAnnotationTile(layer, z, x, y)
 		.then( tileData => {
 			return res.end(RequestHandler.SUCCESS(tileData));	
 		})
@@ -1379,7 +1379,43 @@ MAProuter.get("/tile/:layerIndex/", function(req, res) {
 	} else {
 		return res.end(RequestHandler.WAIT(mapUtils.loadPercent));
 	}
-})
+});
+
+MAProuter.get('/dataTile/:z/:x/:y.*', function(req, res) {
+	let x = req.params.x;
+	let y = req.params.y;
+	let z = req.params.z; //zoom
+	var extension = req.param(0);
+
+	console.log("Fetching dataTile @x="+x+" y="+y+" zoom="+z+" ex="+extension);
+    if (mapReady) {
+	    switch (extension) {
+			case "png":
+				mapUtils.fetchDataTile(z, x, y)
+				.then( tileData => {
+					console.log(tileData)
+					res.header("Content-Type", "image/png")
+					res.send(tileData);
+				})
+				.catch( err => {
+					return res.end(RequestHandler.FAILURE('Tile rendering error: ' + err + '\n'));
+				})
+			break;
+			case "grid.json":
+				mapUtils.fetchDataGrid(z, x, y)
+				.then( gridData => {
+					res.header("Content-Type", "text/json")
+					res.send(gridData);
+				})
+				.catch( err => {
+					return res.end(RequestHandler.FAILURE('Grid rendering error: ' + err + '\n'));
+				})
+			break;
+		}
+	} else {
+		return res.end(RequestHandler.WAIT(mapUtils.loadPercent));
+	}
+});
 
 
 app.use('/login', AUTHrouter); //connect login to auth router

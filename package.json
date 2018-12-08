@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/aaroexxt/CarOS#readme",
   "dependencies": {
+    "@mapbox/mbtiles": "^0.10.0",
     "bcrypt": "^3.0.2",
     "big-json": "^2.0.2",
     "brain.js": "^1.4.2",
