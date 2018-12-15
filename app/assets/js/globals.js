@@ -264,7 +264,7 @@ var globals = {
 
                     globals.music.soundUpdateInterval = setInterval( () => {
                         SRH.request("api/SC/clientUpdate").then(data => {
-                            console.log(data.playing)
+                            //console.log(data.playing)
                             globals.music.playingServer = data.playing; //upd playing since it's not in the settings part
 
                             if (JSON.stringify(globals.music.oldSettingsData) != JSON.stringify(data.settingsData)) {
@@ -434,13 +434,14 @@ var globals = {
             changeShuffleState: function() {
                 globals.music.nextTrackShuffle = !globals.music.nextTrackShuffle;
                 SRH.request("/api/sc/event/changeTrackShuffleState");
-            },
-            updateCanvas: function() {
-                var canvas = document.getElementById('main');
+            }/*,
+            var updateCanvas =  function() {
+                var canvas = document.getElementById('music_waveformArtCanvas');
 
-                var ctx = document.getElementById('main').getContext('2d');
+                var ctx = canvas.getContext('2d');
                 var tile = new Image();
-                tile.src = document.getElementById('image').src;
+                tile.setAttribute('crossOrigin', '')
+                tile.src = document.getElementById('music_waveformArt').src;
                 tile.onload = function() {
                     draw(tile);
                 }
@@ -452,16 +453,19 @@ var globals = {
                     var imageData = bufferctx.getImageData(0,0,buffer.width,  buffer.height);
                     var data = imageData.data;
                     var removeBlack = function() {
+                        console.log(data)
                         for (var i = 0; i < data.length; i += 4) {
-                            if(data[i]+ data[i + 1] + data[i + 2] < 10){ 
+                            if(data[i]+ data[i + 1] + data[i + 2] > 240){ 
                                 data[i + 3] = 0; // alpha
                             }
                         } 
                         ctx.putImageData(imageData, 0, 0); 
                     }; 
-                 removeBlack(); 
+                    removeBlack(); 
                 } 
             }
+            updateCanvas();
+            */
         },
 
         musicUI: {
@@ -931,8 +935,10 @@ const login = {
             globals.map.fitMapToMarkers(globals.map.markers, globals.map.mapReference);
         });
     }, initializeStats: function() {
-        var ctx = ID("carStats");
+        var ctx = ID("stats_powerChart");
         var scatterChart = new Chart(ctx, {
+            responsive: true,
+            maintainAspectRatio: false,
             type: 'line',
             data: {
                 datasets: [
@@ -966,6 +972,84 @@ const login = {
                 }
             }
         });
+
+        var speedGauge = new RadialGauge({
+            width: 300,
+            height: 300,
+            renderTo: ID('stats_speedGauge')
+        }).draw();
+        var engineRPMGauge = new RadialGauge({
+            width: 300,
+            height: 300,
+            renderTo: ID('stats_rpmGauge')
+        }).draw();
+        var temperatureGauge = new RadialGauge({
+            renderTo: ID('stats_temperatureGauge'),
+            width: 300,
+            height: 300,
+            units: "°F",
+            title: "Temperature",
+            minValue: -50,
+            maxValue: 50,
+            majorTicks: [
+                -50,
+                -40,
+                -30,
+                -20,
+                -10,
+                0,
+                10,
+                20,
+                30,
+                40,
+                50
+            ],
+            minorTicks: 2,
+            strokeTicks: true,
+            highlights: [
+                {
+                    "from": -50,
+                    "to": 0,
+                    "color": "rgba(0,0, 255, .3)"
+                },
+                {
+                    "from": 0,
+                    "to": 50,
+                    "color": "rgba(255, 0, 0, .3)"
+                }
+            ],
+            ticksAngle: 225,
+            startAngle: 67.5,
+            colorMajorTicks: "#ddd",
+            colorMinorTicks: "#ddd",
+            colorTitle: "#eee",
+            colorUnits: "#ccc",
+            colorNumbers: "#eee",
+            colorPlate: "#222",
+            borderShadowWidth: 0,
+            borders: true,
+            needleType: "arrow",
+            needleWidth: 2,
+            needleCircleSize: 7,
+            needleCircleOuter: true,
+            needleCircleInner: false,
+            animationDuration: 1500,
+            animationRule: "linear",
+            colorBorderOuter: "#333",
+            colorBorderOuterEnd: "#111",
+            colorBorderMiddle: "#222",
+            colorBorderMiddleEnd: "#111",
+            colorBorderInner: "#111",
+            colorBorderInnerEnd: "#333",
+            colorNeedleShadowDown: "#333",
+            colorNeedleCircleOuter: "#333",
+            colorNeedleCircleOuterEnd: "#111",
+            colorNeedleCircleInner: "#111",
+            colorNeedleCircleInnerEnd: "#222",
+            valueBoxBorderRadius: 0,
+            colorValueBoxRect: "#222",
+            colorValueBoxRectEnd: "#333"
+        }).draw();
     }, initialize: function() {
         console.log("Login initialize called")
         setTimeout(function(){

@@ -83,7 +83,7 @@ const mapUtils = {
 					readStream.unpipe(parseStream); //unpipe stream
 					
 					if (index >= settings.defaultMapAnnotationFiles.length-1) {
-						console.log("Done loading mapdata")
+						console.log("Done loading mapdata");
 						return resolve();
 					} else {
 						loadAnnotationData(index+1); //load next index
@@ -105,7 +105,6 @@ const mapUtils = {
 					console.log("mbtiles object ok, loading annotation data...");
 					mapUtils.mapTileData = mbtiles;
 
-					console.log(mbtiles);
 					loadAnnotationData(0); //start load process for annotation geojson
 				}
 			});

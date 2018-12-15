@@ -87,6 +87,7 @@ http://www.chartjs.org/docs/latest/getting-started/
 
 List of stuff to do:
 Get offline tilemaprenderer to work
+SC offline track images and track art
 Get path planning to work
 Tackle tensorflow in javascript for speech generation https://github.com/tensorflow/tfjs
 

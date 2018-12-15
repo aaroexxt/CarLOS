@@ -53,7 +53,9 @@ var utils = {
                     console.log("srh baseurl: "+_this.baseURL+", prefix: "+_this.HTTPprefix+", urlsuffix: "+urlSuffix)
                 }
                 let concisePath = _this.HTTPprefix+utils.pathJoin([_this.baseURL,urlSuffix]); //allows for trailing slashes to make full url while maintaining integrity of http:// and http:// statements
-                console.log("srh concisePath: "+concisePath);
+                if (_this.debugMode) { 
+                    console.log("srh concisePath: "+concisePath);
+                }
                 fetch(concisePath, {
                     credentials: 'include',
                     method: method

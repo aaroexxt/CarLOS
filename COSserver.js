@@ -775,6 +775,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const uploadHandler = multer();
 const uuid = require('uuid/v4');
+const cors = require('cors');
 
 //authentication deps
 const passport = require('passport');
@@ -819,6 +820,7 @@ console.log("[AUTH] Init modules begun");
 
 app.use(errorHandler({ dumpExceptions: true, showStack: true })); 
 app.use(serveFavicon(path.join(cwd,runtimeSettings.faviconDirectory))); //serve favicon
+app.use(cors()); //enable cors
 
 app.use(express.static(path.join(cwd,runtimeSettings.assetsDirectory))); //define a static directory
 

@@ -119,11 +119,11 @@ if [ "$newroot" = "true" ]; then
         else
             echo "Testing directory: $ans...";
             if [ -d "$ans" ]; then
-                echo "Directory '$ans' invalid. Please try again.";
-            else
                 echo "Directory '$ans' does exist!"; 
                 dir=$ans;
                 break;
+            else
+                echo "Directory '$ans' invalid. Please try again.";
             fi
         fi
     done

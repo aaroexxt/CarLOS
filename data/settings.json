@@ -23,7 +23,7 @@
         "defaultMapAnnotationFiles": [
             {"file": "/features.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2}
         ],
-        "defaultMapdataFile": "sf.mbtiles",
+        "defaultMapdataFile": "usoutline.mbtiles",
 
         "logLevel": 4,
         "logDirectory": "logs",
