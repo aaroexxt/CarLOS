@@ -18,13 +18,15 @@ const mapUtils = {
 	mapAnnotationData: [],
 	mapTileData: [],
 	loadPercent: 0,
+	displayAnnotations: true,
 	init: (cwd, settings) => {
 		return new Promise( (resolve, reject) => {
 			if (typeof cwd == "undefined" || typeof settings == "undefined") {
 				return reject("CWD or RuntimeSettings undefined on init");
-			} else if (typeof settings.mapDataDirectory == "undefined" || typeof settings.defaultMapAnnotationFiles == "undefined" || settings.defaultMapAnnotationFiles.length == 0) {
-				return reject("mapDataDirectory or defaultMapdataFile undefined in settings");
+			} else if (typeof settings.mapDataDirectory == "undefined" || typeof settings.defaultMapAnnotationFiles == "undefined" || settings.defaultMapAnnotationFiles.length == 0 || typeof settings.displayAnnotations == "undefined") {
+				return reject("mapDataDirectory or defaultMapdataFile or displayAnnotations undefined in settings");
 			}
+			mapUtils.displayAnnotations = settings.displayAnnotations;
 
 			function loadAnnotationData(index) {
 				let mdr = path.join(cwd,settings.mapDataDirectory,settings.defaultMapAnnotationFiles[index].file);
@@ -113,6 +115,9 @@ const mapUtils = {
 	},
 	fetchAnnotationTile: (layerIndex, zoom, x, y) => {
 		return new Promise( (resolve, reject) => {
+			if (!mapUtils.displayAnnotations) {
+				return resolve([]);
+			}
 			let realLindex = -1;
 			for (var i=0; i<mapUtils.mapAnnotationData.length; i++) { //search it up just in case
 				if (mapUtils.mapAnnotationData[i].settings.index == layerIndex) {

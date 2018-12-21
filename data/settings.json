@@ -20,10 +20,11 @@
         "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
         "mapDataDirectory": "/data/mapping/",
+        "displayAnnotations": false,
         "defaultMapAnnotationFiles": [
             {"file": "/features.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2}
         ],
-        "defaultMapdataFile": "usoutline.mbtiles",
+        "defaultMapdataFile": "OSM.mbtiles",
 
         "logLevel": 4,
         "logDirectory": "logs",
