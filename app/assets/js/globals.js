@@ -75,10 +75,41 @@ const globals = {
                 },
                 initializeModules: function() {
                     let modules = Object.keys(globals.modules);
+                    let requiredProperties = ["moduleName","debugMode","realState","methods","properties"];
+
+                    var modulesOK = true;
                     for (var i=0; i<modules.length; i++) {
-                        console.log("checking module: "+modules[i]);
+                        let moduleName = modules[i];
+                        let module = globals.modules[moduleName];
+                        console.log("checking module: "+moduleName);
+
+                        var moduleOK = true;
+                        for (var j=0; j<requiredProperties.length; j++) {
+                            if (!module.hasOwnProperty(requiredProperties[j])) {
+                                console.log("Module name '"+moduleName+"' is missing property "+requiredProperties[j]);
+                                moduleOK = false;
+                                modulesOK = false;
+                            }
+                        }
+
+                        if (moduleOK) { //module is ok
+                            console.log("Initializing module "+moduleName);
+                            module.state = "init"; //set state
+                        } else {
+                            console.warn("Cannot initialize module "+moduleName+" because it is missing properties");
+                        }
+
+                    }
+
+                    if (modulesOK) {
+                        this.state = "";
                     }
                 }
+            },
+
+            //PROPERTIES
+            properties: {
+
             }
         }
         map: {
