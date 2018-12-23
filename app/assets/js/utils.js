@@ -83,7 +83,7 @@ var utils = {
                                             }
                                         }
                                     }
-                                } catch(e) {
+                                } catch(e) { //it didn't parse so return it
                                     if (typeof text == "undefined") {
                                         return resolve("");
                                     }
@@ -107,7 +107,7 @@ var utils = {
             });
         }
 
-        this.requestUntilNoWait
+        //this.requestUntilNoWait //might implement this at some point ig
 
         this.requestInterval = (interval, urlSuffix, doneCallback, waitCallback, errCallback, method) => {
             if (_this.debugMode) {
@@ -129,16 +129,32 @@ var utils = {
                     }
                     if (typeof data.message == "undefined" || typeof data.error == "undefined" || typeof data.wait == "undefined") {
                         clearInterval(this.interval); //we can't wait because it wasn't from server
-                        doneCallback(data);
+                        try {
+                            doneCallback(data);
+                        } catch(e) {
+                            console.error("Error running doneCallback: "+e);
+                        }
                     } else {
                         if (data.wait && !data.error) { //waiting
-                            waitCallback(data.message);
+                            try {
+                                waitCallback(data.message);
+                            } catch(e) {
+                                console.error("Error running waitCallback: "+e);
+                            }
                         } else if (!data.wait && !data.error) { //no error
                             clearInterval(this.interval);
-                            doneCallback(data.message);
+                            try {
+                                doneCallback(data.message);
+                            } catch(e) {
+                                console.error("Error running doneCallback: "+e);
+                            }
                         } else { //error
                             clearInterval(this.interval);
-                            errCallback(data.message);
+                            try {
+                                errCallback(data);
+                            } catch(e) {
+                                console.error("Error running errorCallback: "+e);
+                            }
                         }
                     }
                 })

@@ -1006,7 +1006,7 @@ app.get("/client", function(req, res) { //COS main route
 
 	console.log('Inside GET /authrequired callback')
 	console.log(`User authenticated? ${req.isAuthenticated()}`)
-	if(req.isAuthenticated()) {
+	if(req.isAuthenticated() || runtimeSettings.disableLogin) {
 		fs.readFile(path.join(cwd,runtimeSettings.defaultFileDirectory,runtimeSettings.defaultClientFile), function (err, buf) {
 			if (err) {
 				return done(err);
@@ -1032,7 +1032,7 @@ app.get("/console", function(req, res) { //console route
 
 app.get('/login', (req, res) => {
     console.log('Inside GET request on /login, sessID: '+req.sessionID);
-    if (req.isAuthenticated()) {
+    if (req.isAuthenticated() || runtimeSettings.disableLogin) {
         res.redirect("/client");
     } else {
         var done = finalHandler(req, res, {

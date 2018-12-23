@@ -12,6 +12,7 @@
     "settings": {
         "maxVideoAttempts": 7,
         "maxPasscodeAttempts": 10,
+        "disableLogin": true,
 
         "faviconDirectory": "/app/assets/images/favicon.ico",
         "defaultFileDirectory": "/app",
@@ -20,9 +21,9 @@
         "defaultLoginFile": "login.html",
         "assetsDirectory": "/app/assets",
         "mapDataDirectory": "/data/mapping/",
-        "displayAnnotations": false,
+        "displayAnnotations": true,
         "defaultMapAnnotationFiles": [
-            {"file": "/features.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.5, "strokeWeight": 2}
+            {"file": "/state.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.01, "strokeWeight": 2}
         ],
         "defaultMapdataFile": "OSM.mbtiles",
 

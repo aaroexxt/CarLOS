@@ -65,8 +65,8 @@ const mapUtils = {
 					console.log("Mapping: loaded geoJson data for file at index: "+index+", running tile preprocessor...");
 					let tileIndex = geojsonVT(gdc, { //create tile index
 						debug: 2,
-						maxZoom: 18,
-						indexMaxZoom: 10
+						maxZoom: 15,
+						indexMaxZoom: 13
 					});
 
 					mapUtils.mapAnnotationData.push({

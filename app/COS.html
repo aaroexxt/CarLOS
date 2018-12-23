@@ -2,11 +2,12 @@
 <html> <!-- manifest="data.appcache" -->
 	<head>
 		<title>C.OS. V1</title>
+
+		<!--Libraries-->
 		<script src="/js/helpLib.js"></script>
 		<script src="/js/utils.js"></script>
 		<script src="/js/speaker.js"></script>
 		<script src="/js/annyang.js"></script>
-		<script src="/js/globals.js"></script>
 		<script src="/js/speechkitt.min.js"></script>
 		<script src="/js/jquery-3.3.1.min.js"></script>
 		<script src="/js/bootbox.min.js"></script>
@@ -14,10 +15,16 @@
 		<script src="/js/Chart.min.js"></script>
 		<script src="/js/gauges.min.js"></script>
 		<script src="/js/soundcloudSDK-3.3.0.js"></script>
+		<script src="/js/leaflet.js"></script>
+		<script src="/js/progressbar.min.js"></script>
+
+		<!--Main Script-->
+		<script async defer src="/js/globals.js"></script>
 		<!--<script src="https://connect.soundcloud.com/sdk/sdk-3.3.0.js"></script>-->
 		<link rel="stylesheet" type="text/css" media="screen" href="/css/style.css">
 		<link rel="stylesheet" type="text/css" media="screen" href="/css/bootstrap.min.css">
 		<link rel="shortcut icon" href="/favicon.ico" />
+		<link rel="stylesheet" type="text/css" media="screen" href="/css/leaflet.css">
 		<meta charset="UTF-8">
 	</head>
 	<body>
@@ -43,11 +50,12 @@
 					<img src="/images/wifi0.png" width="40" height="27" id="wifilevel"></img>
 				</li>
 			</ul>
-			<div id="mainMap" class="fullScreenMap" style="display: none">
-				<br>
-				<br>
-				<br>
-				<h1>Loading...</h1>
+			<div id="mainMap" class="fullScreen" style="display: none">
+				<div id="map_mainMap" style="opacity: 0"></div>
+				<div id="map_loadingContainer" style="z-index: 1000000000; position: absolute; top: 100px; left: 0;">
+					<h3>Loading Map Data...</h3>
+					<div id="map_loadBar"></div>
+				</div>
 			</div>
 			<div id="mainMusic" class="fullScreen" style="display: none">
 				<img width="23.5%" height="45%px" style="float: left; margin-left: 1%; margin-top: 1%; border: 2px groove grey;" id="music_trackArt"></img> <!--always 500px by 500px-->
@@ -120,25 +128,7 @@
 
 			var sessionData = "";
 
-			login.readySteps.nodeConnected = false;
-			login.readySteps.validAuthkey = false;
-			SRH.request("api/isup")
-			.then(response => {
-				console.log("Server is up");
-				login.readySteps.nodeConnected = true;
-				SRH.request("api/session")
-				.then(sessionDat => {
-					console.log("sessionData: "+JSON.stringify(sessionDat));
-					if (sessionDat.id) {
-						login.readySteps.validAuthkey = true;
-					}
-					sessionData = sessionDat;
-				});
-				login.initializeOnceServerConnected(); //run login starters
-			})
-			.catch(error => {
-				console.error("Server is not up. Cannot continue with initialization (e="+error+")");
-			})
+			globals.masterInit();
 
 			login.readySteps.runtimeInformationProvided = false;
 			globals.requestRuntimeInformation( () => {
