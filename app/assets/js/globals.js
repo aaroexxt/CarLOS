@@ -11,7 +11,10 @@ const globals = {
         sessionData: undefined,
         readySteps: {
             connectedToServer: false,
-            validSession: false
+            validSession: false,
+            pageLoad: true,
+            modulesOK: false,
+            test: false
         }
     },
     modules: {
@@ -71,12 +74,54 @@ const globals = {
                             }
                             globals.constants.sessionData = sessionDat;
                             //change state
-                            moduleReference.state = "initializeModules";
+                            moduleReference.state = "initializeLoadListener";
                         });
                     })
                     .catch(error => {
                         console.error("Server is not up. Cannot continue with initialization (e="+error+")");
                     })
+                },
+                initializeLoadListener: function(moduleReference) {
+                    //setup vars
+                    let loadMessages = document.getElementById("loadMessages");
+                    let readySteps = Object.keys(globals.constants.readySteps);
+                    moduleReference.properties.previousReadySteps = JSON.parse(JSON.stringify(globals.constants.readySteps));
+
+                    //setup elements
+                    loadMessages.innerHTML = "<h2 style='text-decoration: underline'>Loading Scripts</h2>"; //sets via js to let user know that js works
+                    for (var i=0; i<readySteps.length; i++) {
+                        var title = document.createElement("h3"); //create h3 tag
+                        title.setAttribute("style","display: inline;");
+                        var text = document.createTextNode(readySteps[i]+": ");
+                        title.appendChild(text);
+
+                        var img = document.createElement("img"); //create image element
+                        img.setAttribute("width",String(moduleReference.properties.imageWidth)+"px");
+                        img.setAttribute("height",String(moduleReference.properties.imageHeight)+"px");
+                        img.setAttribute("id","loadImg"+readySteps[i])
+                        if (globals.constants.readySteps[readySteps[i]]) { //dynamically add check or noncheck
+                            img.setAttribute("src",moduleReference.properties.imageCheckPath);
+                        } else {
+                            img.setAttribute("src",moduleReference.properties.imageNoCheckPath);
+                        }
+
+                        var br = document.createElement("br");
+                        var br2 = document.createElement("br");
+
+                        loadMessages.appendChild(title);
+                        loadMessages.appendChild(img);
+                        loadMessages.appendChild(br);
+                        loadMessages.appendChild(br2);
+                    }
+                    var progressBar = document.createElement("progress");
+                    progressBar.setAttribute("id","loadBar");
+                    progressBar.setAttribute("class","loadBar");
+                    progressBar.setAttribute("value","0");
+
+                    loadMessages.appendChild(progressBar);
+
+                    moduleReference.state = "initializeModules";
+                
                 },
                 initializeModules: function(moduleReference) {
                     let modules = Object.keys(globals.modules);
@@ -109,10 +154,63 @@ const globals = {
 
                     }
 
-                    if (modulesOK) {
-                        moduleReference.state = "end";
+                    moduleReference.state = "updateLoadListeners";
+
+                    if (modulesOK) { //ADD READTSTEPS
+                        globals.constants.readySteps.modulesOK = true;
                     }
+                },
+                updateLoadListeners: function(moduleReference) {
+                    //setup vars
+                    let loadMessages = document.getElementById("loadMessages");
+                    let readySteps = Object.keys(globals.constants.readySteps);
+
+                    //actually do the checks
+                    let ready = true;
+                    var stepsReady = readySteps.length; //represents the steps left before load is ready
+                    for (var i=0; i<readySteps.length; i++) {
+                        if (!globals.constants.readySteps[readySteps[i]]) { //iterate through readySteps
+                            ready = false;
+                            stepsReady--;
+                        }
+                        if (moduleReference.properties.previousReadySteps[readySteps[i]] !== readySteps[readySteps[i]]) {
+                            let imageElement = document.getElementById("loadImg"+readySteps[i]);
+                            try {
+                                if (globals.constants.readySteps[readySteps[i]]) { //dynamically add check or noncheck
+                                    imageElement.setAttribute("src",moduleReference.properties.imageCheckPath);
+                                } else {
+                                    imageElement.setAttribute("src",moduleReference.properties.imageNoCheckPath);
+                                }
+                            } catch(e) {
+                                console.error("Error setting attrib for key "+readySteps[i])
+                            }
+                        }
+                    }
+                    ID("loadBar").value = (stepsReady/readySteps.length);
+                    moduleReference.properties.previousReadySteps = JSON.parse(JSON.stringify(globals.constants.readySteps));
+                    
+                    moduleReference.state = ready ? "pageReady" : "waitLoadListener";
+                },
+                waitLoadListener: function(moduleReference) {
+                    setTimeout( () => {
+                        moduleReference.state = "updateLoadListeners";
+                    },2000);
+                },
+                pageReady: function(){
+                    ID("loading").style.display = "none";
+                    var loaders = document.getElementsByClassName("loader");
+                    for (var i=0; i<loaders.length; i++) {
+                        loaders[i].style.display = "none";
+                    }
+                    ID("main").style.display = "block";
                 }
+            },
+            properties: {
+                imageCheckPath: "/images/check.png",
+                imageNoCheckPath: "/images/nocheck.png",
+                imageWidth: 16,
+                imageHeight: 16,
+                loadBarElementName: "main_loadBar"
             }
         },
         map: {
@@ -397,7 +495,13 @@ const globals = {
                 mapCanvasLayers: []
             }
         },
-        music: {
+        musicLocal: {
+            local: false,
+            init: function() {
+
+            }
+        },
+        musicServer: {
             local: false,
             init: function() {
 
@@ -433,6 +537,148 @@ const globals = {
 
             //METHOD LOGIC
             methods: {
+            },
+            properties: {}
+        },
+        popupDisplay: {
+            moduleName: "popupDisplay",
+            debugMode: true,
+
+            //STATE MACHINE LOGIC
+            realState: "uninit",
+            set state(state) { //use getter/setter logic
+                if (this.debugMode) {
+                    console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
+                }
+
+                if (!this.methods[state]) {
+                    console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
+                } else {
+                    let prevState = this.realState;
+                    try {
+                        this.realState = state;
+                        this.methods[state](this); //run method exposed in methods
+                    } catch(e) {
+                        this.realState = prevState;
+                        console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
+                    }
+                }
+            },
+            get state() {
+                return this.realState; //return state
+            },
+
+            //METHOD LOGIC
+            methods: {
+            },
+            properties: {}
+        },
+        menu: {
+            moduleName: "menuManager",
+            debugMode: true,
+
+            //STATE MACHINE LOGIC
+            realState: "uninit",
+            set state(state) { //use getter/setter logic
+                if (this.debugMode) {
+                    console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
+                }
+
+                if (!this.methods[state]) {
+                    console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
+                } else {
+                    let prevState = this.realState;
+                    try {
+                        this.realState = state;
+                        this.methods[state](this); //run method exposed in methods
+                    } catch(e) {
+                        this.realState = prevState;
+                        console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
+                    }
+                }
+            },
+            get state() {
+                return this.realState; //return state
+            },
+
+            //METHOD LOGIC
+            methods: {
+            },
+            properties: {}
+        },
+        speechManager: {
+            moduleName: "speechManager",
+            debugMode: true,
+
+            //STATE MACHINE LOGIC
+            realState: "uninit",
+            set state(state) { //use getter/setter logic
+                if (this.debugMode) {
+                    console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
+                }
+
+                if (!this.methods[state]) {
+                    console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
+                } else {
+                    let prevState = this.realState;
+                    try {
+                        this.realState = state;
+                        this.methods[state](this); //run method exposed in methods
+                    } catch(e) {
+                        this.realState = prevState;
+                        console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
+                    }
+                }
+            },
+            get state() {
+                return this.realState; //return state
+            },
+
+            //METHOD LOGIC
+            methods: {
+            },
+            properties: {}
+        },
+        UIIndicators: {
+            moduleName: "UIIndicators",
+            debugMode: true,
+
+            //STATE MACHINE LOGIC
+            realState: "uninit",
+            set state(state) { //use getter/setter logic
+                if (this.debugMode) {
+                    console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
+                }
+
+                if (!this.methods[state]) {
+                    console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
+                } else {
+                    let prevState = this.realState;
+                    try {
+                        this.realState = state;
+                        this.methods[state](this); //run method exposed in methods
+                    } catch(e) {
+                        this.realState = prevState;
+                        console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
+                    }
+                }
+            },
+            get state() {
+                return this.realState; //return state
+            },
+
+            //METHOD LOGIC
+            methods: {
+                init: function(moduleReference) { //it's okay to do this stuff concurrently because they don't depend on each other
+                    moduleReference.state = "initStats";
+                    moduleReference.state = "initHUD";
+                },
+                initStats: function(moduleReference) {
+
+                },
+                initHUD: function(moduleReference) {
+                    globals.modules.runtimeEvents.registerEvent
+                }
             },
             properties: {}
         }
