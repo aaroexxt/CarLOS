@@ -1269,7 +1269,7 @@ SCrouter.get("/clientUpdate", function(req, res) {
         console.log("SCClientUpdate");
         var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
         res.end(RequestHandler.SUCCESS({
-            currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack,
+            currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack || {},
             percent: soundcloudUtils.SCSoundManager.getPercent(),
             playedSeconds: ps,
             timeStamp: utils.formatHHMMSS(ps),
@@ -1306,6 +1306,38 @@ SCrouter.get("/event/:type", function(req, res) {
 	    res.end(RequestHandler.FAILURE("Error: Type is undefined in request"));
 	}
 });
+SCrouter.get("/trackArt/:id", function(req, res) {
+	let id = req.params.id;
+	if (id) {
+		fs.readFile(path.join(cwd,runtimeSettings.artworkCacheDirectory,"art-"+id+".jpg"), function (err, buf) {
+			if (err) {
+				console.error("couldn't find artwork file from id "+id);
+				return res.end(RequestHandler.FAILURE("Error: could not find file with id "+id));
+			} else {
+				res.end(buf); //send buffer
+			}
+		})
+	} else {
+		console.error("ID undefined on getTrackArt");
+		return res.end(RequestHandler.FAILURE("Error: ID is undefined"));
+	}
+})
+SCrouter.get("/trackWaveform/:id", function(req, res) {
+	let id = req.params.id;
+	if (id) {
+		fs.readFile(path.join(cwd,runtimeSettings.waveformCacheDirectory,"waveform-"+id+".jpg"), function (err, buf) {
+			if (err) {
+				console.error("couldn't find waveform file from id "+id);
+				return res.end(RequestHandler.FAILURE("Error: could not find file with id "+id));
+			} else {
+				res.end(buf); //send buffer
+			}
+		})
+	} else {
+		console.error("ID undefined on getTrackWaveform");
+		return res.end(RequestHandler.FAILURE("Error: ID is undefined"));
+	}
+})
 
 var gettingSCUser = false;
 SCrouter.get("/changeUser/:user", function(req, res) {

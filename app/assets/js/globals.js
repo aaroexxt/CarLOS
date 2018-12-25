@@ -1,4 +1,5 @@
-
+//globals.js? should be modules.js lol
+//I'm updating this rn to use a much better "modules" system that will be more efficient
 
 if (typeof utils == "undefined") {
     console.error("utils object undefined, did it load?");
@@ -13,9 +14,22 @@ const globals = {
             connectedToServer: false,
             validSession: false,
             pageLoad: true,
-            modulesOK: false,
-            test: false
-        }
+            gotRuntimeInformation: false,
+            modulesOK: false
+        },
+        defaultApp: "map",
+        runtimeInformation: {
+            frontendVersion: "? (Should Not Happen)",
+            backendVersion: "? (Should Not Happen)",
+            nodeConnected: "? (Should Not Happen)",
+            pythonConnected: "? (Should Not Happen)",
+            arduinoConnected: "? (Should Not Happen)",
+            uptime: "? (Should Not Happen)",
+            status: "NotConnected",
+            users: "? (Should Not Happen)",
+            odometer: "? (Should Not Happen)",
+            dynamicMusicMenu: true
+        },
     },
     modules: {
         master: {
@@ -83,7 +97,7 @@ const globals = {
                 },
                 initializeLoadListener: function(moduleReference) {
                     //setup vars
-                    let loadMessages = document.getElementById("loadMessages");
+                    let loadMessages = document.getElementById(moduleReference.properties.loadMessagesElementName);
                     let readySteps = Object.keys(globals.constants.readySteps);
                     moduleReference.properties.previousReadySteps = JSON.parse(JSON.stringify(globals.constants.readySteps));
 
@@ -114,7 +128,7 @@ const globals = {
                         loadMessages.appendChild(br2);
                     }
                     var progressBar = document.createElement("progress");
-                    progressBar.setAttribute("id","loadBar");
+                    progressBar.setAttribute("id",moduleReference.properties.loadBarElementName);
                     progressBar.setAttribute("class","loadBar");
                     progressBar.setAttribute("value","0");
 
@@ -125,7 +139,7 @@ const globals = {
                 },
                 initializeModules: function(moduleReference) {
                     let modules = Object.keys(globals.modules);
-                    let requiredProperties = ["moduleName","debugMode","realState","methods"];
+                    let requiredProperties = moduleReference.properties.requiredProperties;
 
                     var modulesOK = true;
                     for (var i=0; i<modules.length; i++) {
@@ -156,13 +170,13 @@ const globals = {
 
                     moduleReference.state = "updateLoadListeners";
 
-                    if (modulesOK) { //ADD READTSTEPS
+                    if (modulesOK || true) { //ADD READTSTEPS
                         globals.constants.readySteps.modulesOK = true;
                     }
                 },
                 updateLoadListeners: function(moduleReference) {
                     //setup vars
-                    let loadMessages = document.getElementById("loadMessages");
+                    let loadMessages = document.getElementById(moduleReference.properties.loadMessagesElementName);
                     let readySteps = Object.keys(globals.constants.readySteps);
 
                     //actually do the checks
@@ -186,7 +200,7 @@ const globals = {
                             }
                         }
                     }
-                    ID("loadBar").value = (stepsReady/readySteps.length);
+                    document.getElementById(moduleReference.properties.loadBarElementName).value = (stepsReady/readySteps.length);
                     moduleReference.properties.previousReadySteps = JSON.parse(JSON.stringify(globals.constants.readySteps));
                     
                     moduleReference.state = ready ? "pageReady" : "waitLoadListener";
@@ -194,15 +208,15 @@ const globals = {
                 waitLoadListener: function(moduleReference) {
                     setTimeout( () => {
                         moduleReference.state = "updateLoadListeners";
-                    },2000);
+                    },moduleReference.properties.loadListenerWaitTime);
                 },
-                pageReady: function(){
-                    ID("loading").style.display = "none";
-                    var loaders = document.getElementsByClassName("loader");
+                pageReady: function(moduleReference) {
+                    document.getElementById(moduleReference.properties.loadContainerElementName).style.display = "none";
+                    var loaders = document.getElementsByClassName(moduleReference.properties.loadElementClass);
                     for (var i=0; i<loaders.length; i++) {
                         loaders[i].style.display = "none";
                     }
-                    ID("main").style.display = "block";
+                    document.getElementById(moduleReference.properties.mainElementName).style.display = "block";
                 }
             },
             properties: {
@@ -210,7 +224,13 @@ const globals = {
                 imageNoCheckPath: "/images/nocheck.png",
                 imageWidth: 16,
                 imageHeight: 16,
-                loadBarElementName: "main_loadBar"
+                loadBarElementName: "main_loadBar",
+                loadListenerWaitTime: 1000,
+                mainElementName: "main",
+                loadContainerElementName: "loading",
+                loadElementClass: "loader",
+                loadMessagesElementName: "loadMessages",
+                requiredProperties: ["moduleName","debugMode","realState","methods"]
             }
         },
         map: {
@@ -441,7 +461,7 @@ const globals = {
                     moduleReference.state = "checkMapLoaded";
                 },
                 checkMapLoaded: function(moduleReference) {
-                    SRH.requestInterval(1000, "/api/map/ready", data => {
+                    new SRH.requestInterval(1000, "/api/map/ready", data => {
                         let layerData = data;
                         if (moduleReference.debugMode) {
                             console.log("Loaded map; rendering");
@@ -482,7 +502,13 @@ const globals = {
                         document.getElementById(moduleReference.properties.mapElementName).style.height = window.innerHeight+"px";
                     })
 
-                    containerElement.parentNode.removeChild(containerElement); //remove loading
+                    try {
+                        containerElement.parentNode.removeChild(containerElement); //remove loading elem
+                    } catch(e) { //swallow error
+                        if (moduleReference.debugMode) {
+                            console.warn("couldn't delete containerElement; was it already deleted?");
+                        }
+                    }
                 }
             },
 
@@ -495,16 +521,317 @@ const globals = {
                 mapCanvasLayers: []
             }
         },
-        musicLocal: {
-            local: false,
-            init: function() {
+        music: {
+            moduleName: "soundManager",
+            debugMode: true,
 
-            }
-        },
-        musicServer: {
-            local: false,
-            init: function() {
+            //STATE MACHINE LOGIC
+            realState: "uninit",
+            set state(state) { //use getter/setter logic
+                if (this.debugMode) {
+                    console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
+                }
 
+                if (!this.methods[state]) {
+                    console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
+                } else {
+                    let prevState = this.realState;
+                    try {
+                        this.realState = state;
+                        this.methods[state](this); //run method exposed in methods
+                    } catch(e) {
+                        this.realState = prevState;
+                        console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
+                    }
+                }
+            },
+            get state() {
+                return this.realState; //return state
+            },
+
+            //METHOD LOGIC
+            methods: {
+                init: function(mR) {
+                    new SRH.requestInterval(1000, "api/SC/clientReady", data => {
+                        document.getElementById(mR.properties.trackTitleElement).innerHTML = "Server is loading tracks.";
+
+                        if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) { //is the data valid?
+                            mR.properties.likedTracks = data.likedTracks;
+                            mR.properties.trackList = data.trackList;
+
+                            var sd = data.settingsData;
+                            mR.properties.currentUser = sd.currentUser;
+                            mR.properties.noArtworkUrl = sd.noArtworkUrl;
+                            mR.properties.volStep = sd.volStep;
+                            mR.properties.currentVolume = sd.currentVolume;
+                            mR.properties.playMusicOnServer = sd.playMusicOnServer;
+                            mR.properties.nextTrackShuffle = sd.nextTrackShuffle;
+                            mR.properties.soundcloudStatus = sd.soundcloudStatus;
+                            mR.properties.nextTrackLoop = sd.nextTrackLoop;
+                            mR.properties.tracksFromCache = sd.tracksFromCache;
+
+                            if (mR.properties.nextTrackShuffle) { //check if trackShuffle is already set from server
+                                document.getElementById(mR.properties.shuffleButtonElement).className+=' activeLoopShuffle';
+                            }
+                            
+                            if (mR.properties.nextTrackLoop) { //check if trackLoop is already set from server
+                                document.getElementById(mR.properties.loopButtonElement).className+=' activeLoopShuffle';
+                            }
+                            console.log("server->client trackLoop:"+mR.properties.nextTrackLoop+",trackShuffle: "+mR.properties.nextTrackShuffle);
+                            
+                            console.log("Initializing soundcloud");
+                            SC.initialize({
+                                client_id: data.clientID
+                            });
+
+
+                            document.getElementById(mR.properties.trackTitleElement).innerHTML = "Select a track"; //set tracktitle to simple message
+                            mR.methods.updateTrackList(mR.properties.likedTracks); //update the trackList
+                        } else {
+                            console.error("Server said that it had tracks but there are no tracks provided (track response may be malformed)");
+                        }
+                    }, wait => {
+                        console.log("Waiting for server to be ready for soundcloud...",wait);
+                        document.getElementById("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent;
+                    }, error => {
+                        console.error("Soundcloud Server Error: "+error);
+                        bootbox.alert("Soundcloud Server Error: "+error);
+                    }, -1);
+
+                    mR.state = "trackDataUpdate";
+                },
+                updateTrackList: function(tracklist) {
+                    var tklElem = document.getElementById("music_trackList");
+                    tklElem.innerHTML = "";
+                    for (var i=0; i<tracklist.length; i++) {
+                        var p = document.createElement("p");
+                        var txt = document.createTextNode(String(i+1)+"): "+tracklist[i].title);
+                        p.setAttribute("onclick","globals.modules.music.methods.playTrackRequested("+JSON.stringify(tracklist[i])+");");
+                        p.setAttribute("tabindex","0");
+                        p.setAttribute("class","songTitle")
+                        p.appendChild(txt);
+                        tklElem.appendChild(p);
+                    }
+                    //globals.music.soundManager.startTrackManager(); //start the manager
+                },
+                trackDataUpdate: function(mR) {
+                    SRH.request("api/SC/clientUpdate").then(data => {
+                        //console.log(data.playing)
+                        mR.properties.playingServer = data.playing; //upd playing since it's not in the settings part
+
+                        if (JSON.stringify(mR.properties.oldSettingsData) != JSON.stringify(data.settingsData)) {
+                            console.log("DataChange");
+                            mR.properties.currentUser = data.settingsData.currentUser;
+                            mR.properties.currentVolume = data.settingsData.currentVolume;
+
+                            if (mR.properties.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) { //check if the track data has changed and if so update the class
+                                mR.properties.nextTrackShuffle = data.settingsData.nextTrackShuffle;
+                                if (mR.properties.nextTrackShuffle) {
+                                    document.getElementById(mR.properties.shuffleButtonElement).className+=' activeLoopShuffle';
+                                } else {
+                                    document.getElementById(mR.properties.shuffleButtonElement).className = "controlButton";
+                                }
+                            }
+                            if (mR.properties.oldSettingsData.nextTrackLoop != data.settingsData.nextTrackLoop) {
+                                mR.properties.nextTrackLoop = data.settingsData.nextTrackLoop;
+                                if (mR.properties.nextTrackLoop) {
+                                    document.getElementById(mR.properties.loopButtonElement).className+=' activeLoopShuffle';
+                                } else {
+                                    document.getElementById(mR.properties.loopButtonElement).className = "controlButton";
+                                }
+                            }
+                            mR.properties.oldSettingsData = data.settingsData; //set old settings data
+                        }
+                        
+                        if (JSON.stringify(mR.properties.currentPlayingTrack) != JSON.stringify(data.currentPlayingTrack)) {
+                            console.log("TrackChange");
+                            var nTrack = data.currentPlayingTrack;
+                            if (nTrack) {
+                                mR.properties.currentPlayingTrack = nTrack;
+                                document.getElementById("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? mR.properties.noArtworkUrl : nTrack.artwork.artworkUrl;
+                                document.getElementById("music_waveformArt").src = nTrack.artwork.waveformUrl;
+                                document.getElementById("music_trackTitle").innerHTML = nTrack.title;
+                                document.getElementById("music_trackAuthor").innerHTML = "By: "+nTrack.author;
+                            }
+                        }
+                    }).catch( err => {
+                        console.error("Error getting sound update: "+err);
+                    });
+
+                    mR.state = "waitTrackDataUpdate";
+                },
+                waitTrackDataUpdate: function(mR) {
+                    clearInterval(mR.properties.trackDataUpdateTimeout);
+                    mR.properties.trackDataUpdateTimeout = setTimeout( () => {
+                        mR.state = "trackDataUpdate";
+                    }, 2000)
+                },
+
+
+                //TRACK-USER INTERACTION FUNCTIONS
+                togglePlayerOutput: function() {
+                    let mR = globals.modules.music;
+                    if (mR.properties.soundcloudStatus.ready) {
+                        mR.properties.playMusicOnServer = !mR.properties.playMusicOnServer;
+                        SRH.request("/api/sc/event/togglePlayerOutput");
+                    }
+                },
+                changeSoundcloudUser: function() {
+                    let mR = globals.modules.music;
+                    bootbox.prompt("New soundcloud user? (Enter nothing if you don't want to change users)",function(user) {
+                        if (user != "" && typeof user != "undefined" && user != null) {
+                            console.log("Changing soundcloud user to: "+user);
+                            SRH.request("/api/sc/changeUser/"+user);
+                            mR.state = "init"; //reinit
+                        }
+                    });
+                },
+                playPauseTrack: function() {
+                    SRH.request("/api/sc/event/playPause");
+                },
+                volUp: function() {
+                    SRH.request("/api/sc/event/volumeUp");
+                },
+                volDown: function() {
+                    SRH.request("/api/sc/event/volumeDown");
+                },
+                backTrack: function() {
+                    SRH.request("/api/sc/event/trackBackward");
+                },
+                forwardTrack: function() { //can go forward one or shuffle to get to next track
+                    SRH.request("/api/sc/event/trackForward");
+                },
+                changeLoopState: function() {
+                    let mR = globals.modules.music;
+                    mR.properties.nextTrackLoop = !mR.properties.nextTrackLoop;
+                    SRH.request("/api/sc/event/changeTrackLoopState");
+                },
+                changeShuffleState: function() {
+                    let mR = globals.modules.music;
+                    mR.properties.nextTrackShuffle = !mR.properties.nextTrackShuffle;
+                    SRH.request("/api/sc/event/changeTrackShuffleState");
+                },
+                playTrackRequested: function(track) {
+                    let mR = globals.modules.music;
+                    
+                    SRH.request("/api/sc/event/clientTrackSelected?data="+track.id)
+                    .then(data => {
+                        mR.properties.currentPlayingTrack = track;
+                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
+                        document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
+                        document.getElementById("music_trackTitle").innerHTML = track.title;
+                        document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                    })
+                    .catch(error => {
+                        console.error("Couldn't play track: "+error);
+                        document.getElementById("music_trackTitle").innerHTML = "";
+                        document.getElementById("music_trackAuthor").innerHTML = "Failed to play track because: "+((error.error)?(error.message):error);
+                    })
+
+                    /*for local lel
+                    try{
+                        globals.music.soundManager.playerObject.pause();
+                    } catch(e){}
+                    */
+                },
+
+
+
+                playTrackLocal: function(track) {
+                    console.log("playing id: "+track.id); 
+                    SC.stream('/tracks/' + track.id).then(function(player) {
+                        try {
+                            globals.music.soundManager.playerObject.pause(); //pause previous
+                        } catch(e){} //aaand swallow the error ;)
+                        globals.music.soundManager.playerObject = player;
+                        globals.music.soundManager.playerObject.play();
+                        globals.music.soundManager.playingTrack = true;
+                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
+                        document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
+                        document.getElementById("music_trackTitle").innerHTML = track.title;
+                        document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                        globals.music.soundManager.currentPlayingTrack = track;
+                        if (globals.music.firstPlay) {
+                            globals.music.soundManager.currentVolume = globals.music.defaultVolume;
+                            globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
+                            globals.music.firstPlay = false;
+                        }
+                    }).catch(function(){
+                        console.error("Error playing track with id ("+track.id+"): ",arguments);
+                        document.getElementById("music_trackArt").src = "/images/errorLoadingTrack.png";
+                    });
+                },
+                setPlayerVolume: function(vol) {
+                    if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
+                        globals.music.soundManager.currentVolume = globals.music.defaultVolume;
+                    }
+                    if (vol < 0) {
+                        vol = 0;
+                    }
+                    if (vol > 100) {
+                        vol = 100;
+                    }
+                    if (vol > 1) {
+                        globals.music.soundManager.playerObject.setVolume(vol/100); //assume it is 1-100 scale
+                    } else {
+                        globals.music.soundManager.playerObject.setVolume(vol); //assume it is 0-1 scale
+                    }
+                },
+                getPercent: function() {
+                    return Math.round((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration())*100);
+                },
+                startTrackManager: function() {
+                    clearInterval(globals.music.trackUpdateInterval);
+                    globals.music.trackUpdateInterval = setInterval(function() {
+                        var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 0.999);
+                        if (isDone) {
+                            if (globals.music.nextTrackLoop) { //loop?
+                                globals.music.soundManager.playerObject.seek(0); //loop the track
+                            } else {
+                                globals.music.soundManager.forwardTrack(); //nah just forward
+                            }
+                        }
+                    },200);
+                },
+                
+                localTrackManager: function() {
+                    clearInterval(globals.music.trackUpdateInterval);
+                    globals.music.trackUpdateInterval = setInterval(function() {
+                        var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 0.999);
+                        if (isDone) {
+                            if (globals.music.nextTrackLoop) { //loop?
+                                globals.music.soundManager.playerObject.seek(0); //loop the track
+                            } else {
+                                globals.music.soundManager.forwardTrack(); //nah just forward
+                            }
+                        }
+                    },200);
+                }
+                
+            },
+
+            properties: {
+                shuffleButtonElement: "music_shuffleButton",
+                loopButtonElement: "music_loopButton",
+                trackTitleElement: "music_trackTitle",
+                trackDataUpdateTimeout: 0,
+                oldSettingsData: {},
+
+
+                playingTrack: false,
+                currentVolume: 50,
+                currentPlayingTrack: {},
+                playerObject: { //faaaake so that no errors occur
+                    play: function(){},
+                    pause: function(){},
+                    setVolume: function(){},
+                    currentTime: function(){
+                        return 0;
+                    },
+                    getDuration: function(){
+                        return 1;
+                    }
+                }
             }
         },
         runtimeEvents: {
@@ -537,8 +864,70 @@ const globals = {
 
             //METHOD LOGIC
             methods: {
+                init: function(moduleReference) {
+                    moduleReference.state = "getRuntimeInformation"; //perform initial fetch
+                },
+                getRuntimeInformation: function(moduleReference) {
+                    if (!moduleReference) { //bck
+                        moduleReference = globals.modules.runtimeEvents;
+                    }
+
+                    SRH.request("api/runtime")
+                    .then(data => {
+                        if (moduleReference.debugMode) {
+                            console.log("RuntimeInfo: ",data);
+                        }
+
+                        globals.constants.readySteps.gotRuntimeInformation = true;
+                        var keys = Object.keys(data); //only override keys from jsondat
+                        for (var i=0; i<keys.length; i++) {
+                            globals.constants.runtimeInformation[keys[i]] = data[keys[i]];
+                        }
+
+                        if (typeof globals.constants.runtimeInformation.heartbeatMS == "undefined") {
+                            console.warn("HeartbeatMS not defined in globals; not setting timeout");
+                        } else {
+                            if (moduleReference.debugMode) {
+                                console.log("[HB] set heartbeat timeout: "+globals.constants.runtimeInformation.heartbeatMS);
+                            }
+
+                            moduleReference.properties.heartbeatMS = Number(globals.constants.runtimeInformation.heartbeatMS)
+
+                        }
+                        if (typeof globals.constants.runtimeInformation.outsideTemp == "undefined") {
+                            console.warn("OutsideTemp not defined in globals; not setting dashboard extTemp");
+                        } else {
+                            document.getElementById(moduleReference.properties.externalTempElement).innerHTML = "EXT: "+globals.constants.runtimeInformation.outsideTemp+"°F";
+                        }
+                        if (typeof globals.constants.runtimeInformation.insideTemp == "undefined") {
+                            console.warn("InsideTemp not defined in globals; not setting dashboard intTemp");
+                        } else {
+                            document.getElementById(moduleReference.properties.internalTempElement).innerHTML = "INT: "+globals.constants.runtimeInformation.insideTemp+"°F";
+                        }
+
+                        moduleReference.state = "wait"; //set new state to wait
+                    }).catch( err => {
+                        console.error("Error fetching runtime information: "+err);
+                        moduleReference.state = "wait";
+                    })
+                },
+                wait: function(moduleReference) {
+                    clearTimeout(moduleReference.properties.waitTimeout); //clear previous timeout
+                    moduleReference.properties.waitTimeout = setTimeout( () => {
+                        if (moduleReference.debugMode) {
+                            console.log("[HB] Heartbeat request runtimeinfo");
+                        }
+                        moduleReference.state = "getRuntimeInformation"; //set state
+                    },moduleReference.properties.heartbeatMS);
+                },
             },
-            properties: {}
+            properties: {
+                heartbeatMS: 60000,
+                waitTimeout: 0,
+                externalTempElement: "extTemp",
+                internalTempElement: "intTemp",
+
+            }
         },
         popupDisplay: {
             moduleName: "popupDisplay",
@@ -570,8 +959,134 @@ const globals = {
 
             //METHOD LOGIC
             methods: {
+                init: function(moduleReference) {}, //no init needed
+                displayMain: function(moduleReference) {
+                    if (!moduleReference) { //bck
+                        moduleReference = globals.modules.popupDisplay;
+                    }
+                    try {
+                        moduleReference.properties.dialogObject.modal('hide');
+                    } catch(e){
+                        if (moduleReference.debugMode) {
+                            console.warn("failed to hide A modal, could still be onscreen");
+                        }
+                    }
+
+                    moduleReference.properties.dialogObject = bootbox.dialog({
+                        message: `
+                            <hr class="asep">
+                            <img class="asep" src="/images/a.png">
+                            <center>
+                                <h2>Information</h2>
+                                <p>Frontend Version: `+globals.constants.runtimeInformation.frontendVersion+`
+                                <br>Backend Version: `+globals.constants.runtimeInformation.backendVersion+`
+                                <br>Node.JS Server Connected: `+globals.constants.runtimeInformation.nodeConnected+`
+                                <br>Python Backend Connected: `+globals.constants.runtimeInformation.pythonConnected+`
+                                <br>Arduino Connected: `+globals.constants.runtimeInformation.arduinoConnected+`
+                                <br>Heartbeat Timeout (s): `+(globals.constants.runtimeInformation.heartbeatMS/1000)+`
+                                </p>
+                                <button onclick="globals.modules.runtimeEvents.methods.getRuntimeInformation(); setTimeout( () => {globals.modules.popupDisplay.methods.displayMain()},300);">Update Runtime Information</button>
+                                <br>
+                                <h3>Car Stats</h3>
+                            </center>
+                            <img src="/images/car.png" style="float: left; height: 120px; width: 440px; margin-left: 2%;"></img>
+                            <div style="float: left; margin-left: 1%;">
+                                <p style="font-size: 18px">
+                                    Car Odometer: `+globals.constants.runtimeInformation.odometer+`mi
+                                    <br>
+                                    Server Status: `+globals.constants.runtimeInformation.status+`
+                                    <br>
+                                    Server Uptime: `+globals.constants.runtimeInformation.uptime+`
+                                    <br>
+                                    Users Connected to Server: `+globals.constants.runtimeInformation.users+`
+                                    <br>
+                                </p>
+                            </div>
+                            <br>
+                            <br>
+                            <br>
+                            <br>
+                            <br>
+                            <br>
+                            <center>
+                                <h4>Idea, Design, UI, and Code © Aaron Becker, 2018.</h4>
+                                <h4>A big thanks to Andrew Cummings for the name "CarLOS"</h4>
+                                <h4>Credit to Google, Node.js, OpenCV, Bootstrap, and Bootbox.js Developers for software used in this program</h4>
+                            </center>
+                        `,
+                        backdrop: false,
+                        closeButton: false,
+                        onEscape: true,
+                        size: "large",
+                        className: "center",
+                        buttons: {
+                            cancel: {
+                                label: "Close Window",
+                                className: "btncenter",
+                                callback: function() {
+                                    moduleReference.properties.dialogObject.modal('hide');
+                                }
+                            },
+                            advancedSettings: {
+                                label: "Advanced",
+                                className: "btncenter",
+                                callback: function() {
+                                    moduleReference.properties.dialogObject.modal('hide');
+                                    setTimeout(() => {
+                                        moduleReference.state = "displayAdvanced";
+                                    }, 300);
+                                }
+                            }
+                        }
+                    })
+                },
+                displayAdvanced: function(moduleReference) {
+                    if (!moduleReference) { //bck
+                        moduleReference = globals.modules.popupDisplay;
+                    }
+
+                    moduleReference.properties.dialogObject = bootbox.dialog({
+                        message: `
+                            <hr class="asep">
+                            <img class="asep" src="/images/a.png">
+                            <center>
+                                <h2>Advanced Settings</h2>
+                                <button onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
+                                <p>Will toggle output of soundcloud playing to be server audio port or client device. Warning: Needs internet if playing on client device. More stable+tested more on server side.</p>
+                                <br>
+                                <p>Currently playing on: `+((globals.modules.music.properties.playMusicOnServer) ? "server" : "client")+`
+                            </center>
+                        `,
+                        backdrop: false,
+                        closeButton: false,
+                        onEscape: true,
+                        size: "large",
+                        className: "center",
+                        buttons: {
+                            cancel: {
+                                label: "Close Window",
+                                className: "btncenter",
+                                callback: function() {
+                                    moduleReference.properties.dialogObject.modal('hide');
+                                }
+                            },
+                            basicSettings: {
+                                label: "Back",
+                                className: "btncenter",
+                                callback: function() {
+                                    moduleReference.properties.dialogObject.modal('hide');
+                                    setTimeout(() => {
+                                        moduleReference.state = "displayMain";
+                                    },300);
+                                }
+                            }
+                        }
+                    });
+                }
             },
-            properties: {}
+            properties: {
+                dialogObject: null
+            }
         },
         menu: {
             moduleName: "menuManager",
@@ -579,6 +1094,7 @@ const globals = {
 
             //STATE MACHINE LOGIC
             realState: "uninit",
+            methodArguments: undefined,
             set state(state) { //use getter/setter logic
                 if (this.debugMode) {
                     console.log("changing state in module '"+this.moduleName+"' to '"+state+"'");
@@ -588,9 +1104,17 @@ const globals = {
                     console.error("Cannot change state in module name "+this.moduleName+" to new state "+state+" because that method does not exist");
                 } else {
                     let prevState = this.realState;
+
                     try {
                         this.realState = state;
-                        this.methods[state](this); //run method exposed in methods
+                        if (this.methodArguments) {
+                            this.methods[state](this.methodArguments,this);
+                            this.methodArguments = undefined;
+                        } else {
+                            this.methods[state](this);
+                        }
+                        
+                        
                     } catch(e) {
                         this.realState = prevState;
                         console.error("Error changing state in module name "+this.moduleName+" to new state "+state+" because '"+e+"'");
@@ -600,11 +1124,66 @@ const globals = {
             get state() {
                 return this.realState; //return state
             },
+            set arguments(args) {
+                this.methodArguments = args;
+            },
+            get arguments() {
+                return this.methodArguments;
+            },
 
             //METHOD LOGIC
             methods: {
+                init: function(moduleReference) {
+                    moduleReference.arguments = globals.constants.defaultApp; //set arguments for app
+                    moduleReference.state = "changeMenu";
+                },
+                changeMenu: function(newState,moduleReference) {
+                    if (!moduleReference) { //backup moduleRef
+                        moduleReference = globals.modules.menu;
+                    }
+
+                    
+                    var menuStates = Object.keys(moduleReference.properties.states);
+                    if (menuStates.indexOf(newState) > -1) {
+                        for (var i=0; i<menuStates.length; i++) {
+                            moduleReference.properties.states[menuStates[i]] = false; //set key to false
+                            var uppercaseKey = (menuStates[i].substring(0,1).toUpperCase()+menuStates[i].substring(1,menuStates[i].length));
+                            //console.log("resetting "+uppercaseKey+" elem and button");
+                            document.getElementById(moduleReference.properties.menuButtonElement+uppercaseKey).className = "circle"; //reset button className
+                            document.getElementById(moduleReference.properties.mainAppElement+uppercaseKey).style.display = "none"; //reset element display
+                        }
+                        moduleReference.properties.states[newState] = true;
+                        var uppercaseState = (newState.substring(0,1).toUpperCase()+newState.substring(1,newState.length));
+                        document.getElementById(moduleReference.properties.menuButtonElement+uppercaseState).className += " selected";
+                        document.getElementById(moduleReference.properties.mainAppElement+uppercaseState).style.display = "block";
+
+
+                        if (moduleReference.properties.states.music) { //enable music menu
+                            document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "block";
+                        } else if (!globals.constants.runtimeInformation.dynamicMusicMenu) { //no dynamic music menu so hide it
+                            document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "none";
+                        } else {
+                            if (!globals.modules.music.properties.playingTrack && !globals.modules.music.properties.playingServer) {
+                                document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "none";
+                            }
+                        }
+                        console.log("Menu newState: '"+newState+"'");
+                    } else {
+                        console.error("NewState for menu switch is invalid");
+                    }
+                }
             },
-            properties: {}
+            properties: {
+                musicBottomMenuElement: "music_bottomMenu",
+                menuButtonElement: "menuButton",
+                mainAppElement: "main",
+                states: {
+                    music: false,
+                    browser: false,
+                    stats: false,
+                    map: false
+                }
+            }
         },
         speechManager: {
             moduleName: "speechManager",
@@ -641,7 +1220,7 @@ const globals = {
         },
         UIIndicators: {
             moduleName: "UIIndicators",
-            debugMode: true,
+            debugMode: false,
 
             //STATE MACHINE LOGIC
             realState: "uninit",
@@ -674,14 +1253,268 @@ const globals = {
                     moduleReference.state = "initHUD";
                 },
                 initStats: function(moduleReference) {
+                    if (!Chart || !RadialGauge || !LinearGauge) {
+                        console.error("Is Chart.js and Gauges.js installed? Missing some libs");
+                        return;
+                    }
 
+                    var statsElem = document.getElementById(moduleReference.properties.statsChartElement);
+                    var scatterChart = new Chart(statsElem, {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        type: 'line',
+                        data: {
+                            datasets: [{
+                                label: 'Average PWR',
+                                data: [
+                                    {
+                                        x: 0,
+                                        y: 0
+                                    },
+                                    {
+                                        x: 10,
+                                        y: 10
+                                    }
+                                ],
+                                backgroundColor : "rgba(0,220,0,0.22)"
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                xAxes: [{
+                                    type: 'linear',
+                                    position: 'bottom',
+                                    labelString: 'X Axis'
+                                }],
+                                yAxes: [{
+                                    type: 'linear',
+                                    labelString: 'Y Axis'
+                                }]
+                            }
+                        }
+                    });
+
+                    var speedGauge = new RadialGauge({
+                        width: 300,
+                        height: 300,
+                        renderTo: document.getElementById(moduleReference.properties.statsSpeedGaugeElement)
+                    }).draw();
+                    var engineRPMGauge = new RadialGauge({
+                        width: 300,
+                        height: 300,
+                        renderTo: document.getElementById(moduleReference.properties.statsRPMGaugeElement)
+                    }).draw();
+                    var temperatureGauge = new RadialGauge({
+                        renderTo: document.getElementById(moduleReference.properties.statsTempGaugeElement),
+                        width: 300,
+                        height: 300,
+                        units: "°F",
+                        title: "Temperature",
+                        minValue: -50,
+                        maxValue: 50,
+                        majorTicks: [
+                            -50,
+                            -40,
+                            -30,
+                            -20,
+                            -10,
+                            0,
+                            10,
+                            20,
+                            30,
+                            40,
+                            50
+                        ],
+                        minorTicks: 2,
+                        strokeTicks: true,
+                        highlights: [
+                            {
+                                "from": -50,
+                                "to": 0,
+                                "color": "rgba(0,0, 255, .3)"
+                            },
+                            {
+                                "from": 0,
+                                "to": 50,
+                                "color": "rgba(255, 0, 0, .3)"
+                            }
+                        ],
+                        ticksAngle: 225,
+                        startAngle: 67.5,
+                        colorMajorTicks: "#ddd",
+                        colorMinorTicks: "#ddd",
+                        colorTitle: "#eee",
+                        colorUnits: "#ccc",
+                        colorNumbers: "#eee",
+                        colorPlate: "#222",
+                        borderShadowWidth: 0,
+                        borders: true,
+                        needleType: "arrow",
+                        needleWidth: 2,
+                        needleCircleSize: 7,
+                        needleCircleOuter: true,
+                        needleCircleInner: false,
+                        animationDuration: 1500,
+                        animationRule: "linear",
+                        colorBorderOuter: "#333",
+                        colorBorderOuterEnd: "#111",
+                        colorBorderMiddle: "#222",
+                        colorBorderMiddleEnd: "#111",
+                        colorBorderInner: "#111",
+                        colorBorderInnerEnd: "#333",
+                        colorNeedleShadowDown: "#333",
+                        colorNeedleCircleOuter: "#333",
+                        colorNeedleCircleOuterEnd: "#111",
+                        colorNeedleCircleInner: "#111",
+                        colorNeedleCircleInnerEnd: "#222",
+                        valueBoxBorderRadius: 0,
+                        colorValueBoxRect: "#222",
+                        colorValueBoxRectEnd: "#333"
+                    }).draw();
+                },
+                updateSpeed: function(moduleReference) {
+                    var speedIndicator = document.getElementById(moduleReference.properties.speedIndicatorElement);
+                    speedIndicator.innerHTML = moduleReference.properties.connectionSpeed.mbps+" MB/s";
+
+                    moduleReference.state = "waitUpdateSpeed";
+                },
+                updateTime: function(moduleReference) {
+                    var timeIndicator = document.getElementById(moduleReference.properties.timeIndicatorElement);
+                    var d = new Date();
+                    var o = {
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true
+                    };
+                    var ts = d.toLocaleString('en-US', o);
+                    timeIndicator.innerHTML = ts;
+
+                    moduleReference.state = "waitUpdateTime";
+                },
+                getWifiSpeed: function(moduleReference) {
+                    if (!moduleReference) { //bck
+                        moduleReference = globals.modules.UIIndicators;
+                    }
+
+                    return new Promise( (resolve, reject) => {
+                        var imageAddr = "https://aaronbecker.tech/5mb.jpg";
+                        var startTime, endTime;
+                        var downloadSize = 5245329;
+                        var download = new Image();
+                        console.log("started download")
+                        download.onload = () => {
+                            endTime = (new Date()).getTime();
+                            var duration = (endTime - startTime) / 1000; //Math.round()
+                            var bitsLoaded = downloadSize * 8;
+                            var speedBps = (bitsLoaded / duration).toFixed(2);
+                            var speedKbps = (speedBps / 1024).toFixed(2);
+                            var speedMbps = (speedKbps / 1024).toFixed(2);
+                            moduleReference.properties.connectionSpeed.bps = speedBps;
+                            moduleReference.properties.connectionSpeed.kbps = speedKbps;
+                            moduleReference.properties.connectionSpeed.mbps = speedMbps;
+                            resolve(speedMbps);
+                        }
+                        download.onerror = () => {
+                            console.warn("Error getting image to determine wifi speed; are you connected to a network?");
+                            moduleReference.properties.connectionSpeed.bps = 0;
+                            moduleReference.properties.connectionSpeed.kbps = 0;
+                            moduleReference.properties.connectionSpeed.mbps = 0;
+                            reject();
+                        }
+                        startTime = (new Date()).getTime();
+                        var cacheBuster = "?nnn=" + startTime;
+                        download.src = imageAddr + cacheBuster;
+                    });
+                },
+                updateWifi: function(moduleReference) {
+                    var wifiIndicator = document.getElementById(moduleReference.properties.wifiIndicatorElement);
+                    var position = 0;
+                    var direction = 1;
+                    var seek = setInterval(function(){
+                        wifiIndicator.src = "/images/wifiL"+position+".png";
+                        position+= direction;
+                        if (position > 3 || position < 1) {
+                            direction*=-1;
+                        }
+                    },500);
+                    moduleReference.methods.getWifiSpeed(moduleReference).then(speed => {
+                        clearInterval(seek);
+                        if (speed > 10) {
+                            wifiIndicator.src = "/images/wifi5.png";
+                        } else if (speed > 5) {
+                            wifiIndicator.src = "/images/wifi4.png";
+                        } else if (speed > 2) {
+                            wifiIndicator.src = "/images/wifi3.png";
+                        } else if (speed > 1) {
+                            wifiIndicator.src = "/images/wifi2.png";
+                        } else {
+                            wifiIndicator.src = "/images/wifi1.png";
+                        }
+
+                        moduleReference.state = "waitUpdateWifi";
+                    })
+                    .catch(err => {
+                        clearInterval(seek);
+                        wifiIndicator.src = "/images/wifiE.png";
+
+                        moduleReference.state = "waitUpdateWifi";
+                    })
                 },
                 initHUD: function(moduleReference) {
-                    globals.modules.runtimeEvents.registerEvent
+                    //SPEED INDICATOR
+                    moduleReference.state = "updateSpeed";
+                    
+                    //TIME
+                    moduleReference.state = "updateTime";
+
+                    //WIFI
+                    moduleReference.state = "updateWifi";
+    
+    
+                },
+                waitUpdateWifi: function(mR) {
+                    clearTimeout(mR.properties.wifiUpdateTimeout); //just in case
+                    mR.properties.wifiUpdateTimeout = setTimeout( () => {
+                        mR.state = "updateWifi";
+                    },mR.properties.wifiUpdateTime);
+                },
+                waitUpdateTime: function(mR) {
+                    clearTimeout(mR.properties.timeUpdateTimeout); //just in case
+                    mR.properties.timeUpdateTimeout = setTimeout( () => {
+                        mR.state = "updateTime";
+                    },mR.properties.timeIndicatorUpdateTime);
+                },
+                waitUpdateSpeed: function(mR) {
+                    clearTimeout(mR.properties.speedUpdateTimeout); //just in case
+                    mR.properties.speedUpdateTimeout = setTimeout( () => {
+                        mR.state = "updateSpeed";
+                    },mR.properties.speedIndicatorUpdateTime);
                 }
             },
-            properties: {}
-        }
+            properties: {
+                connectionSpeed: {
+                    bps: 0,
+                    kbps: 0,
+                    mbps: 0
+                },
+                wifiUpdateTime: 320000, //update every 20 mins (1200000)
+                timeIndicatorUpdateTime: 1000,
+                speedIndicatorUpdateTime: 1000,
+                speedIndicatorElement: "wifispeed",
+                wifiIndicatorElement: "wifilevel",
+                timeIndicatorElement: "time",
+
+                speedUpdateTimeout: 0, //timeout holders
+                wifiUpdateTimeout: 0,
+                timeUpdateTimeout: 0,
+
+                statsChartElement: "stats_powerChart",
+                statsSpeedGaugeElement: "stats_speedGauge",
+                statsRPMGaugeElement: "stats_rpmGauge",
+                statsTempGaugeElement: "stats_temperatureGauge"
+            }
+        },
+
     },
     masterInit: function() {
         globals.modules.master.state = "init"; //go 4 it

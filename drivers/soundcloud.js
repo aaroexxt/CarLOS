@@ -244,6 +244,7 @@ var SCUtils = {
                     SCUtils.failedToLoadTracks(e, scSettings).then( () => {
                         return resolve();
                     }).catch( err => {
+                        lsdfjghaosdljkfhaksjldfhij
                         return reject(err);
                     }); //failed to load the tracks
                 });
@@ -392,127 +393,58 @@ var SCUtils = {
                 var likedTracks = scSettings.likedTracks;
             }
             if (typeof likedTracks !== "undefined" && likedTracks.length > 0) {
+                SCUtils.track401Offset = 0; //set 401 offset
 
                 var tracksToLoad = likedTracks.length;
                 var tracksLoaded = 0;
-                console.log("Have to save: "+tracksToLoad+" tracks");
+                console.log("Have to save: "+tracksToLoad+" tracks+artwork+waveforms");
 
                 //function does not execute yet, check below
                 function loadTrackIndex(trackIndex) {
                     scSettings.tracksToLoad = tracksToLoad;
                     scSettings.tracksLoaded = tracksLoaded;
-                    if (!likedTracks[trackIndex].id || !likedTracks[trackIndex].title) {
-                        return reject("TrackObject is invalid")
-                    }
-                    var trackID = likedTracks[trackIndex].id;
-                    //console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
 
-                    var unfinTrackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+"-UNFINISHED.mp3"));
-                    var trackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+".mp3"));
-                    var pTitle = (likedTracks[trackIndex].title.length > 20) ? likedTracks[trackIndex].title.substring(0,20) : likedTracks[trackIndex].title;
-                    var lpTitle = (likedTracks[trackIndex].title.length > 35) ? likedTracks[trackIndex].title.substring(0,35) : likedTracks[trackIndex].title;
-                    //console.log("Checking if track exists at path "+trackPath);
-                    fs.readFile(trackPath, (err, data) => {
-                        if (err) {
-                            //console.log("Track does not exist, downloading at path "+unfinTrackPath);
-                            fetch("http://api.soundcloud.com/tracks/"+String(trackID)+"/stream?client_id="+scSettings.clientID, {timeout: scSettings.requestTimeout}).then(function(response){
-                                //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
-                                remoteFileSize(response.url, function(err, size) { //get size of file
-                                    if (err) {
-                                        if (err.toString().indexOf("401") > 0) {
-                                            console.warn("A 401 error was recieved on attempt to get size; denied. Can't fetch track");
-                                            tracksLoaded++;
-                                            SCUtils.track401Offset++;
-                                            loadTrackIndex(tracksLoaded);
-                                        } else {
-                                            return reject("Error getting SC file size: "+err);
-                                        }
-                                    } else {
-                                        //console.log("Got track URL and size. SIZE: "+size);
-                                        return new Promise((sresolve, sreject) => {
-                                            //console.log("writing to path: "+unfinTrackPath);
-                                            const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
-                                            var pBar = new utils.progressBar({
-                                                startPercent: 0,
-                                                task: "Downloading '"+pTitle+"'",
-                                                showETA: true
-                                            });
-                                            var str = progress({
-                                                time: 500,
-                                                length: size
-                                            }, progress => {
-                                                //console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
-                                                pBar.update(progress.percentage/100,utils.formatHHMMSS(progress.eta));
-                                            });
-                                            response.body.pipe(str).pipe(dest);
-                                            response.body.on('error', err => {
-                                                return sreject(err);
-                                            });
-                                            dest.on('finish', () => {
-                                                //console.log("Renaming to finished track")
-                                                fs.rename(unfinTrackPath, trackPath, err => {
-                                                    if (err) {
-                                                        return sreject("Error renaming track");
-                                                    } else {
-                                                        return sresolve();
-                                                    }
-                                                });
-                                            });
-                                            dest.on('error', err => {
-                                                if (err.toString().indexOf("401") > 0) {
-                                                    console.warn("401 forbidden gotten; can't download");
-                                                    tracksLoaded++;
-                                                    loadTrackIndex(tracksLoaded);
-                                                } else {
-                                                    return sreject(err);
-                                                }
-                                            });
-                                        }).then( () => {
-                                            tracksLoaded++;
-                                            console.log("Track '"+lpTitle+"' written successfully, overall prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
-                                            if (tracksLoaded == tracksToLoad) {
-                                                console.log("Done loading tracks, resolving");
-                                                return resolve();
-                                            } else {
-                                                loadTrackIndex(tracksLoaded);
-                                            }
-                                        }).catch( err => {
-                                            console.error("Error writing SC track: "+err);
-                                        })
-                                    }
-                                })
-                            }).catch(e => {
-                                return reject("Error fetching track stream URL");
-                            });
+                    console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
+
+
+                    SCUtils.saveTrack(likedTracks[trackIndex],scSettings) //using wayyy more efficient method that takes advantage of the builtin saveTrack function
+                    .then( () => {
+                        tracksLoaded++;
+                        if (tracksLoaded == tracksToLoad) {
+                            console.log("Done loading tracks, resolving");
+                            return resolve();
                         } else {
-                            tracksLoaded++;
-                            if (SCUtils.debugMode) {
-                                console.log("Track '"+lpTitle+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
-                            }
-                            if (tracksLoaded == tracksToLoad) {
-                                console.log("Done loading tracks, resolving");
-                                return resolve();
-                            } else {
-                                loadTrackIndex(tracksLoaded);
-                            }
+                            loadTrackIndex(tracksLoaded);
                         }
-                    });
+                    })
+                    .catch( err => {
+                        return reject(err);
+                    })
                 }
 
-                console.log("Checking directory: "+path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory)+" for unfinished tracks");
+                var trackFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+                var artFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory);
+                var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+
+                console.log("Checking directories for unf tracks: "+trackFolderPath+", "+artFolderPath+", waveFolderPath");
                 var unfinishedTracks = [];
-                var checkedOnce = false;
-                var cachePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+                var unfinishedArtwork = [];
+                var unfinishedWaveform = [];
+
+                var checkedTracksOnce = false;
+                var checkedArtworkOnce = false;
+                var checkedWaveformOnce = false;
+
                 function checkUnfinishedTracks() {
-                    fs.readdir(cachePath, (err, files) => {
+                    fs.readdir(trackFolderPath, (err, files) => {
                         if (err) {
-                            if (checkedOnce) {
+                            if (checkedTracksOnce) {
                                 return reject("Error checking cache directory for unfinished tracks (folder not found on second attempt)");
                             } else { //create the dir because it is missing
-                                checkedOnce = true;
-                                fs.mkdir(cachePath, e => {
+                                checkedTracksOnce = true;
+                                fs.mkdir(trackFolderPath, e => {
                                     if (e) {
-                                        return reject("Error creating folder at path: "+cachePath+", e="+JSON.stringify(e));
+                                        return reject("Error creating folder at path: "+trackFolderPath+", e="+JSON.stringify(e));
                                     } else {
                                         checkUnfinishedTracks();
                                     }
@@ -534,12 +466,82 @@ var SCUtils = {
                             if (unfinishedTracks.length > 0) {
                                 console.log("Found "+unfinishedTracks.length+" unfinished tracks, deleted");
                             }
-                            loadTrackIndex(0); //start track loading (recursive)
+                            
+                        }
+                    });
+
+                    fs.readdir(artFolderPath, (err, files) => {
+                        if (err) {
+                            if (checkedArtworkOnce) {
+                                return reject("Error checking cache directory for unfinished artwork (folder not found on second attempt)");
+                            } else { //create the dir because it is missing
+                                checkedArtworkOnce = true;
+                                fs.mkdir(artFolderPath, e => {
+                                    if (e) {
+                                        return reject("Error creating artwork folder at path: "+artworkFolderPath+", e="+JSON.stringify(e));
+                                    } else {
+                                        checkUnfinishedTracks();
+                                    }
+                                })
+                            }
+                        } else {
+                            for (var i=0; i<files.length; i++) {
+                                if (files[i].indexOf("UNFINISHED") > -1) {
+                                    unfinishedArtwork.push(files[i]);
+
+                                    let unlinkPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,files[i]);
+                                    fs.unlink(unlinkPath, err => {
+                                        if (err) {
+                                            console.error("Error unlinking unfinished art at path "+path);
+                                        }
+                                    })
+                                }
+                            }
+                            if (unfinishedTracks.length > 0) {
+                                console.log("Found "+unfinishedTracks.length+" unfinished art, deleted");
+                            }
+                            
+                        }
+                    });
+                    fs.readdir(waveFolderPath, (err, files) => {
+                        if (err) {
+                            if (checkedWaveformOnce) {
+                                return reject("Error checking cache directory for unfinished waveform (folder not found on second attempt)");
+                            } else { //create the dir because it is missing
+                                checkedWaveformOnce = true;
+                                fs.mkdir(waveFolderPath, e => {
+                                    if (e) {
+                                        return reject("Error creating folder at path: "+waveFolderPath+", e="+JSON.stringify(e));
+                                    } else {
+                                        checkUnfinishedTracks();
+                                    }
+                                })
+                            }
+                        } else {
+                            for (var i=0; i<files.length; i++) {
+                                if (files[i].indexOf("UNFINISHED") > -1) {
+                                    unfinishedWaveform.push(files[i]);
+
+                                    let unlinkPath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory,files[i]);
+                                    fs.unlink(unlinkPath, err => {
+                                        if (err) {
+                                            console.error("Error unlinking unfinished waveform at path "+path);
+                                        }
+                                    })
+                                }
+                            }
+                            if (unfinishedTracks.length > 0) {
+                                console.log("Found "+unfinishedWaveform.length+" unfinished waveforms, deleted");
+                            }
+                            
                         }
                     });
                 }
                 checkUnfinishedTracks();
 
+
+
+                loadTrackIndex(0); //start track loading (recursive)
             } else {
                 return reject("likedTracks undefined or no tracks");
             }
@@ -555,18 +557,26 @@ var SCUtils = {
             if (typeof scSettings == "undefined") {
                 return reject("saveTrack scSettings not specified");
             }
-            if (!trackObject.id || !trackObject.title) {
+            if (!trackObject.id || !trackObject.title || !trackObject.artwork || !trackObject.artwork.artworkUrl || !trackObject.artwork.waveformUrl) {
                 return reject("saveTrack TrackObject is invalid")
             }
             var trackID = trackObject.id;
-            console.log("Fetching SC track '"+trackObject.title+"'");
+            console.log("Fetching SC track '"+trackObject.title+"' artwork, track, & waveform");
 
-            //todo delete unfinished tracks
 
             var unfinTrackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+"-UNFINISHED.mp3"));
             var trackPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("track-"+trackID+".mp3"));
             var trackFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
-            console.log("Checking if track folder exists @path="+trackFolderPath+"...");
+
+            var unfinArtPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,("art-"+trackID+"-UNFINISHED.jpg"));
+            var artPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,("art-"+trackID+".jpg"));
+            var artFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory);
+
+            var unfinWavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+"-UNFINISHED.jpg"));
+            var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+".jpg"));
+            var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+
+            console.log("Checking if folders exists @path="+trackFolderPath+", @path="+artFolderPath+", @path="+waveFolderPath+"...");
             if (!fs.existsSync(trackFolderPath)) {
                 console.log("Track folder doesn't exist... WTF (why u break my code) but okay?");
                 try {
@@ -575,7 +585,28 @@ var SCUtils = {
                     return reject("Track folder did not exist and attempted to make one and encountered error: "+e);
                 }
             }
+            if (!fs.existsSync(artFolderPath)) {
+                console.log("Art folder doesn't exist... WTF (why u break my code) but okay?");
+                try {
+                    fs.mkdirSync(artFolderPath);
+                } catch(e) {
+                    return reject("Art folder did not exist and attempted to make one and encountered error: "+e);
+                }
+            }
+            if (!fs.existsSync(waveFolderPath)) {
+                console.log("Wave folder doesn't exist... WTF (why u break my code) but okay?");
+                try {
+                    fs.mkdirSync(waveFolderPath);
+                } catch(e) {
+                    return reject("Wave folder did not exist and attempted to make one and encountered error: "+e);
+                }
+            }
             //console.log("Checking if track exists at path "+trackPath);
+            var trackOK = false;
+            var artOK = false;
+            var waveOK = false;
+
+            //load the track
             fs.readFile(trackPath, (err, data) => {
                 if (err) {
                     console.log("Track does not exist, downloading at path "+unfinTrackPath);
@@ -583,9 +614,89 @@ var SCUtils = {
                         //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
                         remoteFileSize(response.url, function(err, size) { //get size of file
                             if (err) {
-                                return reject("Error getting SC file size: "+err);
+                                if (err.toString().indexOf("401") > 0) {
+                                    console.warn("A 401 error was recieved on attempt to get size; denied. Can't fetch track");
+                                    SCUtils.track401Offset++;
+                                    return resolve();
+                                } else {
+                                    return reject("Error getting SC file size: "+err);
+                                }
                             } else {
                                 console.log("Got track URL and size. SIZE: "+size);
+                                return new Promise((sresolve, sreject) => {
+                                    console.log("writing to path: "+unfinTrackPath);
+                                    const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
+                                    var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
+                                    var pBar = new utils.progressBar({
+                                        startPercent: 0,
+                                        task: "Downloading '"+pTitle+"'",
+                                        showETA: true
+                                    });
+                                    var str = progress({
+                                        time: 500,
+                                        length: size
+                                    }, progress => {
+                                        //console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
+                                        pBar.update(progress.percentage/100,utils.formatHHMMSS(progress.eta));
+                                    });
+                                    response.body.pipe(str).pipe(dest);
+                                    response.body.on('error', err => {
+                                        return sreject(err);
+                                    });
+                                    dest.on('finish', () => {
+                                        console.log(""); //clear progress bar
+                                        console.log("Renaming to finished track")
+                                        fs.rename(unfinTrackPath, trackPath, err => {
+                                            if (err) {
+                                                return sreject("Error renaming track");
+                                            } else {
+                                                return sresolve();
+                                            }
+                                        });
+                                    });
+                                    dest.on('error', err => {
+                                        if (err.toString().indexOf("401") > 0) {
+                                            console.warn("401 forbidden gotten; can't download");
+                                            return resolve();
+                                        } else {
+                                            return sreject(err);
+                                        }
+                                    });
+                                }).then( () => {
+                                    console.log("Track '"+trackObject.title+"' written successfully, resolving");
+                                    trackOK = true;
+                                    if (artOK && waveOK) { //if the other 2 are done, resolve
+                                        return resolve();
+                                    }
+                                }).catch( err => {
+                                    console.error("Error writing SC track: "+err);
+                                });
+                            }
+                        });
+                    }).catch(e => {
+                        return reject("Error fetching track stream URL");
+                    });
+                } else {
+                    console.log("Track '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    trackOK = true;
+                    if (artOK && waveOK) { //if the other 2 are done, resolve
+                        return resolve();
+                    }
+                }
+            });
+
+
+            //load the art
+            fs.readFile(artPath, (err, data) => {
+                if (err) {
+                    console.log("Art does not exist, downloading at path "+unfinArtPath);
+                    fetch(trackObject.artwork.artworkUrl, {timeout: scSettings.requestTimeout}).then(function(response){
+                        //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
+                        remoteFileSize(response.url, function(err, size) { //get size of file
+                            if (err) {
+                                return reject("Error getting art file size: "+err);
+                            } else {
+                                console.log("Got art URL and size. SIZE: "+size);
                                 return new Promise((sresolve, sreject) => {
                                     console.log("writing to path: "+unfinTrackPath);
                                     const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
@@ -621,22 +732,99 @@ var SCUtils = {
                                         return sreject(err);
                                     });
                                 }).then( () => {
-                                    console.log("Track '"+trackObject.title+"' written successfully, resolving");
-                                    return resolve();
+                                    console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                                    artOK = true;
+                                    if (trackOK && waveOK) { //if the other 2 are done, resolve
+                                        return resolve();
+                                    }
                                 }).catch( err => {
-                                    console.error("Error writing SC track: "+err);
+                                    console.error("Error writing SC art: "+err);
                                 });
                             }
                         });
                     }).catch(e => {
-                        return reject("Error fetching track stream URL");
+                        return reject("Error fetching art URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
-                    return resolve();
+                    console.log("Art '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    artOK = true;
+                    if (trackOK && waveOK) { //if the other 2 are done, resolve
+                        return resolve();
+                    }
                 }
             });
+
+            //load the waveform
+            fs.readFile(wavePath, (err, data) => {
+                if (err) {
+                    console.log("Waveform does not exist, downloading at path "+unfinWavePath);
+                    fetch(trackObject.artwork.waveformUrl, {timeout: scSettings.requestTimeout}).then(function(response){
+                        //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
+                        remoteFileSize(response.url, function(err, size) { //get size of file
+                            if (err) {
+                                return reject("Error getting waveform file size: "+err);
+                            } else {
+                                console.log("Got wave URL and size. SIZE: "+size);
+                                return new Promise((sresolve, sreject) => {
+                                    console.log("writing to path: "+unfinWavePath);
+                                    const dest = fs.createWriteStream(unfinWavePath); //write to unfinished track path first
+                                    var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
+                                    var pBar = new utils.progressBar({
+                                        startPercent: 0,
+                                        task: "Downloading '"+pTitle+"'",
+                                        showETA: true
+                                    });
+                                    var str = progress({
+                                        time: 500,
+                                        length: size
+                                    }, progress => {
+                                        //console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
+                                        pBar.update(progress.percentage/100,utils.formatHHMMSS(progress.eta));
+                                    });
+                                    response.body.pipe(str).pipe(dest);
+                                    response.body.on('error', err => {
+                                        return sreject(err);
+                                    });
+                                    dest.on('finish', () => {
+                                        console.log(""); //clear progress bar
+                                        console.log("Renaming to finished wave")
+                                        fs.rename(unfinWavePath, wavePath, err => {
+                                            if (err) {
+                                                return sreject("Error renaming wave");
+                                            } else {
+                                                return sresolve();
+                                            }
+                                        });
+                                    });
+                                    dest.on('error', err => {
+                                        return sreject(err);
+                                    });
+                                }).then( () => {
+                                    console.log("Track '"+trackObject.title+"' wave written successfully, resolving");
+                                    waveOK = true;
+                                    if (trackOK && artOK) { //if the other 2 are done, resolve
+                                        return resolve();
+                                    }
+                                }).catch( err => {
+                                    console.error("Error writing SC wave: "+err);
+                                });
+                            }
+                        });
+                    }).catch(e => {
+                        return reject("Error fetching wave URL");
+                    });
+                } else {
+                    console.log("Track '"+trackObject.title+"' waveform found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    waveOK = true;
+                    if (trackOK && artOK) { //if the other 2 are done, resolve
+                        return resolve();
+                    }
+                }
+            });
+
         });
+
+    
     }
 }
 

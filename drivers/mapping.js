@@ -1,7 +1,6 @@
 /*
 * mapping.js by Aaron Becker
-* Script to manage user authentication for CarOS
-* Much love to Evan Gow for his great tutorial at https://medium.com/@evangow/server-authentication-basics-express-sessions-passport-and-curl-359b7456003d
+* Script to manage handling+parsing of mapping data for CarOS
 *
 * Dedicated to Marc Perkel
 *

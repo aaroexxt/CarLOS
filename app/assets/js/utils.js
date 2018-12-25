@@ -109,7 +109,7 @@ var utils = {
 
         //this.requestUntilNoWait //might implement this at some point ig
 
-        this.requestInterval = (interval, urlSuffix, doneCallback, waitCallback, errCallback, method) => {
+        this.requestInterval = function (interval, urlSuffix, doneCallback, waitCallback, errCallback, method) {
             if (_this.debugMode) {
                 console.log("req interval querying "+urlSuffix+" timeout "+interval);
             }
