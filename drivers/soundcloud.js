@@ -53,12 +53,7 @@ var SCUtils = {
                     this.CWD = options.cwd;
                 }
             }
-            /*SC.init({
-                id: options.soundcloudSettings.clientID //uid: 176787227
-                //redirect_uri: "https://www.aaronbecker.tech/oAuthSoundcloud.html" //no redirect uri because it is not set in soundcloud app settings
-            });*/
 
-            //console.info(Object.keys(this))
             this.failedToLoadTracksFirstRun = true; //make sure it can run again
             this.loadUserdataCache(options.username,options.soundcloudSettings).then( data => {
                 this.loadTracklist(data,options.soundcloudSettings).then( () => {
@@ -241,12 +236,13 @@ var SCUtils = {
                     }
                 }).catch( e => {
                     console.warn("Failed to get track from trackRequest (e: "+e+"); going to cache");
-                    SCUtils.failedToLoadTracks(e, scSettings).then( () => {
-                        return resolve();
-                    }).catch( err => {
-                        lsdfjghaosdljkfhaksjldfhij
-                        return reject(err);
-                    }); //failed to load the tracks
+                    if (SCUtils.failedToLoadTracksFirstRun) {
+                        SCUtils.failedToLoadTracks(e, scSettings).then( () => {
+                            return resolve();
+                        }).catch( err => {
+                            return reject(err);
+                        }); //failed to load the tracks
+                    }
                 });
             }
         })
@@ -343,7 +339,7 @@ var SCUtils = {
         return new Promise((resolve, reject) => {
             if (this.failedToLoadTracksFirstRun == false) { //so it only can run once
                 console.warn("FailedToLoadTracks already called on init");
-                return resolve();
+                //return resolve();
             }
             if (typeof scSettings == "undefined") {
                 return reject("failedToLoadTracks scSettings not specified");
@@ -478,7 +474,7 @@ var SCUtils = {
                                 checkedArtworkOnce = true;
                                 fs.mkdir(artFolderPath, e => {
                                     if (e) {
-                                        return reject("Error creating artwork folder at path: "+artworkFolderPath+", e="+JSON.stringify(e));
+                                        return reject("Error creating artwork folder at path: "+artFolderPath+", e="+JSON.stringify(e));
                                     } else {
                                         checkUnfinishedTracks();
                                     }
@@ -572,8 +568,8 @@ var SCUtils = {
             var artPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,("art-"+trackID+".jpg"));
             var artFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory);
 
-            var unfinWavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+"-UNFINISHED.jpg"));
-            var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+".jpg"));
+            var unfinWavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+"-UNFINISHED.png"));
+            var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+".png"));
             var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
 
             console.log("Checking if folders exists @path="+trackFolderPath+", @path="+artFolderPath+", @path="+waveFolderPath+"...");
@@ -677,7 +673,7 @@ var SCUtils = {
                         return reject("Error fetching track stream URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    console.log("Track '"+trackObject.title+"' found already, prog: "+(Math.round(SCUtils.tracksLoaded/SCUtils.tracksToLoad*10000)/100));
                     trackOK = true;
                     if (artOK && waveOK) { //if the other 2 are done, resolve
                         return resolve();
@@ -689,10 +685,10 @@ var SCUtils = {
             //load the art
             fs.readFile(artPath, (err, data) => {
                 if (err) {
-                    console.log("Art does not exist, downloading at path "+unfinArtPath);
+                    console.log("Art does not exist, downloading at path "+unfinArtPath+" from online file "+trackObject.artwork.artworkUrl);
                     fetch(trackObject.artwork.artworkUrl, {timeout: scSettings.requestTimeout}).then(function(response){
                         //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
-                        remoteFileSize(response.url, function(err, size) { //get size of file
+                        remoteFileSize(trackObject.artwork.artworkUrl, function(err, size) { //get size of file
                             if (err) {
                                 return reject("Error getting art file size: "+err);
                             } else {
@@ -757,10 +753,10 @@ var SCUtils = {
             //load the waveform
             fs.readFile(wavePath, (err, data) => {
                 if (err) {
-                    console.log("Waveform does not exist, downloading at path "+unfinWavePath);
+                    console.log("Waveform does not exist, downloading at path "+unfinWavePath+" from online file "+trackObject.artwork.waveformUrl);
                     fetch(trackObject.artwork.waveformUrl, {timeout: scSettings.requestTimeout}).then(function(response){
                         //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
-                        remoteFileSize(response.url, function(err, size) { //get size of file
+                        remoteFileSize(trackObject.artwork.waveformUrl, function(err, size) { //get size of file
                             if (err) {
                                 return reject("Error getting waveform file size: "+err);
                             } else {

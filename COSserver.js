@@ -610,7 +610,7 @@ function initSoundcloud(username) {
 			soundcloudUtils.SCUtils.init({
 				soundcloudSettings: soundcloudSettings,
 				username: username,
-				cwd: cwd,
+				cwd: cwd
 			}).then( () => {
 				console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
 				soundcloudUtils.SCSoundManager.init().then( () => {
