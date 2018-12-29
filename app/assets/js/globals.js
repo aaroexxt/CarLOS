@@ -648,10 +648,10 @@ const globals = {
                             var nTrack = data.currentPlayingTrack;
                             if (nTrack) {
                                 mR.properties.currentPlayingTrack = nTrack;
-                                document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
-                            document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
-                            document.getElementById("music_trackTitle").innerHTML = track.title;
-                            document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                                document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
+                                document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
+                                document.getElementById("music_trackTitle").innerHTML = track.title;
+                                document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
                             }
                         }
                     }).catch( err => {
@@ -717,8 +717,8 @@ const globals = {
                     SRH.request("/api/sc/event/clientTrackSelected?data="+track.id)
                     .then(data => {
                         mR.properties.currentPlayingTrack = track;
-                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
-                        document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
+                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
+                        document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
                         document.getElementById("music_trackTitle").innerHTML = track.title;
                         document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
                     })
@@ -746,8 +746,8 @@ const globals = {
                         globals.music.soundManager.playerObject = player;
                         globals.music.soundManager.playerObject.play();
                         globals.music.soundManager.playingTrack = true;
-                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
-                        document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
+                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
+                        document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
                         document.getElementById("music_trackTitle").innerHTML = track.title;
                         document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
                         globals.music.soundManager.currentPlayingTrack = track;
