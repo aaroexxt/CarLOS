@@ -420,9 +420,9 @@ var SCUtils = {
 
                 var trackFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
                 var artFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory);
-                var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+                var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory);
 
-                console.log("Checking directories for unf tracks: "+trackFolderPath+", "+artFolderPath+", waveFolderPath");
+                console.log("Checking directories for unf tracks: "+trackFolderPath+", "+artFolderPath+", "+waveFolderPath);
                 var unfinishedTracks = [];
                 var unfinishedArtwork = [];
                 var unfinishedWaveform = [];
@@ -553,8 +553,8 @@ var SCUtils = {
             if (typeof scSettings == "undefined") {
                 return reject("saveTrack scSettings not specified");
             }
-            if (!trackObject.id || !trackObject.title || !trackObject.artwork || !trackObject.artwork.artworkUrl || !trackObject.artwork.waveformUrl) {
-                return reject("saveTrack TrackObject is invalid")
+            if (!trackObject.id || !trackObject.title || !trackObject.artwork || !trackObject.artwork.waveformUrl) { //it's okay if it's missing the artwork URL
+                return reject("saveTrack TrackObject is invalid, full "+JSON.stringify(trackObject));
             }
             var trackID = trackObject.id;
             console.log("Fetching SC track '"+trackObject.title+"' artwork, track, & waveform");
@@ -567,12 +567,13 @@ var SCUtils = {
             var unfinArtPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,("art-"+trackID+"-UNFINISHED.jpg"));
             var artPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory,("art-"+trackID+".jpg"));
             var artFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudArtworkCacheDirectory);
+            var noArtPath = path.join(SCUtils.CWD, scSettings.noArtworkUrl); //no artwork path
 
-            var unfinWavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+"-UNFINISHED.png"));
-            var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory,("waveform-"+trackID+".png"));
-            var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudTrackCacheDirectory);
+            var unfinWavePath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory,("waveform-"+trackID+"-UNFINISHED.png"));
+            var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory,("waveform-"+trackID+".png"));
+            var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory);
 
-            console.log("Checking if folders exists @path="+trackFolderPath+", @path="+artFolderPath+", @path="+waveFolderPath+"...");
+            console.log("Checking if folders exist @path="+trackFolderPath+", @path="+artFolderPath+", @path="+waveFolderPath+"...");
             if (!fs.existsSync(trackFolderPath)) {
                 console.log("Track folder doesn't exist... WTF (why u break my code) but okay?");
                 try {
@@ -619,7 +620,7 @@ var SCUtils = {
                                 }
                             } else {
                                 console.log("Got track URL and size. SIZE: "+size);
-                                return new Promise((sresolve, sreject) => {
+                                new Promise((sresolve, sreject) => {
                                     console.log("writing to path: "+unfinTrackPath);
                                     const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
                                     var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
@@ -683,134 +684,140 @@ var SCUtils = {
 
 
             //load the art
-            fs.readFile(artPath, (err, data) => {
-                if (err) {
-                    console.log("Art does not exist, downloading at path "+unfinArtPath+" from online file "+trackObject.artwork.artworkUrl);
-                    fetch(trackObject.artwork.artworkUrl, {timeout: scSettings.requestTimeout}).then(function(response){
-                        //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
-                        remoteFileSize(trackObject.artwork.artworkUrl, function(err, size) { //get size of file
-                            if (err) {
-                                return reject("Error getting art file size: "+err);
-                            } else {
-                                console.log("Got art URL and size. SIZE: "+size);
-                                return new Promise((sresolve, sreject) => {
-                                    console.log("writing to path: "+unfinTrackPath);
-                                    const dest = fs.createWriteStream(unfinTrackPath); //write to unfinished track path first
-                                    var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
-                                    var pBar = new utils.progressBar({
-                                        startPercent: 0,
-                                        task: "Downloading '"+pTitle+"'",
-                                        showETA: true
-                                    });
-                                    var str = progress({
-                                        time: 500,
-                                        length: size
-                                    }, progress => {
-                                        //console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
-                                        pBar.update(progress.percentage/100,utils.formatHHMMSS(progress.eta));
-                                    });
-                                    response.body.pipe(str).pipe(dest);
-                                    response.body.on('error', err => {
-                                        return sreject(err);
-                                    });
-                                    dest.on('finish', () => {
-                                        console.log(""); //clear progress bar
-                                        console.log("Renaming to finished track")
-                                        fs.rename(unfinTrackPath, trackPath, err => {
-                                            if (err) {
-                                                return sreject("Error renaming track");
-                                            } else {
-                                                return sresolve();
-                                            }
-                                        });
-                                    });
-                                    dest.on('error', err => {
-                                        return sreject(err);
-                                    });
-                                }).then( () => {
-                                    console.log("Art '"+trackObject.title+"' written successfully, resolving");
-                                    artOK = true;
-                                    if (trackOK && waveOK) { //if the other 2 are done, resolve
-                                        return resolve();
-                                    }
-                                }).catch( err => {
-                                    console.error("Error writing SC art: "+err);
+            if (trackObject.artwork.artworkUrl) {
+                fs.readFile(artPath, (err, data) => {
+                    if (err) {
+                        console.log("Art does not exist, downloading at path "+unfinArtPath+" from online file "+trackObject.artwork.artworkUrl);
+                        fetch(trackObject.artwork.artworkUrl, {timeout: scSettings.requestTimeout}).then(function(response){
+
+                            new Promise((sresolve, sreject) => {
+                                console.log("writing to path: "+unfinArtPath);
+                                const dest = fs.createWriteStream(unfinArtPath); //write to unfinished track path first
+
+                                response.body.pipe(dest);
+                                response.body.on('error', err => {
+                                    return sreject(err);
                                 });
+                                dest.on('finish', () => {
+                                    console.log(""); //clear progress bar
+                                    console.log("Renaming to finished art")
+                                    fs.rename(unfinArtPath, artPath, err => {
+                                        if (err) {
+                                            return sreject("Error renaming track");
+                                        } else {
+                                            return sresolve();
+                                        }
+                                    });
+                                });
+                                dest.on('error', err => {
+                                    return sreject(err);
+                                });
+                            }).then( () => {
+                                console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                                artOK = true;
+                                if (trackOK && waveOK) { //if the other 2 are done, resolve
+                                    return resolve();
+                                }
+                            }).catch( err => {
+                                console.error("Error writing SC art: "+err);
+                            });
+                        }).catch(e => {
+                            return reject("Error fetching art URL");
+                        });
+                    } else {
+                        console.log("Art '"+trackObject.title+"' found already, prog: "+(Math.round(SCUtils.tracksLoaded/SCUtils.tracksToLoad*10000)/100));
+                        artOK = true;
+                        if (trackOK && waveOK) { //if the other 2 are done, resolve
+                            return resolve();
+                        }
+                    }
+                });
+            } else { //artwork url is not defined
+                console.log("Artwork URL not defined for track, copying missing audio instead");
+                console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                artOK = true;
+                if (trackOK && waveOK) { //if the other 2 are done, resolve
+                    return resolve();
+                }
+
+                /*
+                new Promise((sresolve, sreject) => {
+                    console.log("writing to path: "+unfinArtPath);
+                    const source = fs.createReadStream(noArtPath);
+                    const dest = fs.createWriteStream(unfinArtPath); //write to unfinished track path first
+
+                    source.pipe(dest);
+                    source.on('error', err => {
+                        return sreject(err);
+                    });
+                    dest.on('finish', () => {
+                        console.log(""); //clear progress bar
+                        console.log("Renaming to finished art")
+                        fs.rename(unfinArtPath, artPath, err => {
+                            if (err) {
+                                return sreject("Error renaming track");
+                            } else {
+                                return sresolve();
                             }
                         });
-                    }).catch(e => {
-                        return reject("Error fetching art URL");
                     });
-                } else {
-                    console.log("Art '"+trackObject.title+"' found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    dest.on('error', err => {
+                        return sreject(err);
+                    });
+                }).then( () => {
+                    console.log("Art '"+trackObject.title+"' written successfully, resolving");
                     artOK = true;
                     if (trackOK && waveOK) { //if the other 2 are done, resolve
                         return resolve();
                     }
-                }
-            });
+                }).catch( err => {
+                    console.error("Error writing SC art: "+err);
+                });*/
+            }
 
             //load the waveform
             fs.readFile(wavePath, (err, data) => {
                 if (err) {
                     console.log("Waveform does not exist, downloading at path "+unfinWavePath+" from online file "+trackObject.artwork.waveformUrl);
                     fetch(trackObject.artwork.waveformUrl, {timeout: scSettings.requestTimeout}).then(function(response){
-                        //console.log("SC RESPONSE URL: "+response.url+", HEADERS: "+JSON.stringify(response.headers.entries()));
-                        remoteFileSize(trackObject.artwork.waveformUrl, function(err, size) { //get size of file
-                            if (err) {
-                                return reject("Error getting waveform file size: "+err);
-                            } else {
-                                console.log("Got wave URL and size. SIZE: "+size);
-                                return new Promise((sresolve, sreject) => {
-                                    console.log("writing to path: "+unfinWavePath);
-                                    const dest = fs.createWriteStream(unfinWavePath); //write to unfinished track path first
-                                    var pTitle = (trackObject.title.length > 15) ? trackObject.title.substring(0,15) : trackObject.title;
-                                    var pBar = new utils.progressBar({
-                                        startPercent: 0,
-                                        task: "Downloading '"+pTitle+"'",
-                                        showETA: true
-                                    });
-                                    var str = progress({
-                                        time: 500,
-                                        length: size
-                                    }, progress => {
-                                        //console.log("Percentage: "+progress.percentage+", ETA: "+progress.eta+" (for trackID "+trackID+")");
-                                        pBar.update(progress.percentage/100,utils.formatHHMMSS(progress.eta));
-                                    });
-                                    response.body.pipe(str).pipe(dest);
-                                    response.body.on('error', err => {
-                                        return sreject(err);
-                                    });
-                                    dest.on('finish', () => {
-                                        console.log(""); //clear progress bar
-                                        console.log("Renaming to finished wave")
-                                        fs.rename(unfinWavePath, wavePath, err => {
-                                            if (err) {
-                                                return sreject("Error renaming wave");
-                                            } else {
-                                                return sresolve();
-                                            }
-                                        });
-                                    });
-                                    dest.on('error', err => {
-                                        return sreject(err);
-                                    });
-                                }).then( () => {
-                                    console.log("Track '"+trackObject.title+"' wave written successfully, resolving");
-                                    waveOK = true;
-                                    if (trackOK && artOK) { //if the other 2 are done, resolve
-                                        return resolve();
+
+                        new Promise((sresolve, sreject) => {
+                            console.log("writing to path: "+unfinWavePath);
+                            const dest = fs.createWriteStream(unfinWavePath); //write to unfinished track path first
+
+                            response.body.pipe(dest); //pipe body to dest
+                            response.body.on('error', err => {
+                                return sreject(err);
+                            });
+                            dest.on('finish', () => {
+                                console.log(""); //clear progress bar
+                                console.log("Renaming to finished wave")
+                                fs.rename(unfinWavePath, wavePath, err => {
+                                    if (err) {
+                                        return sreject("Error renaming wave");
+                                    } else {
+                                        return sresolve();
                                     }
-                                }).catch( err => {
-                                    console.error("Error writing SC wave: "+err);
                                 });
+                            });
+                            dest.on('error', err => {
+                                return sreject(err);
+                            });
+                        }).then( () => {
+                            console.log("Track '"+trackObject.title+"' wave written successfully, resolving");
+                            waveOK = true;
+                            if (trackOK && artOK) { //if the other 2 are done, resolve
+                                return resolve();
                             }
+                        }).catch( err => {
+                            console.error("Error writing SC wave: "+err);
                         });
+
                     }).catch(e => {
                         return reject("Error fetching wave URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' waveform found already, prog: "+(Math.round(tracksLoaded/tracksToLoad*10000)/100));
+                    console.log("Track '"+trackObject.title+"' waveform found already, prog: "+(Math.round(SCUtils.tracksLoaded/SCUtils.tracksToLoad*10000)/100));
                     waveOK = true;
                     if (trackOK && artOK) { //if the other 2 are done, resolve
                         return resolve();

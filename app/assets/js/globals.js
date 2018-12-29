@@ -594,8 +594,8 @@ const globals = {
                         console.log("Waiting for server to be ready for soundcloud...",wait);
                         document.getElementById("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent;
                     }, error => {
-                        console.error("Soundcloud Server Error: "+error);
-                        bootbox.alert("Soundcloud Server Error: "+error);
+                        console.error("Soundcloud Server Error: "+error.message);
+                        bootbox.alert("Soundcloud Server Error: "+error.message);
                     }, -1);
 
                     mR.state = "trackDataUpdate";
@@ -648,10 +648,10 @@ const globals = {
                             var nTrack = data.currentPlayingTrack;
                             if (nTrack) {
                                 mR.properties.currentPlayingTrack = nTrack;
-                                document.getElementById("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? mR.properties.noArtworkUrl : nTrack.artwork.artworkUrl;
-                                document.getElementById("music_waveformArt").src = nTrack.artwork.waveformUrl;
-                                document.getElementById("music_trackTitle").innerHTML = nTrack.title;
-                                document.getElementById("music_trackAuthor").innerHTML = "By: "+nTrack.author;
+                                document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : window.location.host+"/api/sc/trackArt/"+track.id;//track.artwork.artworkUrl;
+                            document.getElementById("music_waveformArt").src = window.location.host+"/api/sc/trackWaveform/"+track.id;
+                            document.getElementById("music_trackTitle").innerHTML = track.title;
+                            document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
                             }
                         }
                     }).catch( err => {
