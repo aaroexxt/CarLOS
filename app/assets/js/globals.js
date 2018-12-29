@@ -552,8 +552,8 @@ const globals = {
             //METHOD LOGIC
             methods: {
                 init: function(mR) {
+                    document.getElementById(mR.properties.trackTitleElement).innerHTML = "Server is loading tracks.";
                     new SRH.requestInterval(1000, "api/SC/clientReady", data => {
-                        document.getElementById(mR.properties.trackTitleElement).innerHTML = "Server is loading tracks.";
 
                         if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) { //is the data valid?
                             mR.properties.likedTracks = data.likedTracks;
@@ -584,8 +584,9 @@ const globals = {
                                 client_id: data.clientID
                             });
 
-
-                            document.getElementById(mR.properties.trackTitleElement).innerHTML = "Select a track"; //set tracktitle to simple message
+                            if (!mR.properties.currentPlayingTrack) { //only if not playing track so as to not change message
+                                document.getElementById(mR.properties.trackTitleElement).innerHTML = "Select a track"; //set tracktitle to simple message
+                            }
                             mR.methods.updateTrackList(mR.properties.likedTracks); //update the trackList
                         } else {
                             console.error("Server said that it had tracks but there are no tracks provided (track response may be malformed)");
@@ -648,10 +649,10 @@ const globals = {
                             var nTrack = data.currentPlayingTrack;
                             if (nTrack) {
                                 mR.properties.currentPlayingTrack = nTrack;
-                                document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
-                                document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
-                                document.getElementById("music_trackTitle").innerHTML = track.title;
-                                document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                                document.getElementById("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+nTrack.id+".jpg";//track.artwork.artworkUrl;
+                                document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+nTrack.id+".png";
+                                document.getElementById("music_trackTitle").innerHTML = nTrack.title;
+                                document.getElementById("music_trackAuthor").innerHTML = "By: "+nTrack.author;
                             }
                         }
                     }).catch( err => {

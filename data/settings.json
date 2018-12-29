@@ -64,6 +64,7 @@
         "soundcloudTrackCacheDirectory": "data/SCcache/tracks",
         "soundcloudArtworkCacheDirectory": "data/SCcache/artwork",
         "soundcloudWaveformCacheDirectory": "data/SCcache/waveform",
+        "noArtworkUrlPrefix": "/app/assets/",
 
         "soundcloudCacheExpiryTime": 86400000,
 

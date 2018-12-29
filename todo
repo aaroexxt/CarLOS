@@ -32,6 +32,11 @@ cache neural network weights for more efficient starting of server(brain.js toFu
 
 
 
+BUGS THAT I GOTTA FIX FOR TOMMORROW
+-no speech module
+-redundancy of music code
+-
+
 better favicon (the a is lame)
 
 
@@ -85,9 +90,6 @@ https://www.chartjs.org/docs/latest/developers/updates.html
 http://www.chartjs.org/docs/latest/getting-started/
 
 
-List of stuff to do:
-Get offline tilemaprenderer to work
-SC offline track images and track art
 Get path planning to work
 Tackle tensorflow in javascript for speech generation https://github.com/tensorflow/tfjs
 
@@ -104,6 +106,8 @@ GPS+MAGNETOMETER EXT from arduino DONE
 reverse proxy cache CANCELED
 username cache CANCELED
 load balancing CANCELED
+SC offline track images and track art DONE
+Get offline tilemaprenderer to work DONE
 also ability to switch soundcloud users DONE
 shuffle/notshuffle button DONE
 caching of soundcloud pages for low internet access DONE
@@ -125,7 +129,7 @@ better 404 page DONE (slightly)
 FIX BUG WITH LOOP & TRACKS NOT WRAPPING DONE
 use a timed listener to get song playing length on client side instead of bytes through decoder DONE
 changescuser now has to go to server DONE
-
+cleaned up globals file DONE
 finish fixing cleaning directories (ESSENTIAL) DONE
 
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
