@@ -71,7 +71,7 @@
 			</div>
 			<ul class="menubottom" id="music_bottomMenu" style="display: none;">
 				<li style="transform: none !important; float: right; margin-right: 1%; position: absolute; bottom: 20%; left: 91%;"><img src="/images/soundcloudAttribution.png"></img></li>
-				<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.music.musicUI.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
+				<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.modules.music.methods.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
 				<li class="controlButton" onclick="globals.modules.music.methods.changeShuffleState(); if (globals.modules.music.properties.nextTrackShuffle) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_shuffleButton"><img src="/images/shuffle.png" width="20px" height="20px"></img></li>
 				<li class="menubreaker">|</li>
 				<li class="controlButton" onclick="globals.modules.music.methods.volDown();">Vol -</li>

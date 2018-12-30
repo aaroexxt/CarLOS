@@ -553,6 +553,8 @@ const globals = {
             methods: {
                 init: function(mR) {
                     document.getElementById(mR.properties.trackTitleElement).innerHTML = "Server is loading tracks.";
+
+                    clearInterval(mR.properties.trackDataUpdateTimeout); //in case user is being changed
                     new SRH.requestInterval(1000, "api/SC/clientReady", data => {
 
                         if (data && data.hasTracks && data.likedTracks.length > 0 && data.trackList.length > 0) { //is the data valid?
@@ -593,7 +595,7 @@ const globals = {
                         }
                     }, wait => {
                         console.log("Waiting for server to be ready for soundcloud...",wait);
-                        document.getElementById("music_trackAuthor").innerHTML = "Loading percent: "+wait.percent;
+                        document.getElementById(mR.properties.trackAuthorElement).innerHTML = "Loading percent: "+wait.percent;
                     }, error => {
                         console.error("Soundcloud Server Error: "+error.message);
                         bootbox.alert("Soundcloud Server Error: "+error.message);
@@ -602,7 +604,7 @@ const globals = {
                     mR.state = "trackDataUpdate";
                 },
                 updateTrackList: function(tracklist) {
-                    var tklElem = document.getElementById("music_trackList");
+                    var tklElem = document.getElementById(mR.properties.trackListElement);
                     tklElem.innerHTML = "";
                     for (var i=0; i<tracklist.length; i++) {
                         var p = document.createElement("p");
@@ -649,10 +651,10 @@ const globals = {
                             var nTrack = data.currentPlayingTrack;
                             if (nTrack) {
                                 mR.properties.currentPlayingTrack = nTrack;
-                                document.getElementById("music_trackArt").src = (!nTrack.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+nTrack.id+".jpg";//track.artwork.artworkUrl;
-                                document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+nTrack.id+".png";
-                                document.getElementById("music_trackTitle").innerHTML = nTrack.title;
-                                document.getElementById("music_trackAuthor").innerHTML = "By: "+nTrack.author;
+                                document.getElementById(mR.properties.trackArtElement).src = (!nTrack.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+nTrack.id+".jpg";//track.artwork.artworkUrl;
+                                document.getElementById(mR.properties.waveformArtElement).src = "http://"+window.location.host+"/api/sc/trackWaveform/"+nTrack.id+".png";
+                                document.getElementById(mR.properties.trackTitleElement).innerHTML = nTrack.title;
+                                document.getElementById(mR.properties.trackAuthorElement).innerHTML = "By: "+nTrack.author;
                             }
                         }
                     }).catch( err => {
@@ -665,7 +667,7 @@ const globals = {
                     clearInterval(mR.properties.trackDataUpdateTimeout);
                     mR.properties.trackDataUpdateTimeout = setTimeout( () => {
                         mR.state = "trackDataUpdate";
-                    }, 2000)
+                    }, 2000);
                 },
 
 
@@ -718,15 +720,15 @@ const globals = {
                     SRH.request("/api/sc/event/clientTrackSelected?data="+track.id)
                     .then(data => {
                         mR.properties.currentPlayingTrack = track;
-                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
-                        document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
-                        document.getElementById("music_trackTitle").innerHTML = track.title;
-                        document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                        document.getElementById(mR.properties.trackArtElement).src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
+                        document.getElementById(mR.properties.waveformArtElement).src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
+                        document.getElementById(mR.properties.trackTitleElement).innerHTML = track.title;
+                        document.getElementById(mR.properties.trackAuthorElement).innerHTML = "By: "+track.author;
                     })
                     .catch(error => {
                         console.error("Couldn't play track: "+error);
-                        document.getElementById("music_trackTitle").innerHTML = "";
-                        document.getElementById("music_trackAuthor").innerHTML = "Failed to play track because: "+((error.error)?(error.message):error);
+                        document.getElementById(mR.properties.trackTitleElement).innerHTML = "";
+                        document.getElementById(mR.properties.trackAuthorElement).innerHTML = "Failed to play track because: "+((error.error)?(error.message):error);
                     })
 
                     /*for local lel
@@ -747,10 +749,10 @@ const globals = {
                         globals.music.soundManager.playerObject = player;
                         globals.music.soundManager.playerObject.play();
                         globals.music.soundManager.playingTrack = true;
-                        document.getElementById("music_trackArt").src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
-                        document.getElementById("music_waveformArt").src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
-                        document.getElementById("music_trackTitle").innerHTML = track.title;
-                        document.getElementById("music_trackAuthor").innerHTML = "By: "+track.author;
+                        document.getElementById(mR.properties.trackArtElement).src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
+                        document.getElementById(mR.properties.waveformArtElement).src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
+                        document.getElementById(mR.properties.trackTitleElement).innerHTML = track.title;
+                        document.getElementById(mR.properties.trackAuthorElement).innerHTML = "By: "+track.author;
                         globals.music.soundManager.currentPlayingTrack = track;
                         if (globals.music.firstPlay) {
                             globals.music.soundManager.currentVolume = globals.music.defaultVolume;
@@ -759,7 +761,7 @@ const globals = {
                         }
                     }).catch(function(){
                         console.error("Error playing track with id ("+track.id+"): ",arguments);
-                        document.getElementById("music_trackArt").src = "/images/errorLoadingTrack.png";
+                        document.getElementById(mR.properties.trackArtElement).src = "/images/errorLoadingTrack.png";
                     });
                 },
                 setPlayerVolume: function(vol) {
@@ -815,6 +817,11 @@ const globals = {
                 shuffleButtonElement: "music_shuffleButton",
                 loopButtonElement: "music_loopButton",
                 trackTitleElement: "music_trackTitle",
+                trackArtElement: "music_trackArt",
+                waveformArtElement: "music_waveformArt",
+                trackListElement: "music_trackList",
+                trackAuthorElement: "music_trackAuthor",
+
                 trackDataUpdateTimeout: 0,
                 oldSettingsData: {},
 
@@ -822,7 +829,7 @@ const globals = {
                 playingTrack: false,
                 currentVolume: 50,
                 currentPlayingTrack: {},
-                playerObject: { //faaaake so that no errors occur
+                playerObject: { //fake so that no errors occur
                     play: function(){},
                     pause: function(){},
                     setVolume: function(){},

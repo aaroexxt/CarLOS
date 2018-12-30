@@ -400,9 +400,11 @@ var SCUtils = {
                     scSettings.tracksToLoad = tracksToLoad;
                     scSettings.tracksLoaded = tracksLoaded;
 
-                    console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
+                    if (SCUtils.debugMode) {
+                        console.log("Fetching SC track '"+likedTracks[trackIndex].title+"'");
+                    }
 
-                    SCUtils.saveTrack(likedTracks[trackIndex],scSettings) //using wayyy more efficient method that takes advantage of the builtin saveTrack function
+                    SCUtils.saveTrack(likedTracks[trackIndex], scSettings) //using way more efficient method that takes advantage of the builtin saveTrack function
                     .then( () => {
                         tracksLoaded++;
                         if (tracksLoaded == tracksToLoad) {
@@ -651,8 +653,10 @@ var SCUtils = {
                                         return sreject(err);
                                     });
                                     dest.on('finish', () => {
-                                        console.log(""); //clear progress bar
-                                        console.log("Renaming to finished track")
+                                        if (SCUtils.debugMode) {
+                                            console.log(""); //clear progress bar
+                                            console.log("Renaming to finished track");
+                                        }
                                         fs.rename(unfinTrackPath, trackPath, err => {
                                             if (err) {
                                                 return sreject("Error renaming track");
@@ -670,7 +674,9 @@ var SCUtils = {
                                         }
                                     });
                                 }).then( () => {
-                                    console.log("Track '"+trackObject.title+"' written successfully, resolving");
+                                    if (SCUtils.debugMode) {
+                                        console.log("Track '"+trackObject.title+"' written successfully, resolving");
+                                    }
                                     trackOK = true;
                                     if (artOK && waveOK) { //if the other 2 are done, resolve
                                         return resolve();
@@ -685,7 +691,9 @@ var SCUtils = {
                         return reject("Error fetching track stream URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' found already");
+                    if (SCUtils.debugMode) {
+                        console.log("Track '"+trackObject.title+"' found already");
+                    }
                     trackOK = true;
                     if (artOK && waveOK) { //if the other 2 are done, resolve
                         return resolve();
@@ -714,8 +722,10 @@ var SCUtils = {
                                     return sreject(err);
                                 });
                                 dest.on('finish', () => {
-                                    console.log(""); //clear progress bar
-                                    console.log("Renaming to finished art");
+                                    if (SCUtils.debugMode) {
+                                        console.log(""); //clear progress bar
+                                        console.log("Renaming to finished art");
+                                    }
                                     fs.rename(unfinArtPath, artPath, err => {
                                         if (err) {
                                             return sreject("Error renaming track");
@@ -728,7 +738,9 @@ var SCUtils = {
                                     return sreject(err);
                                 });
                             }).then( () => {
-                                console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                                if (SCUtils.debugMode) {
+                                    console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                                }
                                 artOK = true;
                                 if (trackOK && waveOK) { //if the other 2 are done, resolve
                                     return resolve();
@@ -741,7 +753,9 @@ var SCUtils = {
                             return reject("Error fetching art URL");
                         });
                     } else {
-                        console.log("Art '"+trackObject.title+"' found already");
+                        if (SCUtils.debugMode) {
+                            console.log("Art '"+trackObject.title+"' found already");
+                        }
                         artOK = true;
                         if (trackOK && waveOK) { //if the other 2 are done, resolve
                             return resolve();
@@ -763,8 +777,10 @@ var SCUtils = {
                         return sreject(err);
                     });
                     dest.on('finish', () => {
-                        console.log(""); //clear progress bar
-                        console.log("Renaming to finished art")
+                        if (SCUtils.debugMode) {
+                            console.log(""); //clear progress bar
+                            console.log("Renaming to finished art");
+                        }
                         fs.rename(unfinArtPath, artPath, err => {
                             if (err) {
                                 return sreject("Error renaming track");
@@ -777,7 +793,9 @@ var SCUtils = {
                         return sreject(err);
                     });
                 }).then( () => {
-                    console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                    if (SCUtils.debugMode) {
+                        console.log("Art '"+trackObject.title+"' written successfully, resolving");
+                    }
                     artOK = true;
                     if (trackOK && waveOK) { //if the other 2 are done, resolve
                         return resolve();
@@ -807,8 +825,10 @@ var SCUtils = {
                                 return sreject(err);
                             });
                             dest.on('finish', () => {
-                                console.log(""); //clear progress bar
-                                console.log("Renaming to finished wave")
+                                if (SCUtils.debugMode) {
+                                    console.log(""); //clear progress bar
+                                    console.log("Renaming to finished wave");
+                                }
                                 fs.rename(unfinWavePath, wavePath, err => {
                                     if (err) {
                                         return sreject("Error renaming wave");
@@ -821,7 +841,9 @@ var SCUtils = {
                                 return sreject(err);
                             });
                         }).then( () => {
-                            console.log("Wave '"+trackObject.title+"' written successfully, resolving");
+                            if (SCUtils.debugMode) {
+                                console.log("Wave '"+trackObject.title+"' written successfully, resolving");
+                            }
                             waveOK = true;
                             if (trackOK && artOK) { //if the other 2 are done, resolve
                                 return resolve();
@@ -835,7 +857,9 @@ var SCUtils = {
                         return reject("Error fetching wave URL");
                     });
                 } else {
-                    console.log("Track '"+trackObject.title+"' waveform found already");
+                    if (SCUtils.debugMode) {
+                        console.log("Track '"+trackObject.title+"' waveform found already");
+                    }
                     waveOK = true;
                     if (trackOK && artOK) { //if the other 2 are done, resolve
                         return resolve();
