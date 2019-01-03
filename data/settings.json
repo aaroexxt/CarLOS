@@ -66,7 +66,7 @@
         "soundcloudWaveformCacheDirectory": "data/SCcache/waveform",
         "noArtworkUrlPrefix": "/app/assets/",
 
-        "soundcloudCacheExpiryTime": 86400000,
+        "soundcloudCacheExpiryTime": 604800000,
 
         "initErrorDelay": 1000,
         "initMaxAttempts": 3,
@@ -97,5 +97,22 @@
         "playMusicOnServer": true,
         "minInteractionWaitTime": 2000,
         "trackSelectedWaitMultiplier": 2
+    },
+    "neuralSettings": {
+        "dataBasePath": "data/neural",
+        "recognition": {
+            "dataBasePath": "data/neural/deepspeech",
+            "triePath": "trie",
+            "LMpath": "lm.binary",
+            "modelPath": "output_graph.pbmm",
+            "alphabetPath": "alphabet.txt"
+        },
+        "commandMatching": {
+            "dataBasePath": "data/neural/match",
+            "commandGroupPath": "../data/neural/match/commandGroup.js",
+            "commandsPath": "commands.json",
+            "responsesPath": "responses.json",
+            "targetError": 0.001
+        }
     }
 }

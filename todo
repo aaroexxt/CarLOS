@@ -51,8 +51,6 @@ search tracks sc
 
 add rds/rdbs radio messages for radio through arduino
 
-BIG CHANGE: remove socket.io and only use get/post requests
-
 sc user which has only goodtracks
 apple music
 bluetooth
@@ -61,6 +59,7 @@ video playback
 
 MAJ REQUIRED FEATURES BEFORE RELEASE:
     -Navigation with turn-by-turn directions
+    -Offline map DONE
     -Working directions (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Developer%20FAQ%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Developer_FAQ) and (chrome-extension://klbibkeccnjlkjkiokjodocebajanakg/suspended.html#ttl=Google%20Maps%20Example%20-%20OpenStreetMap%20Wiki&uri=https://wiki.openstreetmap.org/wiki/Google_Maps_Example)
     -FM Broadcasting
     -Legacy mode with python NOPE
@@ -97,6 +96,7 @@ Tackle tensorflow in javascript for speech generation https://github.com/tensorf
 
 DONE stuff:
 
+BIG CHANGE: remove socket.io and only use get/post requests DONE
 arduino sensor overloading & gps handling DONE
 electron framework? CANCELED
 data logging DONE
@@ -131,6 +131,7 @@ use a timed listener to get song playing length on client side instead of bytes 
 changescuser now has to go to server DONE
 cleaned up globals file DONE
 finish fixing cleaning directories (ESSENTIAL) DONE
+DebugMode for all modules DONE
 
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
 

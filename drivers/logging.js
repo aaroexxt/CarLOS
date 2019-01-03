@@ -86,7 +86,9 @@ var loggingUtilities = {
 								}
 							});
 						} else { //it exists
-							console.log("Logging directory exists; checking if there are more logfiles than there should be...");
+							if (loggingUtilities.debugMode) {
+								console.log("Logging directory exists; checking if there are more logfiles than there should be...");
+							}
 							loggingUtilities.checkValidLogFiles().then( () => {
 								return resolve();
 							}).catch( err => {
@@ -113,7 +115,9 @@ var loggingUtilities = {
 						for (var i=0; i<logfiles.length; i++) { //just iterate to find invalid files
 							let filePath = path.join(logDirPath,logfiles[i]);
 
-							console.log("INDEX: "+logfiles[i].indexOf(loggingUtilities.ignoreFileString))
+							if (loggingUtilities.debugMode) {
+								console.log("INDEX: "+logfiles[i].indexOf(loggingUtilities.ignoreFileString));
+							}
 							if (logfiles[i].indexOf(loggingUtilities.ignoreFileString) == -1) {
 								if (!validateDate(logfiles[i]) && logfiles[i].indexOf(loggingUtilities.ignoreFileString) == -1) { //logfile invalid
 									dateObjects.push({getTime: function(){return -1}}); //blank fn
@@ -133,8 +137,8 @@ var loggingUtilities = {
 						if (logfiles.length > loggingUtilities.maxKeptFiles) {
 							if (loggingUtilities.debugMode) {
 								console.log("[LOGGER] MaxKeptFiles > 0, will delete files based on date");
+								console.log("[LOGGING] Found "+logfiles.length+" which is above max "+loggingUtilities.maxKeptFiles);
 							}
-							console.log("[LOGGING] Found "+logfiles.length+" which is above max "+loggingUtilities.maxKeptFiles);
 							let numFilesToDelete = logfiles.length-loggingUtilities.maxKeptFiles;
 							let minDate = 10**50; //big number
 							let maxDate = -minDate;
@@ -185,7 +189,9 @@ var loggingUtilities = {
 										console.log("[LOGGING] SkipDateObjects: "+JSON.stringify(skipDateObjects));
 									}
 									if (skipDateObjects.indexOf(minDateInd) == -1) {
-										console.log("[LOGGING] Deleting logfile at index "+minDateInd+" because it is too old (name "+logfiles[minDateInd]+")");
+										if (loggingUtilities.debugMode) {
+											console.log("[LOGGING] Deleting logfile at index "+minDateInd+" because it is too old (name "+logfiles[minDateInd]+")");
+										}
 										let filePath = path.join(logDirPath,logfiles[minDateInd]);
 										skipDateObjects.push(minDateInd);
 										fs.unlink(filePath, err => {
@@ -271,7 +277,7 @@ var loggingUtilities = {
 			if (loggingUtilities.writeInformation.currentBytesWritten+data.length > loggingUtilities.maxLogFileLength) {
 				/*loggingUtilities.writeInformation.currentBytesWritten = loggingUtilities.maxLogFileLength+1; //write into a new file if it's too long
 				loggingUtilities.logRaw(data);*/
-				//noped this because it could lead to infinite recursion
+				//noped this because it could lead to infinite recursion (if data is greater than max file length, which kinda defeats the purpose)
 
 				let fullData = "\n["+fullDateShort+"] "+data;
 				loggingUtilities.writeInformation.currentFileStream.write(fullData);
@@ -286,7 +292,9 @@ var loggingUtilities = {
 
 	registerValidationInterval: function() {
 		clearInterval(loggingUtilities.validationInterval); //try to clear first
-		console.log("Registering logValidationInterval with a timeout of "+loggingUtilities.validationTime+"ms");
+		if (loggingUtilities.debugMode) {
+			console.log("Registering logValidationInterval with a timeout of "+loggingUtilities.validationTime+"ms");
+		}
 		loggingUtilities.validationInterval = setInterval(loggingUtilities.checkValidLogFiles, loggingUtilities.validationTime);
 	},
 

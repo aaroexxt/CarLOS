@@ -20,6 +20,8 @@ var CVUtils = {
 
     localRuntimeSettings: {},
 
+    debugMode: false,
+
     init: function(cwd, runtimeSettings) {
         return new Promise((resolve, reject) => {
             if (typeof runtimeSettings == "undefined") {
@@ -35,14 +37,16 @@ var CVUtils = {
                 if (err) {
                     return reject("Error getting openCV files from directory "+cvBP);
                 } else {
-                    console.log("Userdata files found: "+JSON.stringify(trainingUsers));
+                    if (CVUtils.debugMode) {
+                        console.log("Userdata files found: "+JSON.stringify(trainingUsers));
+                    }
                     CVUtils.faces = []; //reset faces, labels and mappings
                     CVUtils.labels = [];
                     CVUtils.mappings = [];
 
                     function processTrainingUsers(i) {
                         if (trainingUsers[i].substring(0,1) == ".") {
-                            console.log("Training dir "+trainingUsers[i]+" is invalid; contains . in name")
+                            console.warn("CV Training dir "+trainingUsers[i]+" is invalid; contains . in name")
                             processTrainingUsers(i+1);
                             return; //have to return out of current fn
                         } else if (trainingUsers[i].substring(0,1).toLowerCase() == "u") {
@@ -68,16 +72,22 @@ var CVUtils = {
 
                                 function processImagePaths(j) {
 
-                                    var determineNextAction = () => { //will determine if processImagePaths can be complelted
+                                    var determineNextAction = () => { //will determine if processImagePaths can be completed
                                         if (j >= imagePaths.length-1) { //is this loop complete?
-                                            console.log("[ImagePaths] "+imagePaths.length+" images found for user: "+trainingUsers[i]);
+                                            if (CVUtils.debugMode) {
+                                                console.log("[ImagePaths] "+imagePaths.length+" images found for user: "+trainingUsers[i]);
+                                            }
 
                                             if (i < trainingUsers.length-1) { //is user loop complete?
                                                 processTrainingUsers(i+1);
                                             } else {
-                                                console.info("Training LBPH recognizer");
+                                                if (CVUtils.debugMode) {
+                                                    console.info("Training LBPH recognizer");
+                                                }
                                                 CVUtils.lbphRecognizer.trainAsync(CVUtils.faces, CVUtils.labels).then( () => {
-                                                    console.log("[ImagePaths] Trained recognizer successfully");
+                                                    if (CVUtils.debugMode) {
+                                                        console.log("[ImagePaths] Trained recognizer successfully");
+                                                    }
                                                     return resolve();
                                                 }).catch( err => {
                                                     return reject("[ImagePaths] Couldn't train recognizer (Error: "+err+")");
@@ -95,7 +105,9 @@ var CVUtils = {
                                             img.bgrToGrayAsync().then( img => {
                                                 CVUtils.getFaceImage(img).then( img => { //get the face image
                                                     if (typeof img == "undefined" || img === null) {
-                                                        console.warn("ImageData [i="+j+"], user [i="+i+"] image is null, no face found");
+                                                        if (CVUtils.debugMode) {
+                                                            console.warn("ImageData [i="+j+"], user [i="+i+"] image is null, no face found");
+                                                        }
                                                         determineNextAction();
                                                         return;
                                                     } else {
@@ -117,7 +129,9 @@ var CVUtils = {
                                             return reject("[ImagePaths] Failed to read from image path: "+imagePaths[j]);
                                         }
                                     } else {
-                                        console.log(JSON.stringify(imagePaths)+", "+imagePaths.length)
+                                        if (CVUtils.debugMode) {
+                                            console.log(JSON.stringify(imagePaths)+", "+imagePaths.length)
+                                        }
                                         return reject("[ImagePaths] i"+j+" is undefined or contains undefined");
                                     }
                                 }
@@ -127,7 +141,9 @@ var CVUtils = {
                                 //console.log("FINAL IMAGES: "+JSON.stringify(images));
                             }
                         } else {
-                            console.warn("Found invalid OpenCV dir "+trainingUsers[i]+" in training folder");
+                            if (CVUtils.debugMode) {
+                                console.warn("Found invalid OpenCV dir "+trainingUsers[i]+" in training folder");
+                            }
                             processTrainingUsers(i+1);
                             return; //have to return out of current fn
                         }

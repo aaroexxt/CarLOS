@@ -18,6 +18,7 @@ const mapUtils = {
 	mapTileData: [],
 	loadPercent: 0,
 	displayAnnotations: true,
+	debugMode: false,
 	init: (cwd, settings) => {
 		return new Promise( (resolve, reject) => {
 			if (typeof cwd == "undefined" || typeof settings == "undefined") {
@@ -26,10 +27,11 @@ const mapUtils = {
 				return reject("mapDataDirectory or defaultMapdataFile or displayAnnotations undefined in settings");
 			}
 			mapUtils.displayAnnotations = settings.displayAnnotations;
-
 			function loadAnnotationData(index) {
 				let mdr = path.join(cwd,settings.mapDataDirectory,settings.defaultMapAnnotationFiles[index].file);
-				console.log("Fetching mapdata (index: "+index+") via read stream from dir: "+mdr);
+				if (mapUtils.debugMode) {
+					console.log("Fetching mapdata (index: "+index+") via read stream from dir: "+mdr);
+				}
 				
 				if (!fs.existsSync(mdr)) {
 					return reject("Map file at index: "+index+" and path: "+mdr+"does not exist, check settings");
@@ -61,9 +63,11 @@ const mapUtils = {
 			    });
 
 				parseStream.on('data', gdc => {
-					console.log("Mapping: loaded geoJson data for file at index: "+index+", running tile preprocessor...");
+					if (mapUtils.debugMode) {
+						console.log("Mapping: loaded geoJson data for file at index: "+index+", running tile preprocessor...");
+					}
 					let tileIndex = geojsonVT(gdc, { //create tile index
-						debug: 2,
+						debug: ((mapUtils.debugMode)?2:0),
 						maxZoom: 15,
 						indexMaxZoom: 13
 					});
@@ -79,12 +83,16 @@ const mapUtils = {
 							strokeWeight: settings.defaultMapAnnotationFiles[index].strokeWeight,
 						}
 					}) //push the full object
-					console.log("Tile preprocessor created successfully for data at index: "+index);
+					if (mapUtils.debugMode) {
+						console.log("Tile preprocessor created successfully for data at index: "+index);
+					}
 
 					readStream.unpipe(parseStream); //unpipe stream
 					
 					if (index >= settings.defaultMapAnnotationFiles.length-1) {
-						console.log("Done loading mapdata");
+						if (mapUtils.debugMode) {
+							console.log("Done loading mapdata");
+						}
 						return resolve();
 					} else {
 						loadAnnotationData(index+1); //load next index
@@ -94,7 +102,9 @@ const mapUtils = {
 			}
 
 			//ACTUAL INIT CODE
-			console.log("creating mbtiles object (could take a while)...");
+			if (mapUtils.debugMode) {
+				console.log("creating mbtiles object (could take a while)...");
+			}
 			let mbpath = path.join(cwd,settings.mapDataDirectory,settings.defaultMapdataFile);
 			if (!fs.existsSync(mbpath)) {
 				return reject("Mapdata file at path: "+mbpath+"does not exist, check settings");
@@ -103,7 +113,9 @@ const mapUtils = {
 				if (err) {
 					return reject("Failed to create MBTiles object because "+err);
 				} else {
-					console.log("mbtiles object ok, loading annotation data...");
+					if (mapUtils.debugMode) {
+						console.log("mbtiles object ok, loading annotation data...");
+					}
 					mapUtils.mapTileData = mbtiles;
 
 					loadAnnotationData(0); //start load process for annotation geojson
@@ -124,12 +136,18 @@ const mapUtils = {
 					break;
 				}
 			}
+			if (mapUtils.debugMode) {
+				console.log("Fetching annotationTile (layer="+layer+") @x="+x+" y="+y+" zoom="+z);
+			}
 			if (realLindex < 0) {
 				console.warn("Tried to lookup layer "+layerIndex+" but couldn't find it for some reason??");
 				return reject("Layer lookup failed");
 			} else {
 				let tileData = mapUtils.mapAnnotationData[realLindex].tileIndex.getTile(Number(zoom), Number(x), Number(y)); //return the cache from the correct layer
 				if (typeof tileData == "undefined" || tileData === null || !tileData) {
+					if (mapUtils.debugMode) {
+						console.warn("TileData is null or undefined");
+					}
 					return reject();
 				} else {
 					return resolve(tileData.features);
@@ -139,6 +157,9 @@ const mapUtils = {
 	},
 	fetchDataTile: (zoom, x, y) => {
 		return new Promise( (resolve, reject) => {
+			if (mapUtils.debugMode) {
+				console.log("Fetching dataTile @x="+x+" y="+y+" zoom="+z+" ex="+extension);
+			}
 			mapUtils.mapTileData.getTile(zoom, x, y, function(err, tile, headers) {
 				if (err) {
 					return reject(err);

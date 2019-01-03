@@ -3,9 +3,8 @@
     "ignore": [
         "**.json",
         "node_modules/**/node_modules",
-        "/SCCache/**.*"
+        "/data/**"
     ],
-    "watch": ["COSserver.js", "soundcloudUtils.js", "openCV.js"],
     "e": ["js"],
     "delay": 1000,
     "execMap": {

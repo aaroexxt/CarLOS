@@ -36,6 +36,9 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install -y avahi-daemon netatalk
     sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
     sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"
+    echo "Installing libpostal...";
+    sudo apt-get install -y curl autoconf automake libtool pkg-config;
+    sudo apt-get install -y build-essential;
 elif [ "$platform" = "mac" ]; then
     echo "Installing node (mac)...";
     brew install node
@@ -45,20 +48,36 @@ elif [ "$platform" = "mac" ]; then
     sudo easy_install pip;
     brew remove portaudio;
     brew install portaudio;
+    brew install curl autoconf automake libtool pkg-config;
+
 fi
+echo "Installing libPostal";
+git clone https://github.com/openvenues/libpostal
+cd libpostal
+./bootstrap.sh
+./configure --datadir $(pwd)
+make
+sudo make install;
+
+# On Linux it's probably a good idea to run
+sudo ldconfig;
 
 echo "Updating node and npm to correct versions...";
 sudo npm cache clean -f #update node
 sudo npm install -g n
 #sudo n 8.9.3
-sudo n stable
+sudo n 10.15.0
 #sudo npm install npm@5.5.1 -g #update npm
 sudo npm install npm@latest -g
 
 echo "Installing packages...";
 sudo npm i -g npm@latest;
+
+echo "Installing node-gyp";
+sudo npm install -g node-gyp;
 #cd ~;
-sudo npm install --unsafe-perm=true --allow-root --save-prod multer is-root segfault-handler errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js;
+echo "Installing all important packages from npm";
+sudo npm install --unsafe-perm=true --allow-root --save-prod multer is-root segfault-handler errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js geojson-vt @mapbox/mbtiles big-json deepspeech mic sox-stream memory-stream cors;
 #sudo npm install --unsafe-perm=true --allow-root --save-prod electron@2.0.12
 #sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild
 sudo npm install --unsafe-perm=true --allow-root --build-from-source --save-prod serialport;

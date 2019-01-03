@@ -111,6 +111,7 @@ var soundcloudSettings = {
 	defaultVolume: "?",
 	volStep: "?"
 }
+var neuralSettings = {}
 
 try {
 	var settingsData = fs.readFileSync(path.join(cwd,runtimeSettings.defaultDataDirectory,"settings.json"));
@@ -135,6 +136,12 @@ var keys = Object.keys(settingsData.settings); //only override keys from setting
 for (var i=0; i<keys.length; i++) {
 	runtimeSettings[keys[i]] = settingsData.settings[keys[i]];
 }
+
+var keys = Object.keys(settingsData.neuralSettings); //only override keys from settingsData
+for (var i=0; i<keys.length; i++) {
+	neuralSettings[keys[i]] = settingsData.neuralSettings[keys[i]];
+}
+
 
 PRODUCTIONMODE = settingsData.PRODUCTION; //production mode?
 runtimeSettings.productionMessage = settingsData.productionMessage;
@@ -367,7 +374,7 @@ process.argv.forEach(function (val, index, array) {
 		for (var i=0; i<json.length; i++) {
 			var device = json[i].comName;
 			var manufacturer = json[i].manufacturer || "No manufacturer found";
-			console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
+			//console.log("Device parsed from json: "+device+", manufacturer: "+manufacturer);
 			if (manufacturer.toLowerCase().indexOf("arduino") > -1) {
 				console.log("Arduino found!");
 				runtimeInformation.arduinoConnected = true;
@@ -387,7 +394,7 @@ process.argv.forEach(function (val, index, array) {
 	} else if (ind2 > -1) {
 		var listType = val.split("=")[1];
 		if (listType == "JSON") {
-			console.log("JSON list detected");
+			console.log("JSON deviceList validated; searching for arduinos");
 			if (serialDevice == "" || serialDevice == "none") { //process later
 				foundJSON = true;
 			} else {
@@ -402,7 +409,7 @@ process.argv.forEach(function (val, index, array) {
 *************************************/
 
 var arduinoUtils = require('./drivers/arduino.js'); //require the driver
-console.log("Serial device from start script: "+serialDevice);
+//console.log("Serial device from start script: "+serialDevice);
 arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 	console.importantLog("Arduino driver initialized successfully (1/3)");
 	if (serialDevice == "" || serialDevice == "none" || runtimeInformation.arduinoConnected == false) {
@@ -426,107 +433,45 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 	console.error("Arduino driver failed to initialize for the following reason: '"+err+"'");
 }) //setup arduino object and libs
 
-/******************************
---I8-- DATA FILE PARSERS --I8--
-******************************/
-
-fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/responses.json"), function(err,data){
-	if (err) {
-		console.error("[FATAL] Error reading responses file");
-		throw "[FATAL] Error reading responses file";
-	} else {
-		var responseData = [];
-		var commands = JSON.parse(data); //read data and set approval object
-		for (var i=0; i<commands.length; i++) {
-			responseData.push(commands[i]);
-		}
-		console.log("[SPEECHPARSE] Sentences in response data: "+responseData.length);
-		console.log("[SPEECHPARSE] Preprocessing data...");
-		speechParser.algorithm.preprocessData(responseData);
-		console.log("[SPEECHPARSE] Data preprocessed successfully.");
-	}
-});
-
-fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/commandGroup.json"), function(err,data){
-	if (err) {
-		console.error("[FATAL] Error reading commandGroup file");
-		throw "[FATAL] Error reading commandGroup file";
-	} else {
-		var lines = JSON.parse(data); //read data and set approval object
-		var foundCommandGroup = false;
-		var commands = [];
-		for (var i=0; i<lines.length; i++) {
-			if (lines[i].type == "commandGroup") {
-				speechParser.algorithm.commandGroup = lines[i].commandGroup;
-				foundCommandGroup = true;
-			} else if (lines[i].type == "command") {
-				commands.push([lines[i].command,lines[i].response,lines[i].arguments]);
-			}
-		}
-		if (!foundCommandGroup) {
-			throw "[FATAL] No commandGroup found in commandGroup file.";
-		} else if (commands.length != speechParser.algorithm.commandGroup.length) {
-			throw "[FATAL] CommandGroup length does not match command length. Are there commands missing from the commandGroup file? (command length: "+commands.length+", cg length: "+speechParser.algorithm.commandGroup.length;
-		} else {
-			speechParser.algorithm.commandFunctions = commands;
-		}
-	}
-});
-
-fs.readFile(path.join(cwd,runtimeSettings.defaultDataDirectory,"/commands.json"), function(err,data){
-	if (err) {
-		console.error("[FATAL] Error reading commands file");
-		throw "[FATAL] Error reading commands file";
-	} else {
-		var speechData = [];
-		var commands = JSON.parse(data); //read data and set approval object
-		for (var i=0; i<commands.length; i++) {
-			speechData.push(commands[i]);
-		}
-		console.log("[SPEECHNET] Sentences in speech training data: "+speechData.length);
-		console.log("[SPEECHNET] Preprocessing data...");
-		neuralMatcher.algorithm.preprocessData(speechData);
-		console.log("[SPEECHNET] Generating training data...");
-		var td = neuralMatcher.algorithm.generateTrainingData(); //uses preprocessed data
-		console.log("[SPEECHNET] Training net (won't show progress on chrome console)...");
-		neuralMatcher.algorithm.trainNetAsync(speechClassifierNet, speechNetTargetError, td,
-		function(net){
-			/*var percent = speechNetTargetError/net.error;
-			var chars = Math.round(windowSize.width*percent);
-			var str = "";
-			for (var i=0; i<chars-6; i++) {
-				str+="#";
-			}
-			str+="> ";
-			str+=String(Math.round(percent*100))
-			str+="%"
-			singleLineLog(str); //make it fancy*/
-			//don't need singleLineLog for neural init
-			//singleLineLog("training error: "+net.error+", iterations: "+net.iterations);
-		},
-		function(){
-			console.importantInfo("NEURAL INIT OK");
-			singleLineLog.clear();
-			console.log("\n[SPEECHNET] Done training net. Ready for input.");
-			speechNetReady = true;
-		},
-		function(){
-			console.error("[SPEECHNET] Error training net asynchronously. Speech-related functions may break :(");
-		})
-	}
-});
-
 /*********************************
 --I9-- NEURAL NETWORK SETUP --I9--
 *********************************/
+const NeuralMatcher = require('./drivers/neuralMatcherCommandWrapper.js');
+NeuralMatcher.init(neuralSettings)
+.then( () => {
+	console.importantInfo("NEURAL_MATCHER OK")
+	console.log(NeuralMatcher.classify("hello"))
+})
+.catch( err => {
+	console.error("Error initializing NeuralCommandMatcher: "+err);
+})
 
-var speechParser = require('./drivers/speechParser.js'); //include speech parsing file
-var neuralMatcher = require('./drivers/speechMatcher.js'); //include the speech matching file
-neuralMatcher.algorithm.stemmer = neuralMatcher.stemmer;
-var brain = require("brain.js");
-var speechClassifierNet = new brain.NeuralNetwork(); //make the net
-var speechNetTargetError = 0.005;//0.00001; //<- for release
-var speechNetReady = false;
+const NeuralResponder = require('./drivers/neuralMatcherResponseWrapper.js');
+NeuralResponder.init(neuralSettings)
+.then( () => {
+	console.importantInfo("NEURAL_RESPONDER OK")
+})
+.catch( err => {
+	console.error("Error initializing NeuralResponseMatcher: "+err);
+})
+
+/*const deepSpeechUtils = require('./drivers/deepspeechWrapper.js'); //deepspeech wrapper
+deepSpeechUtils.init(neuralSettings)
+.then( () => {
+	console.importantInfo("NEURAL_DEEPSPEECH OK");
+})
+.catch( e => {
+	console.error("Error initializing deepspeech: "+e);
+})*/
+
+//example usage of deepspeech module
+/*console.log("taking audio sample of 7000 ms")
+deepSpeechUtils.takeAudioSample(7000).then(buffer => {
+	console.log("audio sample taken; processing");
+	deepSpeechUtils.runInference(buffer).then( recog => {
+		console.log("Inference run w/recog "+recog)
+	})
+})*/
 
 /*******************************
 --I10-- READING FROM STDIN --I10--
@@ -1365,7 +1310,6 @@ SCrouter.get("/changeUser/:user", function(req, res) {
 
 //Map Routes
 MAProuter.get("/", function(req, res) {
-	console.log(JSON.stringify(req.session)+" session");
 	var done = finalHandler(req, res, {
 		onerror: function(err) {
 			console.log("[HTTP] Error: "+err.stack || err.toString())
@@ -1400,14 +1344,12 @@ MAProuter.get("/annotationTile/:layerIndex/:z/:x/:y", function(req, res) {
 	let x = req.params.x;
 	let y = req.params.y;
 	let z = req.params.z; //zoom
-	console.log("Fetching annotationTile (layer="+layer+") @x="+x+" y="+y+" zoom="+z);
 	if (mapReady) {
 		mapUtils.fetchAnnotationTile(layer, z, x, y)
 		.then( tileData => {
 			return res.end(RequestHandler.SUCCESS(tileData));	
 		})
 		.catch( err => {
-			console.warn("TileData is null or undefined");
 			return res.end(RequestHandler.FAILURE("TileData is null or undefined"));
 		})	
 	} else {
@@ -1421,7 +1363,6 @@ MAProuter.get('/dataTile/:z/:x/:y.*', function(req, res) {
 	let z = req.params.z; //zoom
 	var extension = req.param(0);
 
-	console.log("Fetching dataTile @x="+x+" y="+y+" zoom="+z+" ex="+extension);
     if (mapReady) {
 	    switch (extension) {
 			case "png":

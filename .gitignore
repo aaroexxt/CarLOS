@@ -7,6 +7,7 @@ compile/*
 *.mp3
 data/SCcache/*
 data/SCcache/*.json
+data/neural/*
 *.DS_Store
 *DS_Store
 .DS_Store

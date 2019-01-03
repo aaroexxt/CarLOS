@@ -604,7 +604,7 @@ const globals = {
                     mR.state = "trackDataUpdate";
                 },
                 updateTrackList: function(tracklist) {
-                    var tklElem = document.getElementById(mR.properties.trackListElement);
+                    var tklElem = document.getElementById(globals.modules.music.properties.trackListElement);
                     tklElem.innerHTML = "";
                     for (var i=0; i<tracklist.length; i++) {
                         var p = document.createElement("p");
