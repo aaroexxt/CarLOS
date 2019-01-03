@@ -615,6 +615,16 @@ var SCUtils = {
             var wavePath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory,("waveform-"+trackID+".png"));
             var waveFolderPath = path.join(SCUtils.CWD,scSettings.soundcloudWaveformCacheDirectory);
 
+            if (SCUtils.debugMode) {
+                console.log("Checking if track, waveforms, and art are already downloaded");
+            }
+            if (fs.existsSync(trackPath) && fs.existsSync(artPath) && fs.existsSync(wavePath)) {
+                if (SCUtils.debugMode) {
+                    console.log("Track, art, and wave already exist, so resolving");
+                }
+                return resolve();
+            }
+
             if (SCUtils.debugMode) {console.log("Checking if folders exist @path="+trackFolderPath+", @path="+artFolderPath+", @path="+waveFolderPath+"...")};
             if (!fs.existsSync(trackFolderPath)) {
                 console.log("Track folder doesn't exist... WTF (why u break my code) but okay?");
@@ -799,7 +809,9 @@ var SCUtils = {
                     }
                 });
             } else { //artwork url is not defined
-                console.log("Artwork URL not defined for track, copying missing audio instead");
+                if (SCUtils.debugMode) {
+                    console.log("Artwork URL not defined for track, copying missing audio instead");
+                }
 
                 new Promise((sresolve, sreject) => {
                     if (SCUtils.debugMode) {
