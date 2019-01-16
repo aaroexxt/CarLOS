@@ -114,5 +114,8 @@
             "responsesPath": "responses.json",
             "targetError": 0.001
         }
+    },
+    "airplaySettings": {
+        "serverName": "CarLOS"
     }
 }

@@ -3,7 +3,8 @@
     "ignore": [
         "**.json",
         "node_modules/**/node_modules",
-        "/data/**"
+        "/data/**",
+        "app/**"
     ],
     "e": ["js"],
     "delay": 1000,

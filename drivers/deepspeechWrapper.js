@@ -1,5 +1,5 @@
 /*
-* recognition.js by Aaron Becker
+* deepspeechWrapper.js by Aaron Becker
 * Manages real-time speech recognition for CarOS using Mozilla's DeepSpeech recognition engine
 *
 * Dedicated to Marc Perkel

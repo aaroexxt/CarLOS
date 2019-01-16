@@ -40,8 +40,12 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install -y curl autoconf automake libtool pkg-config;
     sudo apt-get install -y build-essential;
 elif [ "$platform" = "mac" ]; then
+    echo "running xcode-select";
+    sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || (echo "Make sure XCode is installed; error running XCode setup" && exit 1);
     echo "Installing node (mac)...";
     brew install node
+    echo "Fixing npm install issues";
+    sudo chmod -R 777 ~/.npm
     echo "Installing python and pip (mac)...";
     brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/f2a764ef944b1080be64bd88dca9a1d80130c558/Formula/python.rb;
     brew install python;
@@ -77,6 +81,7 @@ echo "Installing node-gyp";
 sudo npm install -g node-gyp;
 #cd ~;
 echo "Installing all important packages from npm";
+sudo npm install --unsafe-perm=true --allow-root --save-prod git://github.com/Kolky/nodetunes.git#master
 sudo npm install --unsafe-perm=true --allow-root --save-prod multer is-root segfault-handler errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js geojson-vt @mapbox/mbtiles big-json deepspeech mic sox-stream memory-stream cors;
 #sudo npm install --unsafe-perm=true --allow-root --save-prod electron@2.0.12
 #sudo npm install --unsafe-perm=true --allow-root --save-dev electron-rebuild

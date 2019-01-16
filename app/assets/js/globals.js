@@ -496,11 +496,16 @@ const globals = {
                     let containerElement = document.getElementById(moduleReference.properties.loadContainerElementName);
                     let mapElement = document.getElementById(moduleReference.properties.mapElementName);
 
-                    mapElement.style.height = window.innerHeight+"px";
+                    mapElement.style.height = (window.innerHeight-1000)+"px";
                     mapElement.style.opacity = 1;
+
                     window.addEventListener('resize', () => {
                         document.getElementById(moduleReference.properties.mapElementName).style.height = window.innerHeight+"px";
-                    })
+                    });
+
+                    setTimeout( () => {
+                        window.dispatchEvent(new Event('resize'));
+                    },100); //workaround to make resize event fire, which somehow fixes the grey map issue. don't ask
 
                     try {
                         containerElement.parentNode.removeChild(containerElement); //remove loading elem

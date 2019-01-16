@@ -112,6 +112,7 @@ var soundcloudSettings = {
 	volStep: "?"
 }
 var neuralSettings = {}
+var airplaySettings = {}
 
 try {
 	var settingsData = fs.readFileSync(path.join(cwd,runtimeSettings.defaultDataDirectory,"settings.json"));
@@ -142,6 +143,11 @@ for (var i=0; i<keys.length; i++) {
 	neuralSettings[keys[i]] = settingsData.neuralSettings[keys[i]];
 }
 
+var keys = Object.keys(settingsData.airplaySettings); //only override keys from settingsData
+for (var i=0; i<keys.length; i++) {
+	airplaySettings[keys[i]] = settingsData.airplaySettings[keys[i]];
+}
+
 
 PRODUCTIONMODE = settingsData.PRODUCTION; //production mode?
 runtimeSettings.productionMessage = settingsData.productionMessage;
@@ -164,7 +170,7 @@ if (!runtimeSettings.disableToobusy) {
 }
 
 //console.clear();
-console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarlOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\nPID: "+process.pid+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
+console.log("~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\nCarLOS V1\nBy Aaron Becker\nPORT: "+runtimeSettings.serverPort+"\nCWD: "+cwd+"\nPID: "+process.pid+"\n~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-~-\n");
 
 /*******************************
 --I3-- STATE MACHINE INIT --I3--
@@ -455,23 +461,23 @@ NeuralResponder.init(neuralSettings)
 	console.error("Error initializing NeuralResponseMatcher: "+err);
 })
 
-/*const deepSpeechUtils = require('./drivers/deepspeechWrapper.js'); //deepspeech wrapper
+const deepSpeechUtils = require('./drivers/deepspeechWrapper.js'); //deepspeech wrapper
 deepSpeechUtils.init(neuralSettings)
 .then( () => {
 	console.importantInfo("NEURAL_DEEPSPEECH OK");
 })
 .catch( e => {
 	console.error("Error initializing deepspeech: "+e);
-})*/
+})
 
 //example usage of deepspeech module
-/*console.log("taking audio sample of 7000 ms")
-deepSpeechUtils.takeAudioSample(7000).then(buffer => {
+console.log("taking audio sample of 7000 ms")
+deepSpeechUtils.takeAudioSample(10000).then(buffer => {
 	console.log("audio sample taken; processing");
 	deepSpeechUtils.runInference(buffer).then( recog => {
 		console.log("Inference run w/recog "+recog)
 	})
-})*/
+})
 
 /*******************************
 --I10-- READING FROM STDIN --I10--
