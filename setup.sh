@@ -36,9 +36,9 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install -y avahi-daemon netatalk
     sudo apt-get install -y realvnc-vnc-server realvnc-vnc-viewer;
     sudo systemctl enable vncserver-x11-serviced.service && sudo systemctl start vncserver-x11-serviced.service || echo "VNC couldn't be started"
-    echo "Installing libpostal...";
-    sudo apt-get install -y curl autoconf automake libtool pkg-config;
-    sudo apt-get install -y build-essential;
+    #echo "Installing libpostal...";
+    #sudo apt-get install -y curl autoconf automake libtool pkg-config;
+    #sudo apt-get install -y build-essential;
 elif [ "$platform" = "mac" ]; then
     echo "running xcode-select";
     sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || (echo "Make sure XCode is installed; error running XCode setup" && exit 1);
@@ -55,13 +55,13 @@ elif [ "$platform" = "mac" ]; then
     brew install curl autoconf automake libtool pkg-config;
 
 fi
-echo "Installing libPostal";
-git clone https://github.com/openvenues/libpostal
-cd libpostal
-./bootstrap.sh
-./configure --datadir $(pwd)
-make
-sudo make install;
+#echo "Installing libPostal";
+#git clone https://github.com/openvenues/libpostal
+#cd libpostal
+#./bootstrap.sh
+#./configure --datadir $(pwd)
+#make
+#sudo make install;
 
 # On Linux it's probably a good idea to run
 sudo ldconfig;
@@ -80,6 +80,9 @@ sudo npm i -g npm@latest;
 echo "Installing node-gyp";
 sudo npm install -g node-gyp;
 #cd ~;
+echo "Installing mocha&chai";
+sudo npm install --unsafe-perm=true --allow-root --save-dev chai mocha
+sudo npm install --unsafe-perm=true --allow-root --save-dev --global mocha
 echo "Installing all important packages from npm";
 sudo npm install --unsafe-perm=true --allow-root --save-prod git://github.com/Kolky/nodetunes.git#master
 sudo npm install --unsafe-perm=true --allow-root --save-prod multer is-root segfault-handler errorhandler opencv4nodejs node-json-db express-session session-file-store passport passport-local passport-custom bcrypt brain.js strip-color strip-ansi window-size single-line-log node-fetch finalhandler express serve-favicon lame pcm-volume mp3-duration path progress-stream remote-file-size colors timed-stream native-watchdog toobusy-js geojson-vt @mapbox/mbtiles big-json deepspeech mic sox-stream memory-stream cors;

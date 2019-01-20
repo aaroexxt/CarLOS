@@ -9,6 +9,20 @@
 */
 
 /******
+DEPENDENCIES
+******/
+const Speaker = require("speaker");
+const lame = require("lame");
+const pcmVolume = require("pcm-volume");
+const mp3d = require('mp3-duration');
+const timedStream = require('timed-stream');
+const path = require('path');
+const events = require('events');
+
+const airplay = require("airplay.js"); //airplay server wrapper
+const soundcloud = require("soundcloud.js"); //soundcloud local storage wrapper
+
+/******
 REQUIRED FUNCTIONS/CONSTANTS
 ******/
 
@@ -37,21 +51,53 @@ const clamp = function(number, min, max) { //clamp values
 ACTUAL CODE LOL
 ******/
 
-const airplay = require("airplay.js"); //airplay server wrapper
-const soundcloud = require("soundcloud.js"); //soundcloud local storage wrapper
-
 const SoundManagerV2 = {
     soundcloud: {
-        playingTrack: false,
-        currentVolume: 50,
-        currentPlayingTrack: {},
-        currentPlayingTrackDuration: 0,
-        currentPlayingTrackPlayed: 0,
-        trackTimeInterval: 0,
+        playingTrack: false, //boolean whether track is playing or not
+        currentVolume: 50, //volume 0-100
+        currentPlayingTrack: {}, //current playing track in object form
+        
+        
         canInteractTrack: true,
         canInteractTrackTimeout: 0,
 
-        trackControl: {
+        trackTimer: { //module that times track and counts how long it's been going (for lack of a seek function)
+            currentPlayingTrackDuration: 0, //duration of current playing track
+            currentPlayingTrackPlayed: 0,
+            trackTimeInterval: 0,
+            eventEmitter: new events(),
+            init: () => {
+                this.currentPlayingTrackPlayed = 0;
+                this.trackTimeInterval = 0;
+
+                return this.eventEmitter;
+            },
+            reset: (trackLength) => {
+                this.currentPlayingTrackPlayed = 0;
+                this.currentPlayingTrackDuration = trackLength;
+
+
+                this.trackTimeInterval = setInterval( () => {
+                    this.currentPlayingTrackPlayed+=0.1;
+                },100);
+                setTimeout( () => {
+                    clearInterval(this.trackTimeInterval);
+                    this.eventEmitter.emit("trackEnded");
+                },trackLength*1000);
+                
+                return this.eventEmitter;
+            }
+
+        },
+
+        interactTimer: { //client interaction timer that prevents client interaction within a certain timeframe (prevents a weird bug with Speaker)
+            canInteractWithTrack: true,
+            init: () =>
+            reset: () =>
+            canInteract: () => {}
+        },
+
+        trackControl: { //module which controls the speaker and can output&decode the mp3 data to PCM speaker data
             resume: (stream) => {
                 if (!SoundManager.playingTrack) {
                     console.info("_PLAY");

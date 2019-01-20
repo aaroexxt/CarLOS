@@ -7,21 +7,14 @@
 * Copyright (C) 2018, Aaron Becker <aaron.becker.developer@gmail.com>
 */
 
-//Utils dependencies
+//Dependencies
 const fetch = require('node-fetch');
 const progress = require('progress-stream');
 const remoteFileSize = require("remote-file-size");
 const utils = require("./utils.js");
 const colors = require("colors");
+const path = require('path');
 const fs = require('fs');
-
-//SoundManager dependencies
-const Speaker = require("speaker");
-const lame = require("lame");
-const pcmVolume = require("pcm-volume");
-const mp3d = require('mp3-duration');
-const timedStream = require('timed-stream');
-const path = require('path'); 
 
 var SCUtils = {
     localSoundcloudSettings: undefined,

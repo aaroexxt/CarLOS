@@ -4,8 +4,8 @@
   "description": "The backend behind a computer in my car",
   "main": "COSserver.js",
   "scripts": {
-    "test": "sudo bash start.sh -nc && exit 0",
-    "start": "sudo bash start.sh -c && exit 0",
+    "test": "mocha",
+    "start": "sudo bash start.sh -nc && exit 0",
     "electron": "unset ELECTRON_RUN_AS_NODE; electron COSserver.js && exit 0"
   },
   "repository": {
@@ -70,6 +70,8 @@
     "window-size": "^1.1.1"
   },
   "devDependencies": {
-    "electron-rebuild": "^1.8.2"
+    "chai": "^4.2.0",
+    "electron-rebuild": "^1.8.2",
+    "mocha": "^5.2.0"
   }
 }
