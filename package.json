@@ -4,7 +4,7 @@
   "description": "The backend behind a computer in my car",
   "main": "COSserver.js",
   "scripts": {
-    "test": "mocha",
+    "test": "mocha --exit",
     "start": "sudo bash start.sh -nc && exit 0",
     "electron": "unset ELECTRON_RUN_AS_NODE; electron COSserver.js && exit 0"
   },

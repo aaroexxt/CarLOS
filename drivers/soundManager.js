@@ -17,7 +17,9 @@ const pcmVolume = require("pcm-volume");
 const mp3d = require('mp3-duration');
 const timedStream = require('timed-stream');
 const path = require('path');
-const events = require('events');
+
+
+const {trackTimerModule, interactTimerModule, trackController} = require("trackTimers.js");
 
 const airplay = require("airplay.js"); //airplay server wrapper
 const soundcloud = require("soundcloud.js"); //soundcloud local storage wrapper
@@ -61,88 +63,14 @@ const SoundManagerV2 = {
         canInteractTrack: true,
         canInteractTrackTimeout: 0,
 
-        trackTimer: { //module that times track and counts how long it's been going (for lack of a seek function)
-            currentPlayingTrackDuration: 0, //duration of current playing track
-            currentPlayingTrackPlayed: 0,
-            trackTimeInterval: 0,
-            eventEmitter: new events(),
-            init: () => {
-                this.currentPlayingTrackPlayed = 0;
-                this.trackTimeInterval = 0;
-
-                return this.eventEmitter;
-            },
-            reset: (trackLength) => {
-                this.currentPlayingTrackPlayed = 0;
-                this.currentPlayingTrackDuration = trackLength;
+        trackTimer: trackTimerModule,
+        interactTimer: interactTimerModule,
 
 
-                this.trackTimeInterval = setInterval( () => {
-                    this.currentPlayingTrackPlayed+=0.1;
-                },100);
-                setTimeout( () => {
-                    clearInterval(this.trackTimeInterval);
-                    this.eventEmitter.emit("trackEnded");
-                },trackLength*1000);
-                
-                return this.eventEmitter;
-            }
+        trackTimer.init(duration);
+        trackTimer.
 
-        },
-
-        interactTimer: { //client interaction timer that prevents client interaction within a certain timeframe (prevents a weird bug with Speaker)
-            canInteractWithTrack: true,
-            init: () =>
-            reset: () =>
-            canInteract: () => {}
-        },
-
-        trackControl: { //module which controls the speaker and can output&decode the mp3 data to PCM speaker data
-            resume: (stream) => {
-                if (!SoundManager.playingTrack) {
-                    console.info("_PLAY");
-
-                    speaker = new Speaker(audioOptions); //setup speaker
-
-                    volumeTweak.pipe(speaker); //setup pipe for volumeTweak
-                    ts.resumeStream(); //resume the stream
-                    SCUtils.playingTrack = true;
-
-                    SoundManager.trackTimeInterval = setInterval(function() {
-                        SoundManager.currentPlayingTrackPlayed+=0.1; //add the time to the counter
-                    },100);
-
-                    return speaker.once('close', function() {
-                        speaker.end();
-                        ts.destroy();
-                        SoundManager.playingTrack = false;
-                        clearInterval(SoundManager.trackTimeInterval);
-                        if (SCUtils.debugMode) {
-                            console.log("_NEXT SONG REACHED");
-                        }
-
-                        SoundManager.processClientEvent({
-                            type: "trackForward",
-                            origin: "internal (trackFinished)"
-                        }); //request next track
-                    })
-                }
-                
-            }
-
-            pause: () => {
-                if (SoundManager.playingTrack) {
-                    console.info("_PAUSE");
-                    clearInterval(SoundManager.trackTimeInterval);
-                    SCUtils.playingTrack = false;
-                    speaker.removeAllListeners('close');
-                    volumeTweak.unpipe(speaker);
-                    ts.pauseStream();
-                    speaker.close();
-                    return speaker.end();
-                }
-            }
-        }
+        
     }
 }
 

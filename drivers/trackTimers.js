@@ -10,11 +10,12 @@
 
 const eventEmitter = require('events');
 
-var trackTimerModule = { //module that times track and counts how long it's been going (for lack of a seek function)
+const trackTimerModule = { //module that times track and counts how long it's been going (for lack of a seek function)
     currentPlayingTrackDuration: 0, //duration of current playing track
     currentPlayingTrackPlayed: 0,
     trackTimeInterval: 0,
     trackEndTimeout: 0,
+    playingTrack: false,
     eventEmitter: new eventEmitter(),
     init: () => {
         var _this = trackTimerModule;
@@ -33,6 +34,7 @@ var trackTimerModule = { //module that times track and counts how long it's been
 
         _this.currentPlayingTrackPlayed = 0;
         _this.currentPlayingTrackDuration = trackLength;
+        _this.playingTrack = true;
 
 
         _this.trackTimeInterval = setInterval( () => {
@@ -42,6 +44,7 @@ var trackTimerModule = { //module that times track and counts how long it's been
         _this.trackEndTimeout = setTimeout( () => {
             clearInterval(trackTimerModule.trackTimeInterval);
             trackTimerModule.eventEmitter.emit("trackEnded");
+            _this.playingTrack = false;
         },trackLength*1000);
         _this.eventEmitter.emit("trackBegan");
         
@@ -50,6 +53,7 @@ var trackTimerModule = { //module that times track and counts how long it's been
     pause: () => {
         var _this = trackTimerModule;
 
+        _this.playingTrack = false;
         clearInterval(_this.trackTimeInterval);
         clearTimeout(_this.trackEndTimeout);
         _this.eventEmitter.emit("trackPaused");
@@ -69,17 +73,19 @@ var trackTimerModule = { //module that times track and counts how long it's been
         _this.trackEndTimeout = setTimeout( () => {
             clearInterval(trackTimerModule.trackTimeInterval);
             trackTimerModule.eventEmitter.emit("trackEnded");
+            _this.playingTrack = false;
         },(((1-(_this.currentPlayingTrackPlayed/_this.currentPlayingTrackDuration))*_this.currentPlayingTrackDuration)*1000)); //use percent played to determine remaining timer length
         _this.eventEmitter.emit("trackResumed");
+        _this.playingTrack = true;
         
         return _this.eventEmitter;
     }
 
 }
 
-var interactTimerModule = { //client interaction timer that prevents client interaction within a certain timeframe (prevents a weird bug with Speaker)
+const interactTimerModule = { //client interaction timer that prevents client interaction within a certain timeframe (prevents a weird bug with Speaker)
     canInteractWithTrack: true,
-    interactTimeInterval: 0,
+    interactTimeout: 0,
     timeDelay: 2,
     eventEmitter: new eventEmitter(),
     init: (timeDelay) => {
@@ -91,9 +97,66 @@ var interactTimerModule = { //client interaction timer that prevents client inte
 
         return _this.eventEmitter;
     },
-    reset: () => {},
+    reset: () => {
+        var _this = interactTimerModule;
+        _this.canInteractWithTrack = false;
+
+        clearTimeout(_this.interactTimeout);
+        _this.interactTimeout = setTimeout( () => {
+            _this.eventEmitter.emit("canInteract");
+            _this.canInteractWithTrack = true;
+        },_this.timeDelay*1000);
+
+        _this.eventEmitter.emit("cannotInteract");
+
+        return _this.eventEmitter;
+    },
     canInteract: () => {
         return interactTimerModule.canInteractWithTrack;
+    }
+}
+
+const trackControl = { //module which controls the speaker and can output&decode the mp3 data to PCM speaker data
+    resume: (filename) => {
+        if (!trackTimerModule.playingTrack) {
+            console.info("_PLAY");
+
+            speaker = new Speaker(audioOptions); //setup speaker
+
+            volumeTweak.pipe(speaker); //setup pipe for volumeTweak
+            ts.resumeStream(); //resume the stream
+            SCUtils.playingTrack = true;
+
+
+            return speaker.once('close', function() {
+                speaker.end();
+                ts.destroy();
+                SoundManager.playingTrack = false;
+                clearInterval(SoundManager.trackTimeInterval);
+                if (SCUtils.debugMode) {
+                    console.log("_NEXT SONG REACHED");
+                }
+
+                SoundManager.processClientEvent({
+                    type: "trackForward",
+                    origin: "internal (trackFinished)"
+                }); //request next track
+            })
+        }
+        
+    }
+
+    pause: () => {
+        if (trackTimerModule.playingTrack) {
+            console.info("_PAUSE");
+
+            SCUtils.playingTrack = false;
+            speaker.removeAllListeners('close');
+            volumeTweak.unpipe(speaker);
+            ts.pauseStream();
+            speaker.close();
+            return speaker.end();
+        }
     }
 }
 

@@ -15,8 +15,8 @@ describe("basic", function() {
 	it('does aaron know how to use mocha?', function(){})
 })
 
-describe("#trackTimers", function() {
-	context("track timer module", function() {
+describe("#trackTimerModule", function() {
+	context("basic tests", function() {
 		var trackTimer = timerModule.trackTimer;
 
 		it("should return instance of eventEmitter on init", function() {
@@ -26,7 +26,10 @@ describe("#trackTimers", function() {
 		it("should return instance of eventEmitter on reset", function() {
 			expect(trackTimer.reset(0.001)).to.be.instanceOf(events);
 		})
+	})
 
+	context("event-driven tests", function() {
+		var trackTimer = timerModule.trackTimer;
 		it("should return begin event", function(done) {
 			trackTimer.init().once('trackBegan', () => {done()})
 			trackTimer.reset(0.01);
@@ -38,31 +41,22 @@ describe("#trackTimers", function() {
 		})
 
 		it("should return pause event", function(done) {
+			this.slow(210);
+
 			trackTimer.init();
-			trackTimer.reset(0.3).once("trackPaused", () => setTimeout( () => {done()},200)); //give time for rest of tests to pass
+			trackTimer.reset(0.2).once("trackPaused", () => setTimeout( () => {done()},100)); //give time for rest of tests to pass
 			setTimeout( () => {
 				trackTimer.pause();
 
-				expect(trackTimer.currentPlayingTrackDuration).to.be.equal(0.3);
+				expect(trackTimer.currentPlayingTrackDuration).to.be.equal(0.2);
 				expect(trackTimer.currentPlayingTrackPlayed).to.be.above(0.09);
 				expect(trackTimer.currentPlayingTrackPlayed).to.be.below(0.21);
 			},100);
-
-			/*
-			var eList = trackTimerModule.reset(2);
-			eList.on('trackEnded', () => console.log("TRACKENDED"));
-			eList.on('trackPaused', () => console.log("TRACKPAUSED"));
-			eList.on('trackResumed', () => console.log("TRACKRESUMED"));
-
-			setTimeout( () => {
-			    trackTimerModule.pause();
-			},1000);
-			setTimeout( () => {
-			    trackTimerModule.resume();
-			},3000);*/
 		})
 
 		it("should handle resume event", function(done) {
+			this.slow(270);
+
 			trackTimer.init();
 			trackTimer.reset(0.3).once("trackResumed", () => setTimeout( () => {done()},100)); //give time for rest of tests
 			setTimeout( () => {
@@ -78,8 +72,11 @@ describe("#trackTimers", function() {
 			},260)
 		});
 	})
+	
+})
 
-	context("interact timer module", function() {
+describe("#interactTimerModule", function() {
+	context("basic tests", function() {
 		var interactTimer = timerModule.interactTimer;
 
 		it("should return instance of eventEmitter", function() {
@@ -91,22 +88,47 @@ describe("#trackTimers", function() {
 		})
 
 		it("should have time delay of 3 after configuration", function(done) {
-			try {
-				interactTimer.init(3);
-				expect(interactTimer.timeDelay).to.equal(3);
+			interactTimer.init(3);
+			expect(interactTimer.timeDelay).to.equal(3);
+			done();
+		})
+	})
+
+	context("event-driven tests", function() {
+		var interactTimer = timerModule.interactTimer;
+		it("should return instance of eventEmitter on init", function() {
+			expect(interactTimer.init()).to.be.instanceOf(events);
+		})
+
+		it("should return instance of eventEmitter on reset", function() {
+			expect(interactTimer.reset()).to.be.instanceOf(events);
+		})
+
+		it("should return canInteract based on whether timer has expired", function(done) {
+			this.slow(110);
+
+			interactTimer.init(0.1);
+			expect(interactTimer.canInteract()).to.be.equal(true);
+			interactTimer.reset();
+			expect(interactTimer.canInteract()).to.be.equal(false);
+			setTimeout( () => {
+				expect(interactTimer.canInteract()).to.be.equal(true);
 				done();
-			} catch(e) {
-				done(e);
-			}
+			},105);
+		})
+
+		it("should handle cannotInteract event", function(done) {
+			this.slow(110);
+
+			interactTimer.init(0.1).once("cannotInteract", () => done())
+			interactTimer.reset(); //reset before previous timeout expired
+		})
+
+		it("should handle canInteract event", function(done) {
+			this.slow(110);
+
+			interactTimer.init(0.1).once("canInteract", () => done())
+			interactTimer.reset(); //reset before previous timeout expired
 		})
 	})
 })
-
-
-
-//yuh testing code, I should put this into mocha at some point
-/*
-var _this = trackTimerModule;
-console.log(
-    (((1-(_this.currentPlayingTrackPlayed/_this.currentPlayingTrackDuration))*_this.currentPlayingTrackDuration)*1000)
-    )*/
