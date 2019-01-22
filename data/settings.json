@@ -95,8 +95,7 @@
         "requestTimeout": 21000,
         "soundcloudStatus": {"ready": false, "error": false, "message": ""},
         "playMusicOnServer": true,
-        "minInteractionWaitTime": 2000,
-        "trackSelectedWaitMultiplier": 2
+        "minInteractionWaitTime": 2000
     },
     "neuralSettings": {
         "dataBasePath": "data/neural",

@@ -9,7 +9,7 @@
 const expect = require('chai').expect;
 const events = require("events");
 
-const timerModule = require("../drivers/trackTimers.js");
+const timerModule = require("../drivers/trackTimers&Controllers.js");
 
 describe("basic", function() {
 	it('does aaron know how to use mocha?', function(){})
@@ -130,5 +130,12 @@ describe("#interactTimerModule", function() {
 			interactTimer.init(0.1).once("canInteract", () => done())
 			interactTimer.reset(); //reset before previous timeout expired
 		})
+	})
+
+})
+
+describe("#trackController", function() {
+	context("basic tests", function() {
+		it("should control tracks")
 	})
 })

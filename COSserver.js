@@ -442,6 +442,7 @@ arduinoUtils.init(runtimeSettings, runtimeInformation).then(() => {
 /*********************************
 --I9-- NEURAL NETWORK SETUP --I9--
 *********************************/
+/*
 const NeuralMatcher = require('./drivers/neuralMatcherCommandWrapper.js');
 NeuralMatcher.init(neuralSettings)
 .then( () => {
@@ -477,7 +478,7 @@ deepSpeechUtils.takeAudioSample(10000).then(buffer => {
 	deepSpeechUtils.runInference(buffer).then( recog => {
 		console.log("Inference run w/recog "+recog)
 	})
-})
+})*/
 
 /*******************************
 --I10-- READING FROM STDIN --I10--
@@ -544,57 +545,14 @@ if (catchErrors) {
 }
 
 /***********************************
---I12-- SOUNDCLOUD INIT CODE --I12--
+--I12-- MUSIC INIT CODE --I12--
 ***********************************/
-var soundcloudUtils = require('./drivers/soundcloud.js');
+var soundManager = require('./drivers/soundManager.js');
 
-function initSoundcloud(username) {
-	return new Promise((mresolve, mreject) => {
-		if (typeof username == "undefined") {
-			username = soundcloudSettings.defaultUsername;
-		}
-		var timesLeft = soundcloudSettings.initMaxAttempts;
-
-		soundcloudSettings.soundcloudStatus = {ready: false, error: false, message: ""};
-		function initSCSlave() {
-			console.info("Starting SC SLAVE (att "+(soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+soundcloudSettings.initMaxAttempts+")");
-			soundcloudUtils.SCUtils.init({
-				soundcloudSettings: soundcloudSettings,
-				username: username,
-				cwd: cwd
-			}).then( () => {
-				console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
-				soundcloudUtils.SCSoundManager.init().then( () => {
-					console.log(colors.green("Initialized trackManager successfully!"));
-					soundcloudSettings.soundcloudStatus = {ready: true, error: false, message: ""};
-					mresolve();
-
-				}).catch( e => {
-					console.error("Error initializing trackManager: "+e+". won't restart");
-				});
-			}).catch( err => {
-				timesLeft--;
-				firstRun = true;
-				if (timesLeft > 0) {
-					console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+soundcloudSettings.initErrorDelay+" ms.");
-					setTimeout( () => {
-						initSCSlave();
-					}, soundcloudSettings.initErrorDelay);
-				} else {
-					console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
-					soundcloudSettings.soundcloudStatus = {ready: false, error: true, message: err};
-					mreject("MaxTries reached (giving up) with error message: "+err);
-				}
-			});
-		}
-		initSCSlave(); //begin first slave
-	});
-
-}
 
 console.info("Starting SC MASTER");
-initSoundcloud().then( () => {
-	console.importantInfo("SC INIT OK");
+soundManager.init(soundcloudSettings, airplaySettings, cwd).then( () => {
+	console.importantInfo("SM INIT OK");
 }).catch( err => {
 	console.error("Error initializing SC: "+err);
 });

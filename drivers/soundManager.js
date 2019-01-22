@@ -12,64 +12,197 @@
 DEPENDENCIES
 ******/
 const Speaker = require("speaker");
-const lame = require("lame");
-const pcmVolume = require("pcm-volume");
+
+//SoundManager dependencies
 const mp3d = require('mp3-duration');
-const timedStream = require('timed-stream');
 const path = require('path');
+const colors = require("colors");
 
+const {trackTimerModule, interactTimerModule, trackAudioController} = require("./trackTimers&Controllers.js");
 
-const {trackTimerModule, interactTimerModule, trackController} = require("trackTimers.js");
+const airplay = require("./airplay.js"); //airplay server wrapper
+const soundcloud = require("./soundcloud.js"); //soundcloud local storage wrapper
 
-const airplay = require("airplay.js"); //airplay server wrapper
-const soundcloud = require("soundcloud.js"); //soundcloud local storage wrapper
 
 /******
 REQUIRED FUNCTIONS/CONSTANTS
 ******/
-
-const speakerOptions = { //set audio options
-    channels: 2,
-    bitDepth: 16,
-    sampleRate: 44100,
-    bitRate: 128,
-    outSampleRate: 22050,
-    mode: lame.STEREO
-}
 var speaker; //global output
 
-const pcm_MINVOLUME: 0; //pcm constants, shouldn't be changed for any reason
-const pcm_MAXVOLUME: 1.5;
 
-const nMap = function (number, in_min, in_max, out_min, out_max) { //number mapping
-    return (number - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-const clamp = function(number, min, max) { //clamp values
-    return Math.min(Math.max(number, min), max);
-}
 
 /******
 ACTUAL CODE LOL
 ******/
 
 const SoundManagerV2 = {
-    soundcloud: {
-        playingTrack: false, //boolean whether track is playing or not
-        currentVolume: 50, //volume 0-100
-        currentPlayingTrack: {}, //current playing track in object form
+    playingTrack: false, //boolean whether track is playing or not
+    currentVolume: 50, //volume 0-100
+    currentPlayingTrack: {}, //current playing track in object form
+    debugMode: true,
+    
+    
+    canInteractTrack: true,
+    canInteractTrackTimeout: 0,
+
+    trackTimer: trackTimerModule,
+    interactTimer: interactTimerModule,
+    trackAudioController: trackAudioController,
+    trackController: { //coordinates all the modules together
+        play: function(trackObject) {
+            var trackPath = path.join(_this.cwd,soundcloud.localSoundcloudSettings.soundcloudTrackCacheDirectory,("track-"+trackObject.id+".mp3"));
+            if (SCUtils.debugMode) {
+                console.log("Playing track from path: "+trackPath);
+            }
+
+            mp3d(trackPath, (err, duration) => {
+                if (err) {
+                    return console.error("error getting duration of mp3 (can't play track): "+err.message);
+                } else {
+                    if (_this.debugMode) {
+                        console.log("Track duration in seconds long: "+duration);
+                    }
+
+                    _this.currentPlayingTrack = trackObject;
+
+                    _this.trackTimer.reset(duration); //reset trackTimer
+                    _this.trackAudioController.play(trackPath);
+
+
+            
+
+        }
+    },
+
+    init: (soundcloudSettings, airplaySettings, cwd, username) => {
+        return new Promise( (resolve, reject) => {
+            var _this = SoundManagerV2;
+
+            if (!soundcloudSettings || !cwd || !airplaySettings) {
+                return reject("SoundcloudSettings or AirplaySettings or cwd undefined on SCSoundManagerV2 init");
+            }
+            if (!username) {
+                username = soundcloudSettings.defaultUsername;
+            }
+
+            const errorReject = function(err) {
+                soundcloudSettings.soundcloudStatus = {ready: false, error: true, message: err};
+                return reject(err);
+            } 
+
+
+            /*
+            STEPS TO INIT
+            1) set up variables/constants such as cwd and soundcloudSettings
+            2) initialize soundcloud library with username (will load/download tracks from online to local cache)
+            3) initialize airplay library with server name
+            4) start airplay server
+            5) attach listeners to airplay
+            6) init timers/trackControllers
+            */
+
+            //STEP 1
+            _this.soundcloudSettings = soundcloudSettings; //setup constants
+            _this.cwd = cwd;
+
+            //STEP 2
+            soundcloudSettings.soundcloudStatus = {ready: false, error: false, message: ""};
+             _this.initUsername(username).then( () => {
+
+                _this.currentPlayingTrack = soundcloud.localSoundcloudSettings.likedTracks[0]; //start with first track
+                _this.currentVolume = soundcloud.localSoundcloudSettings.defaultVolume;
+            //STEP 3
+                airplay.init(airplaySettings).then( () => {
+            //STEP 4
+                    airplay.startServer().then( () => {
+            //STEP 5
+                        airplay.onClientConnected(_this.airplayClientConnected);
+                        airplay.onClientDisconnected(_this.airplayClientDisconnected);
+
+            //STEP 6
+                        _this.trackTimer.init();
+                        let trackControllerEvents = _this.trackAudioController.eventEmitter
+                        trackControllerEvents.on("trackEnd", () => {
+                            
+                        })
+                        _this.interactTimer.init(soundcloudSettings.minInteractionWaitTime/1000);
+
+
+                        soundcloudSettings.soundcloudStatus = {ready: true, error: false, message: ""};
+
+                        return resolve();
+                        
+                    }).catch(errorReject)
+                }).catch(errorReject)
+            }).catch(errorReject)
+
+        })
+    },
+
+    initUsername: function(username) {
+        return new Promise((mresolve, mreject) => {
+            var _this = SoundManagerV2;
+                if (typeof username == "undefined") {
+                    username = _this.soundcloudSettings.defaultUsername;
+                }
+                var timesLeft = _this.soundcloudSettings.initMaxAttempts;
+
+                function initSCSlave() {
+                    console.info("Starting SC SLAVE (att "+(_this.soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+_this.soundcloudSettings.initMaxAttempts+")");
+                    soundcloud.init({
+                        soundcloudSettings: _this.soundcloudSettings,
+                        username: username,
+                        cwd: _this.cwd
+                    }).then( () => {
+                        console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
+                        
+                        return mresolve();
+                    }).catch( err => {
+                        timesLeft--;
+                        firstRun = true;
+                        if (timesLeft > 0) {
+                            console.error("[SCMASTER] Error initializing soundcloud ("+err+"). Trying again in "+_this.soundcloudSettings.initErrorDelay+" ms.");
+                            setTimeout( () => {
+                                initSCSlave();
+                            }, _this.soundcloudSettings.initErrorDelay);
+                        } else {
+                            console.error("[SCMASTER] Reached maximum tries for attempting soundcloud initialization. Giving up. (Err: "+err+")");
+                            mreject("MaxTries reached (giving up) with error message: "+err);
+                        }
+                    });
+                }
+
+                initSCSlave(); //begin first slave
+        })
+    },
+
+
+    airplayClientConnected: function(stream) {
+        console.log("YO SOMEONE CONNECTED TO AIRPLAY");
+        stream.pipe(new Speaker({channels: 2,
+        bitDepth: 16,
+        sampleRate: 44100,
+        bitRate: 128}))
+    },
+
+    airplayClientDisconnected: function() {
+        console.log("YO SOMEONE DISCONNECTED FROM AIRPLAY")
+    }
+}
+
+module.exports = SoundManagerV2;
+
+/*
+
+
+SCUtils.playingTrack = true;                SoundManager.playingTrack = false;if (SCUtils.debugMode) {
+                    console.log("_NEXT SONG REACHED");
+                } SoundManager.processClientEvent({
+                    type: "trackForward",
+                    origin: "internal (trackFinished)"
+                }); //request next track
+
         
-        
-        canInteractTrack: true,
-        canInteractTrackTimeout: 0,
-
-        trackTimer: trackTimerModule,
-        interactTimer: interactTimerModule,
-
-
-        trackTimer.init(duration);
-        trackTimer.
-
         
     }
 }
@@ -410,4 +543,4 @@ var SoundManager = {
             }
         })
     }
-}
+}*/
