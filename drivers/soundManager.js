@@ -39,6 +39,8 @@ const SoundManagerV2 = {
     debugMode: true,
 
     playingTrack: false, //boolean whether track is playing or not
+    wasPlayingTrackBeforeAirplay: false, //boolean whether track was playing before airplay took over
+    playingAirplay: false,
     currentPlayingTrack: {}, //current playing track in object form
 
     trackTimer: trackTimerModule,
@@ -47,6 +49,10 @@ const SoundManagerV2 = {
     trackController: { //coordinates all the modules together
         play: function(trackObject) {
             var _this = SoundManagerV2;
+
+            if (_this.playingAirplay) {
+                return;
+            }
 
             var trackPath = path.join(_this.cwd,soundcloud.localSoundcloudSettings.soundcloudTrackCacheDirectory,("track-"+trackObject.id+".mp3"));
             if (_this.debugMode) {
@@ -74,6 +80,10 @@ const SoundManagerV2 = {
         pause: function() { //basically just a wrapper
             var _this = SoundManagerV2;
 
+            if (_this.playingAirplay) {
+                return;
+            }
+
             _this.playingTrack = false;
             _this.trackAudioController.pause();
             _this.trackTimer.pause(); //stop the timer
@@ -81,6 +91,10 @@ const SoundManagerV2 = {
 
         resume: function() { //also basically just a wrapper
             var _this = SoundManagerV2;
+
+            if (_this.playingAirplay) {
+                return;
+            }
 
             _this.playingTrack = true;
             _this.trackAudioController.resume();
@@ -212,13 +226,25 @@ const SoundManagerV2 = {
         sampleRate: 44100,
         bitRate: 128}));
 
+        _this.playingAirplay = true;
+
+        _this.wasPlayingTrackBeforeAirplay = _this.playingTrack;
         if (_this.playingTrack) {
             _this.trackController.pause();
         }
     },
 
     airplayClientDisconnected: function() {
-        console.log("YO SOMEONE DISCONNECTED FROM AIRPLAY")
+        var _this = SoundManagerV2;
+        
+        console.log("YO SOMEONE DISCONNECTED FROM AIRPLAY");
+
+        _this.playingAirplay = false;
+
+        _this.playingTrack = _this.wasPlayingTrackBeforeAirplay;
+        if (_this.wasPlayingTrackBeforeAirplay) {
+            _this.trackController.resume();
+        }
     }
 }
 
