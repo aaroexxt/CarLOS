@@ -36,22 +36,20 @@ ACTUAL CODE LOL
 ******/
 
 const SoundManagerV2 = {
-    playingTrack: false, //boolean whether track is playing or not
-    currentVolume: 50, //volume 0-100
-    currentPlayingTrack: {}, //current playing track in object form
     debugMode: true,
-    
-    
-    canInteractTrack: true,
-    canInteractTrackTimeout: 0,
+
+    playingTrack: false, //boolean whether track is playing or not
+    currentPlayingTrack: {}, //current playing track in object form
 
     trackTimer: trackTimerModule,
     interactTimer: interactTimerModule,
     trackAudioController: trackAudioController,
     trackController: { //coordinates all the modules together
         play: function(trackObject) {
+            var _this = SoundManagerV2;
+
             var trackPath = path.join(_this.cwd,soundcloud.localSoundcloudSettings.soundcloudTrackCacheDirectory,("track-"+trackObject.id+".mp3"));
-            if (SCUtils.debugMode) {
+            if (_this.debugMode) {
                 console.log("Playing track from path: "+trackPath);
             }
 
@@ -64,13 +62,29 @@ const SoundManagerV2 = {
                     }
 
                     _this.currentPlayingTrack = trackObject;
+                    _this.playingTrack = true;
 
                     _this.trackTimer.reset(duration); //reset trackTimer
-                    _this.trackAudioController.play(trackPath);
+                    _this.trackAudioController.play(trackPath); //actually play it lol
+                }
+            });
 
+        },
 
-            
+        pause: function() { //basically just a wrapper
+            var _this = SoundManagerV2;
 
+            _this.playingTrack = false;
+            _this.trackAudioController.pause();
+            _this.trackTimer.pause(); //stop the timer
+        },
+
+        resume: function() { //also basically just a wrapper
+            var _this = SoundManagerV2;
+
+            _this.playingTrack = true;
+            _this.trackAudioController.resume();
+            _this.trackTimer.resume(); //resume the timer
         }
     },
 
@@ -120,11 +134,23 @@ const SoundManagerV2 = {
                         airplay.onClientDisconnected(_this.airplayClientDisconnected);
 
             //STEP 6
+                        //TRACKTIMER
                         _this.trackTimer.init();
-                        let trackControllerEvents = _this.trackAudioController.eventEmitter
+
+                        //TRACKAUDIOCONTROLLER
+                        _this.trackAudioController.setVolume(soundcloudSettings.defaultVolume); //set volume to default
+                        let trackControllerEvents = _this.trackAudioController.eventEmitter;
                         trackControllerEvents.on("trackEnd", () => {
-                            
+                            if (_this.debugMode) {
+                                console.log("trackControllerEvent: trackEnd, next track");
+                            }
+                            _this.processClientEvent({ //process client event: track has ended, next track
+                                type: "trackForward",
+                                origin: "internal (trackFinished)"
+                            }); //request next track
                         })
+
+                        //INTERACTTIMER
                         _this.interactTimer.init(soundcloudSettings.minInteractionWaitTime/1000);
 
 
@@ -178,11 +204,17 @@ const SoundManagerV2 = {
 
 
     airplayClientConnected: function(stream) {
+        var _this = SoundManagerV2;
+
         console.log("YO SOMEONE CONNECTED TO AIRPLAY");
         stream.pipe(new Speaker({channels: 2,
         bitDepth: 16,
         sampleRate: 44100,
-        bitRate: 128}))
+        bitRate: 128}));
+
+        if (_this.playingTrack) {
+            _this.trackController.pause();
+        }
     },
 
     airplayClientDisconnected: function() {

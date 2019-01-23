@@ -83,6 +83,14 @@ const trackTimerModule = { //module that times track and counts how long it's be
         _this.playingTrack = true;
         
         return _this.eventEmitter;
+    },
+
+    getPlayedSeconds: () => {
+        return trackTimerModule.currentPlayingTrackPlayed;
+    },
+
+    getTrackDuration: () => {
+        return trackTimerModule.currentPlayingTrackDuration;
     }
 
 }
@@ -120,8 +128,12 @@ const interactTimerModule = { //client interaction timer that prevents client in
 
         return _this.eventEmitter;
     },
-    canInteract: () => {
-        return interactTimerModule.canInteractWithTrack;
+    canInteract: (dontReset) => {
+        var _this = interactTimerModule;
+        if (!dontReset) { //flag to not reset timer when peeking at canInteract variable
+            _this.reset();
+        }
+        return _this.canInteractWithTrack;
     }
 }
 
