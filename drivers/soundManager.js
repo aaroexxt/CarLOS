@@ -23,7 +23,6 @@ const {trackTimerModule, interactTimerModule, trackAudioController} = require(".
 const airplay = require("./airplay.js"); //airplay server wrapper
 const soundcloud = require("./soundcloud.js"); //soundcloud local storage wrapper
 
-
 /******
 REQUIRED FUNCTIONS/CONSTANTS
 ******/
@@ -149,6 +148,7 @@ const SoundManagerV2 = {
 
             //STEP 6
                         //TRACKTIMER
+                        console.info(trackTimerModule)
                         _this.trackTimer.init();
 
                         //TRACKAUDIOCONTROLLER
@@ -194,7 +194,7 @@ const SoundManagerV2 = {
                         username: username,
                         cwd: _this.cwd
                     }).then( () => {
-                        console.log(colors.green("Initialized Soundcloud successfully! Now initializing trackManager"));
+                        console.log(colors.green("Initialized Soundcloud successfully!"));
                         
                         return mresolve();
                     }).catch( err => {
@@ -220,7 +220,9 @@ const SoundManagerV2 = {
     airplayClientConnected: function(stream) {
         var _this = SoundManagerV2;
 
-        console.log("YO SOMEONE CONNECTED TO AIRPLAY");
+        if (_this.debugMode) {
+            console.log("airplay status: connect. pausing music");
+        }
         stream.pipe(new Speaker({channels: 2,
         bitDepth: 16,
         sampleRate: 44100,
@@ -236,8 +238,10 @@ const SoundManagerV2 = {
 
     airplayClientDisconnected: function() {
         var _this = SoundManagerV2;
-        
-        console.log("YO SOMEONE DISCONNECTED FROM AIRPLAY");
+
+        if (_this.debugMode) {
+            console.log("airplay status: disconnect. pausing music");
+        }
 
         _this.playingAirplay = false;
 
@@ -245,7 +249,14 @@ const SoundManagerV2 = {
         if (_this.wasPlayingTrackBeforeAirplay) {
             _this.trackController.resume();
         }
-    }
+    },
+
+    getSoundcloudObject: function() { //shim to access soundcloud
+        return soundcloud;
+    },
+    getAirplayObject: function() { //shim to access soundcloud
+        return soundcloud;
+    },
 }
 
 module.exports = SoundManagerV2;

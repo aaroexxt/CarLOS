@@ -91,6 +91,10 @@ const trackTimerModule = { //module that times track and counts how long it's be
 
     getTrackDuration: () => {
         return trackTimerModule.currentPlayingTrackDuration;
+    },
+
+    getPlayedPercent: function() {
+        return (trackTimerModule.currentPlayingTrackPlayed/trackTimerModule.currentPlayingTrackDuration)*100;
     }
 
 }
@@ -195,7 +199,7 @@ const trackControl = { //module which controls the speaker and can output&decode
         _this.currentVolume = vol;
         _this.currentVolume = clamp(_this.currentVolume, 0, 100); //clamp range
 
-        _this.pipeline.volumeAdjust.setVolume(nMap(SoundManager.currentVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME)); //map the volume
+        _this.pipeline.volumeAdjust.setVolume(nMap(_this.currentVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME)); //map the volume
 
         _this.eventEmitter.emit("volumeChange");
     },
@@ -270,7 +274,7 @@ const trackControl = { //module which controls the speaker and can output&decode
 
 
 module.exports = {
-    trackTimer: trackTimerModule,
-    interactTimer: interactTimerModule,
-    trackController: trackControl
+    trackTimerModule: trackTimerModule,
+    interactTimerModule: interactTimerModule,
+    trackAudioController: trackControl
 }

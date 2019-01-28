@@ -602,8 +602,8 @@ const globals = {
                         console.log("Waiting for server to be ready for soundcloud...",wait);
                         document.getElementById(mR.properties.trackAuthorElement).innerHTML = "Loading percent: "+wait.percent;
                     }, error => {
-                        console.error("Soundcloud Server Error: "+error.message);
-                        bootbox.alert("Soundcloud Server Error: "+error.message);
+                        console.error("Soundcloud Server Error: "+JSON.stringify(error.message));
+                        bootbox.alert("Soundcloud Server Error: "+JSON.stringify(error.message));
                     }, -1);
 
                     mR.state = "trackDataUpdate";
@@ -1064,8 +1064,8 @@ const globals = {
                             <img class="asep" src="/images/a.png">
                             <center>
                                 <h2>Advanced Settings</h2>
-                                <button onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
-                                <p>Will toggle output of soundcloud playing to be server audio port or client device. Warning: Needs internet if playing on client device. More stable+tested more on server side.</p>
+                                <button disabled onclick="globals.music.togglePlayerOutput();">(BETA): Toggle Music Output</button>
+                                <p>Will toggle output of soundcloud playing to be server audio port or client device. Warning: Needs internet if playing on client device. More stable+tested more on server side. (THIS FEATURE IS CURRENTLY DISABLED)</p>
                                 <br>
                                 <p>Currently playing on: `+((globals.modules.music.properties.playMusicOnServer) ? "server" : "client")+`
                             </center>

@@ -47,7 +47,7 @@ Initialization (16 steps):
 9) Neural Network Setup: sets up and trains neural network for processing of speech commands
 10) Reading From Stdin: initializes handlers for reading from stdin (arduino commands from stdin)
 11) Error and Exit Handling: initializes error & exit (Ctrl+C) handlers
-12) Soundcloud Init Code: Initializes soundcloud (from ext file soundcloudUtils) and starts caching of soundcloud files to server
+12) Soundcloud Init Code: Initializes soundcloud (from ext file soundManager) and starts caching of soundcloud files to server
 13) OpenCV Init Code: Initializes and trains OpenCV model for facial recognition
 14) Mapping Init Code: Initializes and loads offline map data for display in Leaflet maps
 15) Oled Driver Init: Initializes OLED driver for external oled display. (update set in misc init code)
@@ -1157,7 +1157,7 @@ SCrouter.get("/clientReady", function(req, res) {
                 noArtworkUrl: soundcloudSettings.noArtworkUrl,
                 defaultVolume: soundcloudSettings.defaultVolume,
                 volStep: soundcloudSettings.volStep,
-                currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
+                currentVolume: soundManager.trackAudioController.currentVolume,
                 tracksFromCache: soundcloudSettings.tracksFromCache,
                 playMusicOnServer: soundcloudSettings.playMusicOnServer,
                 nextTrackShuffle: soundcloudSettings.nextTrackShuffle,
@@ -1176,18 +1176,21 @@ SCrouter.get("/clientReady", function(req, res) {
 SCrouter.get("/clientUpdate", function(req, res) {
 	if (soundcloudSettings.soundcloudStatus.ready) {
         //console.log("SCClientUpdate");
-        var ps = soundcloudUtils.SCSoundManager.getPlayedSeconds();
+        var ps = soundManager.trackTimer.getPlayedSeconds();
+
+        var internalSCSettings = soundManager.getSoundcloudObject().localSoundcloudSettings; //used to access internal SC settings that are not kept by SoundManager but rather by the soundcloud module itself. mostly a polyfill from the old days when there was only soundcloud.js
         res.end(RequestHandler.SUCCESS({
-            currentPlayingTrack: soundcloudUtils.SCSoundManager.currentPlayingTrack || {},
-            percent: soundcloudUtils.SCSoundManager.getPercent(),
+            currentPlayingTrack: soundManager.currentPlayingTrack || {},
+            percent: soundManager.trackTimer.getPlayedPercent(),
             playedSeconds: ps,
             timeStamp: utils.formatHHMMSS(ps),
-            playing: soundcloudUtils.SCSoundManager.playingTrack,
+            playingTrack: soundManager.playingTrack,
+            playingAirplay: soundManager.playingAirplay,
             settingsData: {
-                currentUser: soundcloudUtils.SCUtils.localSoundcloudSettings.currentUser,
-                currentVolume: soundcloudUtils.SCSoundManager.currentVolume,
-                nextTrackShuffle: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackShuffle,
-                nextTrackLoop: soundcloudUtils.SCUtils.localSoundcloudSettings.nextTrackLoop
+                currentUser: internalSCSettings.currentUser,
+                currentVolume: soundManager.trackAudioController.currentVolume,
+                nextTrackShuffle: internalSCSettings.nextTrackShuffle,
+                nextTrackLoop: internalSCSettings.nextTrackLoop
             }
         }));
     } else if (!soundcloudSettings.soundcloudStatus.ready && !soundcloudSettings.soundcloudStatus.error) {
@@ -1201,7 +1204,7 @@ SCrouter.get("/clientUpdate", function(req, res) {
 SCrouter.get("/event/:type", function(req, res) {
 	console.log("SCROUTER: Event type="+req.params.type+", data="+req.query.data)
 	if (req.params.type) {
-	    soundcloudUtils.SCSoundManager.processClientEvent({
+	    soundManager.processClientEvent({
 	        type: req.params.type,
 	        data: req.query.data,
 	        origin: "external"
