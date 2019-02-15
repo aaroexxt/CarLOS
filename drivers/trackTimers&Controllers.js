@@ -101,7 +101,7 @@ const trackTimerModule = { //module that times track and counts how long it's be
 
 
 /********
-INTERACTTIMER: client interaction timer that prevents weird bug
+INTERACTTIMER: client interaction timer that prevents weird bugs
 ********/
 
 const interactTimerModule = { //client interaction timer that prevents client interaction within a certain timeframe (prevents a weird bug with Speaker)

@@ -172,9 +172,9 @@ const SoundManagerV2 = {
 
                         return resolve();
                         
-                    }).catch(errorReject)
-                }).catch(errorReject)
-            }).catch(errorReject)
+                    }).catch(errorReject); //one error rejecting function because good code cleanliness
+                }).catch(errorReject);
+            }).catch(errorReject);
 
         })
     },
@@ -257,6 +257,131 @@ const SoundManagerV2 = {
     getAirplayObject: function() { //shim to access soundcloud
         return soundcloud;
     },
+
+    processClientEvent: function(ev) {
+        var _this = SoundManagerV2;
+
+        return new Promise( (resolve, reject) => {
+            if (ev && ev.type) {
+                if (SCUtils.debugMode) {
+                    console.log("[SoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
+                }
+                try { //attempt change to JSON data format
+                    ev.data = JSON.parse(ev.data);
+                } catch(e) {} //swallow the error
+
+                if (SoundManager.canInteractTrack || ev.type.indexOf("volume") > -1 || ev.type.indexOf("changeTrack") > -1) {
+                    
+                    if (ev.type.indexOf("volume") == -1 && ev.type.indexOf("changeTrack") == -1 && ev.type != "togglePlayerOutput") { //vol changetrackstate and toggleoutput no limits
+                        SoundManager.canInteractTrack = false;
+                        clearTimeout(SoundManager.canInteractTrackTimeout);
+                        SoundManager.canInteractTrackTimeout = setTimeout(function(){
+                            SoundManager.canInteractTrack = true;
+                        }, (ev.type.indexOf("clientTrackSelected") > -1) ? SCUtils.localSoundcloudSettings.minInteractionWaitTime*SCUtils.localSoundcloudSettings.trackSelectedWaitMultiplier : SCUtils.localSoundcloudSettings.minInteractionWaitTime);
+                    }
+
+                    switch (ev.type) {
+                        case "playPause":
+                            if (SoundManager.playingTrack) {
+                                SoundManager.trackControl.pause();
+                                SoundManager.playingTrack = false;
+                            } else {
+                                SoundManager.trackControl.play();
+                                SoundManager.playingTrack = true;
+                            }
+                            break;
+                        case "volumeUp":
+                            if (SoundManager.currentVolume+SCUtils.localSoundcloudSettings.volStep <= 100) { //ik that it will go > 100 but it is clamped by setplayervolume
+                                SoundManager.currentVolume+=SCUtils.localSoundcloudSettings.volStep;
+                                SoundManager.setPlayerVolume(SoundManager.currentVolume);
+                            }
+                            break;
+                        case "volumeDown":
+                            if (SoundManager.currentVolume-SCUtils.localSoundcloudSettings.volStep > 0) {
+                                SoundManager.currentVolume-=SCUtils.localSoundcloudSettings.volStep;
+                                SoundManager.setPlayerVolume(SoundManager.currentVolume);
+                            }
+                            break;
+                        case "trackForward":
+                            if (SCUtils.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) {
+                                console.info("Track looping");
+                                SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[SoundManager.currentPlayingTrack.index]); //replay
+                            } else {
+                                if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
+                                    var ind = Math.round(Math.random()*(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset));
+                                    if (ind == SoundManager.currentPlayingTrack.index) { //is track so add one
+                                        ind++;
+                                        if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) { //lol very random chance that it wrapped over
+                                            ind = 0;
+                                        }
+                                    }
+                                    SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                                } else {
+                                    var ind = SoundManager.currentPlayingTrack.index+1;
+                                    if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) {
+                                        ind = 0; //go to first track
+                                    }
+                                    //console.info("NOIND OVERFLOW (ind="+ind+", len="+(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)+")");
+                                    SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                                }
+                            }
+                            break;
+                        case "trackBackward":
+                            var ind = SoundManager.currentPlayingTrack.index-1;
+                            if (ind < 0) {
+                                ind = SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset-1; //go to last track
+                            }
+                            SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                            break;
+                        case "clientLocalTrackFinished":
+                            SoundManager.processClientEvent({
+                                type: "trackForward",
+                                origin: "internal (client local track finished)"
+                            });
+                            break;
+                        case "clientTrackSelected":
+                            if (ev.data) {
+                                var trackID = ev.data;
+                                if (typeof trackID == "undefined") {
+                                    return reject("ClientTrackSelected event fired but no trackID data was provided");
+                                } else {
+                                    SoundManager.lookupTrackByID(trackID).then( trackData => {
+                                        SoundManager.playTrackLogic(trackData);
+                                    }).catch( err => {
+                                        return reject("Error looking up track with id "+trackID+": "+err);
+                                    })
+                                }
+                                
+                            } else {
+                                return reject("ClientTrackSelected event fired but no data provided");
+                            }
+                            break;
+                        case "changeTrackLoopState":
+                            SCUtils.localSoundcloudSettings.nextTrackLoop = !SCUtils.localSoundcloudSettings.nextTrackLoop;
+                            break;
+                        case "changeTrackShuffleState":
+                            SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
+                            break;
+                        case "togglePlayerOutput":
+                            SCUtils.localSoundcloudSettings.playMusicOnServer = !SCUtils.localSoundcloudSettings.playMusicOnServer;
+                            if (SCUtils.debugMode) {
+                                console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
+                            }
+                            break;
+                        default:
+                            console.warn("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
+                            return reject("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
+                            break;
+                    }
+                    return resolve();
+                } else {
+                    return reject("SoundManager cannot process event because the minimum time between events has not elapsed")
+                }
+            } else {
+                return reject("SoundManager proc cliEv called with no event or invalid");
+            }
+        });
+    }
 }
 
 module.exports = SoundManagerV2;
