@@ -276,8 +276,8 @@ const SoundManagerV2 = {
 
                 let canInteract = _this.interactTimer.canInteractWithTrack; //fetch canInteract
                 let overrideInteractPresent = false; //override canInteract
-                for (elem in _noResetInteractTimerEvents) {
-                    if (ev.type && ev.type.indexOf(elem) > -1) {
+                for (var i=0; i<_noResetInteractTimerEvents.length; i++) {
+                    if (ev.type && ev.type.indexOf(_noResetInteractTimerEvents[i]) > -1) {
                         overrideInteractPresent = true;
                     }
                 }
@@ -378,10 +378,10 @@ const SoundManagerV2 = {
             if (typeof trackID == "undefined") {
                 return reject("[ERROR] TrackID undefined");
             }
-            var trackList = soundcloud.localSoundcloudSettings.likedTracks;
-            for (track in trackList) {
-                if (track.id == trackID) {
-                    return resolve(track);
+            var lt = soundcloud.localSoundcloudSettings.likedTracks;
+            for (var i=0; i<lt.length; i++) {
+                if (lt[i].id == trackID) {
+                    return resolve(lt[i]);
                 }
             }
             return reject("[ERROR] Can't find track");

@@ -9,6 +9,7 @@
 */
 
 const eventEmitter = require('events');
+const fs = require('fs');
 
 
 /********
@@ -220,7 +221,6 @@ const trackControl = { //module which controls the speaker and can output&decode
                 _this.pipeline.volumeAdjust = new pcmVolume();
                 _this.pipeline.decoder = new lame.Decoder(_this.defaultAudioOptions);
                 
-
                _this.setVolume(_this.currentVolume); //make sure volume is set correctly
 
 
@@ -228,7 +228,10 @@ const trackControl = { //module which controls the speaker and can output&decode
                     .pipe(_this.pipeline.decoder) //pipe to decoder
                     .pipe(_this.pipeline.volumeAdjust) //pipe to volumeTweaker
 
+                console.log("__internal_trackAudio play")
                 _this.resume(); //start playing the track
+            } else {
+                console.error("Error playing track: "+err);
             }
         })
 
@@ -241,7 +244,7 @@ const trackControl = { //module which controls the speaker and can output&decode
 
             _this.pipeline.speaker = new Speaker(_this.defaultAudioOptions); //setup speaker
 
-            _this.pipeline.volumeAdjust.pipe(speaker); //setup pipe for volumeTweak
+            _this.pipeline.volumeAdjust.pipe(_this.pipeline.speaker); //setup pipe for volumeTweak
             _this.pipeline.timedInputStream.resumeStream(); //resume the stream
 
             _this.eventEmitter.emit("trackPlay");
