@@ -228,12 +228,13 @@ const SoundManagerV2 = {
         sampleRate: 44100,
         bitRate: 128}));
 
-        _this.playingAirplay = true;
-
         _this.wasPlayingTrackBeforeAirplay = _this.playingTrack;
+        console.log(_this.playingTrack)
         if (_this.playingTrack) {
             _this.trackController.pause();
         }
+
+        _this.playingAirplay = true; //set last because it will block other functions
     },
 
     airplayClientDisconnected: function() {
@@ -246,6 +247,7 @@ const SoundManagerV2 = {
         _this.playingAirplay = false;
 
         _this.playingTrack = _this.wasPlayingTrackBeforeAirplay;
+        console.log(_this.playingTrack)
         if (_this.wasPlayingTrackBeforeAirplay) {
             _this.trackController.resume();
         }
@@ -298,10 +300,10 @@ const SoundManagerV2 = {
                             }
                             break;
                         case "volumeUp":
-                            _this.trackAudioController.setVolume(soundcloud.localSoundcloudSettings.volStep+10);
+                            _this.trackAudioController.setVolume(_this.trackAudioController.currentVolume+soundcloud.localSoundcloudSettings.volStep);
                             break;
                         case "volumeDown":
-                            _this.trackAudioController.setVolume(soundcloud.localSoundcloudSettings.volStep-10);
+                            _this.trackAudioController.setVolume(_this.trackAudioController.currentVolume-soundcloud.localSoundcloudSettings.volStep);
                             break;
                         case "trackForward":
                             if (soundcloud.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) { //the track is looping, play it again

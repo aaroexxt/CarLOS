@@ -10,6 +10,7 @@
 
 const eventEmitter = require('events');
 const fs = require('fs');
+const Speaker = require('speaker');
 
 
 /********
@@ -163,6 +164,7 @@ const clamp = function(number, min, max) { //clamp values
 const trackControl = { //module which controls the speaker and can output&decode the mp3 data to PCM speaker data
     pcm_MINVOLUME: 0, //pcm constants, shouldn't be changed for any reason
     pcm_MAXVOLUME: 1.5,
+    playingTrackInternal: false, //internal playing track state
     defaultAudioOptions:  { //set audio options
         channels: 2,
         bitDepth: 16,
@@ -223,12 +225,11 @@ const trackControl = { //module which controls the speaker and can output&decode
                 
                _this.setVolume(_this.currentVolume); //make sure volume is set correctly
 
-
                 readable.pipe(_this.pipeline.timedInputStream) //pipe stream to timedStream
                     .pipe(_this.pipeline.decoder) //pipe to decoder
                     .pipe(_this.pipeline.volumeAdjust) //pipe to volumeTweaker
 
-                console.log("__internal_trackAudio play")
+                console.log("__internal_trackAudio play");
                 _this.resume(); //start playing the track
             } else {
                 console.error("Error playing track: "+err);
@@ -239,8 +240,10 @@ const trackControl = { //module which controls the speaker and can output&decode
     },
     resume: () => {
         var _this = trackControl;
-        if (!trackTimerModule.playingTrack) {
+        console.log("INTERNAL_PLAY ",_this.playingTrackInternal);
+        if (!_this.playingTrackInternal) {
             console.info("_RESUME");
+            _this.playingTrackInternal = true;
 
             _this.pipeline.speaker = new Speaker(_this.defaultAudioOptions); //setup speaker
 
@@ -250,8 +253,8 @@ const trackControl = { //module which controls the speaker and can output&decode
             _this.eventEmitter.emit("trackPlay");
 
             return _this.pipeline.speaker.once('close', function() {
-                _this.pipeline.timedInputStream.destroy();
-                _this.eventEmiter.emit("trackEnd");
+                trackControl.pipeline.timedInputStream.destroy();
+                trackControl.eventEmiter.emit("trackEnd");
             });
         }
 
@@ -261,15 +264,17 @@ const trackControl = { //module which controls the speaker and can output&decode
 
     pause: () => {
         var _this = trackControl;
-        if (trackTimerModule.playingTrack) {
+        console.log("INTERNAL_PLAY ",_this.playingTrackInternal);
+        if (_this.playingTrackInternal) {
             console.info("_PAUSE");
+            _this.playingTrackInternal = false;
 
             _this.pipeline.volumeAdjust.unpipe(_this.pipeline.speaker); //unpipe to stop playback
             _this.pipeline.timedInputStream.pauseStream(); //stop reading of audio
 
             _this.pipeline.speaker.removeAllListeners('close'); //remove listeners and close speaker
             _this.eventEmitter.emit("trackPause");
-            return speaker.close();
+            return _this.pipeline.speaker.close();
         }
 
         return _this.eventEmitter;
