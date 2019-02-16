@@ -195,8 +195,9 @@ const trackControl = { //module which controls the speaker and can output&decode
             _this.currentVolume = 50;
         }
 
-        
-        _this.currentVolume = vol;
+        if (typeof vol == "number") { //make sure it's a number
+            _this.currentVolume = vol;
+        }
         _this.currentVolume = clamp(_this.currentVolume, 0, 100); //clamp range
 
         _this.pipeline.volumeAdjust.setVolume(nMap(_this.currentVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME)); //map the volume

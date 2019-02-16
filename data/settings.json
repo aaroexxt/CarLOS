@@ -73,7 +73,7 @@
         "tracksToLoad": -1,
 
         "noArtworkUrl": "/images/noAlbumArt.png",
-        "defaultVolume": 25,
+        "defaultVolume": 50,
         "currentVolume": 50,
         "autoplayTrack": true,
         "volStep": 10,

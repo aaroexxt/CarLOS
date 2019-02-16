@@ -240,7 +240,7 @@ const SoundManagerV2 = {
         var _this = SoundManagerV2;
 
         if (_this.debugMode) {
-            console.log("airplay status: disconnect. pausing music");
+            console.log("airplay status: disconnect. playing music");
         }
 
         _this.playingAirplay = false;
@@ -254,90 +254,86 @@ const SoundManagerV2 = {
     getSoundcloudObject: function() { //shim to access soundcloud
         return soundcloud;
     },
-    getAirplayObject: function() { //shim to access soundcloud
-        return soundcloud;
+    getAirplayObject: function() { //shim to access airplay
+        return airplay;
     },
 
     processClientEvent: function(ev) {
+        var _noResetInteractTimerEvents = ["volume", "changeTrackLoopState", "changeTrackShuffleState"]; //array that includes all events that shouldn't reset interactTimer
+
         var _this = SoundManagerV2;
+
+        var tracksLength = (soundcloud.localSoundcloudSettings.likedTracks.length-soundcloud.track401Offset); //used a lot in trackForward and trackBackward functions
 
         return new Promise( (resolve, reject) => {
             if (ev && ev.type) {
-                if (SCUtils.debugMode) {
+                if (_this.debugMode) {
                     console.log("[SoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
                 }
                 try { //attempt change to JSON data format
                     ev.data = JSON.parse(ev.data);
                 } catch(e) {} //swallow the error
 
-                if (SoundManager.canInteractTrack || ev.type.indexOf("volume") > -1 || ev.type.indexOf("changeTrack") > -1) {
-                    
-                    if (ev.type.indexOf("volume") == -1 && ev.type.indexOf("changeTrack") == -1 && ev.type != "togglePlayerOutput") { //vol changetrackstate and toggleoutput no limits
-                        SoundManager.canInteractTrack = false;
-                        clearTimeout(SoundManager.canInteractTrackTimeout);
-                        SoundManager.canInteractTrackTimeout = setTimeout(function(){
-                            SoundManager.canInteractTrack = true;
-                        }, (ev.type.indexOf("clientTrackSelected") > -1) ? SCUtils.localSoundcloudSettings.minInteractionWaitTime*SCUtils.localSoundcloudSettings.trackSelectedWaitMultiplier : SCUtils.localSoundcloudSettings.minInteractionWaitTime);
+                let canInteract = _this.interactTimer.canInteractWithTrack; //fetch canInteract
+                let overrideInteractPresent = false; //override canInteract
+                for (elem in _noResetInteractTimerEvents) {
+                    if (ev.type && ev.type.indexOf(elem) > -1) {
+                        overrideInteractPresent = true;
                     }
+                }
+
+                if (canInteract && !overrideInteractPresent) {
+                    _this.interactTimer.reset(); //reset timer if override is false and can interact currently
+                }
+
+
+                if (canInteract || overrideInteractPresent) {
 
                     switch (ev.type) {
                         case "playPause":
-                            if (SoundManager.playingTrack) {
-                                SoundManager.trackControl.pause();
-                                SoundManager.playingTrack = false;
+                            if (_this.playingTrack) {
+                                _this.trackController.resume(); //already broken into other functions lol
                             } else {
-                                SoundManager.trackControl.play();
-                                SoundManager.playingTrack = true;
+                                _this.trackController.pause();
                             }
                             break;
                         case "volumeUp":
-                            if (SoundManager.currentVolume+SCUtils.localSoundcloudSettings.volStep <= 100) { //ik that it will go > 100 but it is clamped by setplayervolume
-                                SoundManager.currentVolume+=SCUtils.localSoundcloudSettings.volStep;
-                                SoundManager.setPlayerVolume(SoundManager.currentVolume);
-                            }
+                            _this.trackAudioController.setVolume(soundcloud.localSoundcloudSettings.volStep+10);
                             break;
                         case "volumeDown":
-                            if (SoundManager.currentVolume-SCUtils.localSoundcloudSettings.volStep > 0) {
-                                SoundManager.currentVolume-=SCUtils.localSoundcloudSettings.volStep;
-                                SoundManager.setPlayerVolume(SoundManager.currentVolume);
-                            }
+                            _this.trackAudioController.setVolume(soundcloud.localSoundcloudSettings.volStep-10);
                             break;
                         case "trackForward":
-                            if (SCUtils.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) {
+                            if (soundcloud.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) { //the track is looping, play it again
                                 console.info("Track looping");
-                                SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[SoundManager.currentPlayingTrack.index]); //replay
+                                _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[_this.currentPlayingTrack.index]); //replay
                             } else {
-                                if (SCUtils.localSoundcloudSettings.nextTrackShuffle) {
-                                    var ind = Math.round(Math.random()*(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset));
-                                    if (ind == SoundManager.currentPlayingTrack.index) { //is track so add one
+
+                                if (soundcloud.localSoundcloudSettings.nextTrackShuffle) { //alright the client wants to shuffle the track, so let's do that
+                                    var ind = Math.round(Math.random()*tracksLength);
+                                    if (ind == _this.currentPlayingTrack.index) { //is track so add one
                                         ind++;
-                                        if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) { //lol very random chance that it wrapped over
+                                        if (ind > tracksLength) { //lol very random chance that it wrapped over
                                             ind = 0;
                                         }
                                     }
-                                    SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
-                                } else {
-                                    var ind = SoundManager.currentPlayingTrack.index+1;
-                                    if (ind > (SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)) {
+                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind]);
+                                } else { //straight up go forward a track
+                                    var ind = _this.currentPlayingTrack.index+1;
+                                    if (ind > tracksLength) {
                                         ind = 0; //go to first track
                                     }
-                                    //console.info("NOIND OVERFLOW (ind="+ind+", len="+(SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset)+")");
-                                    SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
+                                    
+                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind]);
                                 }
                             }
                             break;
                         case "trackBackward":
-                            var ind = SoundManager.currentPlayingTrack.index-1;
+                            var ind = _this.currentPlayingTrack.index-1;
                             if (ind < 0) {
-                                ind = SCUtils.localSoundcloudSettings.likedTracks.length-SCUtils.track401Offset-1; //go to last track
+                                ind = tracksLength-1; //go to last track
                             }
-                            SoundManager.playTrackLogic(SCUtils.localSoundcloudSettings.likedTracks[ind]);
-                            break;
-                        case "clientLocalTrackFinished":
-                            SoundManager.processClientEvent({
-                                type: "trackForward",
-                                origin: "internal (client local track finished)"
-                            });
+                            _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind]);
                             break;
                         case "clientTrackSelected":
                             if (ev.data) {
@@ -345,11 +341,11 @@ const SoundManagerV2 = {
                                 if (typeof trackID == "undefined") {
                                     return reject("ClientTrackSelected event fired but no trackID data was provided");
                                 } else {
-                                    SoundManager.lookupTrackByID(trackID).then( trackData => {
-                                        SoundManager.playTrackLogic(trackData);
+                                    _this.lookupTrackByID(trackID).then( trackData => {
+                                        _this.trackController.play(trackData);
                                     }).catch( err => {
                                         return reject("Error looking up track with id "+trackID+": "+err);
-                                    })
+                                    });
                                 }
                                 
                             } else {
@@ -357,16 +353,10 @@ const SoundManagerV2 = {
                             }
                             break;
                         case "changeTrackLoopState":
-                            SCUtils.localSoundcloudSettings.nextTrackLoop = !SCUtils.localSoundcloudSettings.nextTrackLoop;
+                            soundcloud.localSoundcloudSettings.nextTrackLoop = !soundcloud.localSoundcloudSettings.nextTrackLoop;
                             break;
                         case "changeTrackShuffleState":
-                            SCUtils.localSoundcloudSettings.nextTrackShuffle = !SCUtils.localSoundcloudSettings.nextTrackShuffle;
-                            break;
-                        case "togglePlayerOutput":
-                            SCUtils.localSoundcloudSettings.playMusicOnServer = !SCUtils.localSoundcloudSettings.playMusicOnServer;
-                            if (SCUtils.debugMode) {
-                                console.log("Toggled player output to "+SCUtils.localSoundcloudSettings.playMusicOnServer);
-                            }
+                            soundcloud.localSoundcloudSettings.nextTrackShuffle = !soundcloud.localSoundcloudSettings.nextTrackShuffle;
                             break;
                         default:
                             console.warn("unknown event "+JSON.stringify(ev)+" passed into SCProcessClientEvent");
@@ -380,6 +370,21 @@ const SoundManagerV2 = {
             } else {
                 return reject("SoundManager proc cliEv called with no event or invalid");
             }
+        });
+    },
+
+    lookupTrackByID: trackID => {
+        return new Promise((resolve, reject) => {
+            if (typeof trackID == "undefined") {
+                return reject("[ERROR] TrackID undefined");
+            }
+            var trackList = soundcloud.localSoundcloudSettings.likedTracks;
+            for (track in trackList) {
+                if (track.id == trackID) {
+                    return resolve(track);
+                }
+            }
+            return reject("[ERROR] Can't find track");
         });
     }
 }

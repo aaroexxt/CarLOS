@@ -41,6 +41,7 @@ if [ "$platform" = "linux" ]; then
     #sudo apt-get install -y build-essential;
 elif [ "$platform" = "mac" ]; then
     echo "running xcode-select";
+    sudo xcode-select --reset;
     sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || (echo "Make sure XCode is installed; error running XCode setup" && exit 1);
     echo "Installing node (mac)...";
     brew install node
@@ -53,7 +54,6 @@ elif [ "$platform" = "mac" ]; then
     brew remove portaudio;
     brew install portaudio;
     brew install curl autoconf automake libtool pkg-config;
-
 fi
 #echo "Installing libPostal";
 #git clone https://github.com/openvenues/libpostal
