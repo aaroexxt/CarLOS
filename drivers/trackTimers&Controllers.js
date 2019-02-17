@@ -240,7 +240,7 @@ const trackControl = { //module which controls the speaker and can output&decode
     },
     resume: () => {
         var _this = trackControl;
-        console.log("INTERNAL_PLAY ",_this.playingTrackInternal);
+        console.log("INTERNAL_PLAY:RESUME ",_this.playingTrackInternal);
         if (!_this.playingTrackInternal) {
             console.info("_RESUME");
             _this.playingTrackInternal = true;
@@ -254,7 +254,7 @@ const trackControl = { //module which controls the speaker and can output&decode
 
             return _this.pipeline.speaker.once('close', function() {
                 trackControl.pipeline.timedInputStream.destroy();
-                trackControl.eventEmiter.emit("trackEnd");
+                trackControl.eventEmitter.emit("trackEnd");
             });
         }
 
@@ -264,7 +264,7 @@ const trackControl = { //module which controls the speaker and can output&decode
 
     pause: () => {
         var _this = trackControl;
-        console.log("INTERNAL_PLAY ",_this.playingTrackInternal);
+        console.log("INTERNAL_PLAY:PAUSE ",_this.playingTrackInternal);
         if (_this.playingTrackInternal) {
             console.info("_PAUSE");
             _this.playingTrackInternal = false;

@@ -188,7 +188,9 @@ const SoundManagerV2 = {
                 var timesLeft = _this.soundcloudSettings.initMaxAttempts;
 
                 function initSCSlave() {
-                    console.info("Starting SC SLAVE (att "+(_this.soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+_this.soundcloudSettings.initMaxAttempts+")");
+                    if (_this.debugMode) {
+                        console.info("Starting SC SLAVE (att "+(_this.soundcloudSettings.initMaxAttempts-timesLeft+1)+"/"+_this.soundcloudSettings.initMaxAttempts+")");
+                    }
                     soundcloud.init({
                         soundcloudSettings: _this.soundcloudSettings,
                         username: username,
@@ -293,10 +295,13 @@ const SoundManagerV2 = {
 
                     switch (ev.type) {
                         case "playPause":
+                            if (_this.debugMode) {
+                                console.log("EXTERNAL_PLAY",_this.playingTrack);
+                            }
                             if (_this.playingTrack) {
-                                _this.trackController.resume(); //already broken into other functions lol
+                                _this.trackController.pause(); //already broken into other functions lol
                             } else {
-                                _this.trackController.pause();
+                                _this.trackController.resume();
                             }
                             break;
                         case "volumeUp":
@@ -307,7 +312,9 @@ const SoundManagerV2 = {
                             break;
                         case "trackForward":
                             if (soundcloud.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) { //the track is looping, play it again
-                                console.info("Track looping");
+                                if (_this.debugMode) {
+                                    console.info("Track looping");
+                                }
                                 _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[_this.currentPlayingTrack.index]); //replay
                             } else {
 
