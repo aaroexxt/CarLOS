@@ -229,7 +229,10 @@ const trackControl = { //module which controls the speaker and can output&decode
                     .pipe(_this.pipeline.decoder) //pipe to decoder
                     .pipe(_this.pipeline.volumeAdjust) //pipe to volumeTweaker
 
-                console.log("__internal_trackAudio play");
+                if (_this.debugMode) {
+                    console.log("__internal_trackAudio play");
+                }
+
                 _this.resume(); //start playing the track
             } else {
                 console.error("Error playing track: "+err);
@@ -240,9 +243,16 @@ const trackControl = { //module which controls the speaker and can output&decode
     },
     resume: () => {
         var _this = trackControl;
-        console.log("INTERNAL_PLAY:RESUME ",_this.playingTrackInternal);
+
+        if (_this.debugMode) {
+            console.log("INTERNAL_PLAY:RESUME ",_this.playingTrackInternal);
+        }
+
         if (!_this.playingTrackInternal) {
-            console.info("_RESUME");
+            if (_this.debugMode) {
+                console.info("_RESUME");
+            }
+
             _this.playingTrackInternal = true;
 
             _this.pipeline.speaker = new Speaker(_this.defaultAudioOptions); //setup speaker
@@ -264,9 +274,16 @@ const trackControl = { //module which controls the speaker and can output&decode
 
     pause: () => {
         var _this = trackControl;
-        console.log("INTERNAL_PLAY:PAUSE ",_this.playingTrackInternal);
+
+        if (_this.debugMode) {
+            console.log("INTERNAL_PLAY:PAUSE ",_this.playingTrackInternal);
+        }
+
         if (_this.playingTrackInternal) {
-            console.info("_PAUSE");
+            if (_this.debugMode) {
+                console.info("_PAUSE");
+            }
+            
             _this.playingTrackInternal = false;
 
             _this.pipeline.volumeAdjust.unpipe(_this.pipeline.speaker); //unpipe to stop playback

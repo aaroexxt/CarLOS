@@ -24,8 +24,6 @@ macchina code (when it arrives it is still "processing" as of 7/27/2018)
 yeet 7/31 it is shipped and on the way
 arrived aug 1
 
-BIG CHANGE: stream soundcloud on nodejs side with option to switch to client side
-
 playlist support
 
 cache neural network weights for more efficient starting of server(brain.js toFunction)
@@ -52,7 +50,6 @@ search tracks sc
 add rds/rdbs radio messages for radio through arduino
 
 sc user which has only goodtracks
-apple music
 bluetooth
 
 video playback
@@ -73,11 +70,15 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
 retry button on client side
 
 
+STUFF FOR TMR (again):
+
+- "disable" buttons when airplay is playing client side
+- volume progressbar or indicator of some sort
+- airplay volume support
+
 
 COOL FRAMEWORKS TO IMPLEMENT:
-progressbar.js for nice loading bar when client loads and for tracks
 robot.js for control of rpi https://github.com/octalmage/robotjs
-canvas gages for realtime sensor data? https://canvas-gauges.com/documentation/examples/
 
 
 put frame data on image opencv
@@ -96,6 +97,8 @@ Tackle tensorflow in javascript for speech generation https://github.com/tensorf
 
 DONE stuff:
 
+progressbar.js for nice loading bar when client loads and for tracks DONE
+canvas gages for realtime sensor data? https://canvas-gauges.com/documentation/examples/ SOMEWHATDONE
 BIG CHANGE: remove socket.io and only use get/post requests DONE
 arduino sensor overloading & gps handling DONE
 electron framework? CANCELED
@@ -132,10 +135,13 @@ changescuser now has to go to server DONE
 cleaned up globals file DONE
 finish fixing cleaning directories (ESSENTIAL) DONE
 DebugMode for all modules DONE
+BIG CHANGE: stream soundcloud on nodejs side with option to switch to client side CANCELED
 
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
 
 update script that automatically updates (clones into new folder, compares modified date or length and replaces files) DONE
+
+apple music (airplay) DONE
 
 time since forward or backward button pressed to prevent crashing DONE
 
