@@ -73,7 +73,6 @@ retry button on client side
 STUFF FOR TMR (again):
 
 - "disable" buttons when airplay is playing client side
-- volume progressbar or indicator of some sort
 - airplay volume support
 
 
@@ -136,6 +135,7 @@ cleaned up globals file DONE
 finish fixing cleaning directories (ESSENTIAL) DONE
 DebugMode for all modules DONE
 BIG CHANGE: stream soundcloud on nodejs side with option to switch to client side CANCELED
+volume progressbar or indicator of some sort DONE
 
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
 

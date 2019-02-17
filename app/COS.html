@@ -74,18 +74,19 @@
 				<li style="transform: none !important; float: left; margin-left: 1%; position: absolute; bottom: 25%; right: 86%; width: 175px;"><button class="sort" onclick="globals.modules.music.methods.changeSoundcloudUser();" style="font-family: 'Helvetica Neue';">Change Soundcloud User</button></li>
 				<li class="controlButton" onclick="globals.modules.music.methods.changeShuffleState(); if (globals.modules.music.properties.nextTrackShuffle) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_shuffleButton"><img src="/images/shuffle.png" width="20px" height="20px"></img></li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.modules.music.methods.volDown();">Vol -</li>
+				<li class="controlButton " onclick="globals.modules.music.methods.volDown();">Vol -</li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.modules.music.methods.backTrack(1);">◅◅◅</li>
+				<li class="controlButton " onclick="globals.modules.music.methods.backTrack(1);" id="music_backButton">◅◅◅</li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton playPause" onclick="globals.modules.music.methods.playPauseTrack();">▶❚❚</li><!--▷-->
+				<li class="controlButton playPause " onclick="globals.modules.music.methods.playPauseTrack();" id="music_playPauseButton">▶❚❚</li><!--▷-->
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.modules.music.methods.forwardTrack(1);">▻▻▻</li>
+				<li class="controlButton " onclick="globals.modules.music.methods.forwardTrack(1);" id="music_forwardButton">▻▻▻</li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.modules.music.methods.volUp();">Vol +</li>
+				<li class="controlButton " onclick="globals.modules.music.methods.volUp();">Vol +</li>
 				<li class="menubreaker">|</li>
-				<li class="controlButton" onclick="globals.modules.music.methods.changeLoopState(); if (globals.modules.music.properties.nextTrackLoop) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_loopButton"><img src="/images/repeat.png" width="20px" height="20x"></img></li>
+				<li class="controlButton " onclick="globals.modules.music.methods.changeLoopState(); if (globals.modules.music.properties.nextTrackLoop) {this.className+=' activeLoopShuffle';} else {this.className = 'controlButton';}" id="music_loopButton"><img src="/images/repeat.png" width="20px" height="20x"></img></li>
 			</ul>
+			<div class="volumeBottom" id="music_bottomVolumeBar">
 			<div id="mainBrowser" class="fullScreen" style="display: none">
 				<gcse:search class="fullScreen" id="gcsescpt">Loading browser...</gcse:search>
 				<script>

@@ -559,6 +559,23 @@ const globals = {
                 init: function(mR) {
                     document.getElementById(mR.properties.trackTitleElement).innerHTML = "Server is loading tracks.";
 
+                    var volumeBar = new ProgressBar.Line('#'+mR.properties.volumeBarElement, {
+                        strokeWidth: 2,
+                        easing: 'easeInOut',
+                        duration: 1400,
+                        color: '#FFEA82',
+                        trailColor: '#eee',
+                        trailWidth: 1,
+                        svgStyle: {width: '100%', height: '100%'},
+                        from: {color: '#FFEA82'},
+                        to: {color: '#ED6A5A'},
+                        step: (state, bar) => {
+                            bar.path.setAttribute('stroke', state.color);
+                        }
+                    });
+                    volumeBar.animate(0);
+                    mR.properties.volumeBar = volumeBar;
+
                     clearInterval(mR.properties.trackDataUpdateTimeout); //in case user is being changed
                     new SRH.requestInterval(1000, "api/SC/clientReady", data => {
 
@@ -576,6 +593,8 @@ const globals = {
                             mR.properties.soundcloudStatus = sd.soundcloudStatus;
                             mR.properties.nextTrackLoop = sd.nextTrackLoop;
                             mR.properties.tracksFromCache = sd.tracksFromCache;
+
+                            mR.properties.volumeBar.animate(mR.properties.currentVolume/100);
 
                             if (mR.properties.nextTrackShuffle) { //check if trackShuffle is already set from server
                                 document.getElementById(mR.properties.shuffleButtonElement).className+=' activeLoopShuffle';
@@ -616,7 +635,7 @@ const globals = {
                         var txt = document.createTextNode(String(i+1)+"): "+tracklist[i].title);
                         p.setAttribute("onclick","globals.modules.music.methods.playTrackRequested("+JSON.stringify(tracklist[i])+");");
                         p.setAttribute("tabindex","0");
-                        p.setAttribute("class","songTitle")
+                        p.setAttribute("class","songTitle");
                         p.appendChild(txt);
                         tklElem.appendChild(p);
                     }
@@ -625,12 +644,32 @@ const globals = {
                 trackDataUpdate: function(mR) {
                     SRH.request("api/SC/clientUpdate").then(data => {
                         //console.log(data.playing)
-                        mR.properties.playingServer = data.playing; //upd playing since it's not in the settings part
+                        mR.properties.playingTrack = data.playingTrack; //upd playing since it's not in the settings part
+                        mR.properties.playingAirplay = data.playingAirplay; //upd playing since it's not in the settings part
+
+                        let mRP = mR.properties;
+                        let buttonList = [mRP.shuffleButtonElement, mRP.loopButtonElement, mRP.backButtonElement, mRP.forwardButtonElement, mRP.playPauseButtonElement];
+
+                        if (data.playingAirplay && !data.playingTrack) {
+                            for (let i=0; i<buttonList.length; i++) {
+                                let elem = document.getElementById(buttonList[i]);
+                                if (elem.className.indexOf("disableMenuElement") < 0) {
+                                    elem.className += " disableMenuElement";
+                                }
+                            }
+                        } else if (!data.playingAirplay && data.playingTrack) {
+                            for (let i=0; i<buttonList.length; i++) {
+                                let elem = document.getElementById(buttonList[i]);
+                                elem.className = elem.className.replace(new RegExp('(?:^|\\s)'+ 'disableMenuElement' + '(?:\\s|$)'), ' ');
+                            }
+                        }
 
                         if (JSON.stringify(mR.properties.oldSettingsData) != JSON.stringify(data.settingsData)) {
                             console.log("DataChange");
                             mR.properties.currentUser = data.settingsData.currentUser;
                             mR.properties.currentVolume = data.settingsData.currentVolume;
+
+                            mR.properties.volumeBar.animate(mR.properties.currentVolume/100);
 
                             if (mR.properties.oldSettingsData.nextTrackShuffle != data.settingsData.nextTrackShuffle) { //check if the track data has changed and if so update the class
                                 mR.properties.nextTrackShuffle = data.settingsData.nextTrackShuffle;
@@ -672,17 +711,20 @@ const globals = {
                     clearInterval(mR.properties.trackDataUpdateTimeout);
                     mR.properties.trackDataUpdateTimeout = setTimeout( () => {
                         mR.state = "trackDataUpdate";
-                    }, 2000);
+                    }, 1000);
                 },
 
 
                 //TRACK-USER INTERACTION FUNCTIONS
                 togglePlayerOutput: function() {
-                    let mR = globals.modules.music;
-                    if (mR.properties.soundcloudStatus.ready) {
-                        mR.properties.playMusicOnServer = !mR.properties.playMusicOnServer;
-                        SRH.request("/api/sc/event/togglePlayerOutput");
-                    }
+                    return; //deprecated
+
+
+                    // let mR = globals.modules.music;
+                    // if (mR.properties.soundcloudStatus.ready) {
+                    //     mR.properties.playMusicOnServer = !mR.properties.playMusicOnServer;
+                    //     SRH.request("/api/sc/event/togglePlayerOutput");
+                    // }
                 },
                 changeSoundcloudUser: function() {
                     let mR = globals.modules.music;
@@ -741,79 +783,6 @@ const globals = {
                         globals.music.soundManager.playerObject.pause();
                     } catch(e){}
                     */
-                },
-
-
-
-                playTrackLocal: function(track) {
-                    console.log("playing id: "+track.id); 
-                    SC.stream('/tracks/' + track.id).then(function(player) {
-                        try {
-                            globals.music.soundManager.playerObject.pause(); //pause previous
-                        } catch(e){} //aaand swallow the error ;)
-                        globals.music.soundManager.playerObject = player;
-                        globals.music.soundManager.playerObject.play();
-                        globals.music.soundManager.playingTrack = true;
-                        document.getElementById(mR.properties.trackArtElement).src = (!track.artwork.artworkUrl) ? mR.properties.noArtworkUrl : "http://"+window.location.host+"/api/sc/trackArt/"+track.id+".jpg";//track.artwork.artworkUrl;
-                        document.getElementById(mR.properties.waveformArtElement).src = "http://"+window.location.host+"/api/sc/trackWaveform/"+track.id+".png";
-                        document.getElementById(mR.properties.trackTitleElement).innerHTML = track.title;
-                        document.getElementById(mR.properties.trackAuthorElement).innerHTML = "By: "+track.author;
-                        globals.music.soundManager.currentPlayingTrack = track;
-                        if (globals.music.firstPlay) {
-                            globals.music.soundManager.currentVolume = globals.music.defaultVolume;
-                            globals.music.soundManager.setPlayerVolume(globals.music.soundManager.currentVolume);
-                            globals.music.firstPlay = false;
-                        }
-                    }).catch(function(){
-                        console.error("Error playing track with id ("+track.id+"): ",arguments);
-                        document.getElementById(mR.properties.trackArtElement).src = "/images/errorLoadingTrack.png";
-                    });
-                },
-                setPlayerVolume: function(vol) {
-                    if (globals.music.soundManager.currentVolume == null || typeof globals.music.soundManager.currentVolume == "undefined") {
-                        globals.music.soundManager.currentVolume = globals.music.defaultVolume;
-                    }
-                    if (vol < 0) {
-                        vol = 0;
-                    }
-                    if (vol > 100) {
-                        vol = 100;
-                    }
-                    if (vol > 1) {
-                        globals.music.soundManager.playerObject.setVolume(vol/100); //assume it is 1-100 scale
-                    } else {
-                        globals.music.soundManager.playerObject.setVolume(vol); //assume it is 0-1 scale
-                    }
-                },
-                getPercent: function() {
-                    return Math.round((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration())*100);
-                },
-                startTrackManager: function() {
-                    clearInterval(globals.music.trackUpdateInterval);
-                    globals.music.trackUpdateInterval = setInterval(function() {
-                        var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 0.999);
-                        if (isDone) {
-                            if (globals.music.nextTrackLoop) { //loop?
-                                globals.music.soundManager.playerObject.seek(0); //loop the track
-                            } else {
-                                globals.music.soundManager.forwardTrack(); //nah just forward
-                            }
-                        }
-                    },200);
-                },
-                
-                localTrackManager: function() {
-                    clearInterval(globals.music.trackUpdateInterval);
-                    globals.music.trackUpdateInterval = setInterval(function() {
-                        var isDone = ((globals.music.soundManager.playerObject.currentTime()/globals.music.soundManager.playerObject.getDuration()) >= 0.999);
-                        if (isDone) {
-                            if (globals.music.nextTrackLoop) { //loop?
-                                globals.music.soundManager.playerObject.seek(0); //loop the track
-                            } else {
-                                globals.music.soundManager.forwardTrack(); //nah just forward
-                            }
-                        }
-                    },200);
                 }
                 
             },
@@ -826,6 +795,10 @@ const globals = {
                 waveformArtElement: "music_waveformArt",
                 trackListElement: "music_trackList",
                 trackAuthorElement: "music_trackAuthor",
+                volumeBarElement: "music_bottomVolumeBar",
+                backButtonElement: "music_backButton",
+                forwardButtonElement: "music_forwardButton",
+                playPauseButtonElement: "music_playPauseButton",
 
                 trackDataUpdateTimeout: 0,
                 oldSettingsData: {},
@@ -1173,11 +1146,14 @@ const globals = {
 
                         if (moduleReference.properties.states.music) { //enable music menu
                             document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "block";
+                            document.getElementById(moduleReference.properties.secondaryMusicVolumeBar).style.display = "block";
                         } else if (!globals.constants.runtimeInformation.dynamicMusicMenu) { //no dynamic music menu so hide it
                             document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "none";
+                            document.getElementById(moduleReference.properties.secondaryMusicVolumeBar).style.display = "none";
                         } else {
                             if (!globals.modules.music.properties.playingTrack && !globals.modules.music.properties.playingServer) {
                                 document.getElementById(moduleReference.properties.musicBottomMenuElement).style.display = "none";
+                                document.getElementById(moduleReference.properties.secondaryMusicVolumeBar).style.display = "none";
                             }
                         }
                         console.log("Menu newState: '"+newState+"'");
@@ -1188,6 +1164,7 @@ const globals = {
             },
             properties: {
                 musicBottomMenuElement: "music_bottomMenu",
+                secondaryMusicVolumeBar: "music_bottomVolumeBar",
                 menuButtonElement: "menuButton",
                 mainAppElement: "main",
                 states: {

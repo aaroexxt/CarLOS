@@ -46,14 +46,15 @@ const SoundManagerV2 = {
     interactTimer: interactTimerModule,
     trackAudioController: trackAudioController,
     trackController: { //coordinates all the modules together
-        play: function(trackObject) {
+        play: function(trackObject, internalOrigin) { //if internalorigin flag is set, don't pause because the speaker already closed
             var _this = SoundManagerV2;
 
             if (_this.playingAirplay) {
                 return;
             }
-
-            if (_this.playingTrack) {
+            console.log(internalOrigin)
+            if (_this.playingTrack && !internalOrigin) {
+                console.log("pausing")
                 _this.trackController.pause();
             }
 
@@ -274,7 +275,7 @@ const SoundManagerV2 = {
 
         return new Promise( (resolve, reject) => {
             if (ev && ev.type) {
-                if (_this.debugMode) {
+                if (_this.debugMode || true) {
                     console.log("[SoundManager] ClientEvent: "+ev.type+", origin: "+((ev.origin) ? ev.origin : "unknown (external)")+", dat: "+JSON.stringify((ev.data) ? ev.data : "no data provided"));
                 }
                 try { //attempt change to JSON data format
@@ -314,11 +315,12 @@ const SoundManagerV2 = {
                             _this.trackAudioController.setVolume(_this.trackAudioController.currentVolume-soundcloud.localSoundcloudSettings.volStep);
                             break;
                         case "trackForward":
-                            if (soundcloud.localSoundcloudSettings.nextTrackLoop && ev.origin.indexOf("internal") > -1) { //the track is looping, play it again
+                            let internalForward = (ev.origin.indexOf("internal") > -1);
+                            if (soundcloud.localSoundcloudSettings.nextTrackLoop && internalForward) { //the track is looping, play it again
                                 if (_this.debugMode) {
                                     console.info("Track looping");
                                 }
-                                _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[_this.currentPlayingTrack.index]); //replay
+                                _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[_this.currentPlayingTrack.index], true); //replay
                             } else {
 
                                 if (soundcloud.localSoundcloudSettings.nextTrackShuffle) { //alright the client wants to shuffle the track, so let's do that
@@ -329,14 +331,14 @@ const SoundManagerV2 = {
                                             ind = 0;
                                         }
                                     }
-                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind]);
+                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind], internalForward);
                                 } else { //straight up go forward a track
                                     var ind = _this.currentPlayingTrack.index+1;
                                     if (ind > tracksLength) {
                                         ind = 0; //go to first track
                                     }
                                     
-                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind]);
+                                    _this.trackController.play(soundcloud.localSoundcloudSettings.likedTracks[ind], internalForward);
                                 }
                             }
                             break;

@@ -236,6 +236,27 @@ div.img img {
     /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
     background: #bebebe; /* Old browsers */
 }
+.volumeBottom {
+    z-index: 1000;
+    text-align:center;
+    position: fixed;
+    list-style-type: none;
+    margin: auto;
+    bottom: 0 !important;
+    width: 100%;
+    padding: 0;
+    height: 9px;
+    -webkit-user-select: none; /* Safari */        
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE10+/Edge */
+    user-select: none; /* Standard */
+    overflow: hidden;
+    font-weight: 200;
+    font-family: 'Source Sans Pro';
+
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#aebcbf+0,0a0e0a+0,bebebe+0,ebebeb+50,bebebe+100 */
+    background: rgb(200, 200, 200, 0.2); /* Old browsers */
+}
 .menubottom {
     z-index: 1000;
     text-align:center;
@@ -258,7 +279,7 @@ div.img img {
 }
 @media screen and (max-width: 500px) {
 /* applies only if the screen is narrower than 500px */
-  .menutop, .menubottom {
+  .menutop, .menubottom, .volumeBottom {
     position: static;
   }
 }
@@ -266,6 +287,12 @@ div.img img {
     display: inline-block;
     transition: 0.4s;
 }
+
+.disableMenuElement {
+    pointer-events:none;
+    opacity:0.6;
+}
+
 .menuitemnoanim {
     display: inline-block;
     font-family: 'Source Sans Pro';

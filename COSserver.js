@@ -1202,7 +1202,7 @@ SCrouter.get("/clientUpdate", function(req, res) {
     }
 });
 SCrouter.get("/event/:type", function(req, res) {
-	console.log("SCROUTER: Event type="+req.params.type+", data="+req.query.data)
+	// console.log("SCROUTER: Event type="+req.params.type+", data="+req.query.data)
 	if (req.params.type) {
 	    soundManager.processClientEvent({
 	        type: req.params.type,
