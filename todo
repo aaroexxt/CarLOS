@@ -71,8 +71,6 @@ retry button on client side
 
 
 STUFF FOR TMR (again):
-
-- "disable" buttons when airplay is playing client side
 - airplay volume support
 
 
@@ -142,6 +140,8 @@ cosserver wrapper that is like a watchdog - pings it every few seconds and check
 update script that automatically updates (clones into new folder, compares modified date or length and replaces files) DONE
 
 apple music (airplay) DONE
+
+- "disable" buttons when airplay is playing client side DONE
 
 time since forward or backward button pressed to prevent crashing DONE
 

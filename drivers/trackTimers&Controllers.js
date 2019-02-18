@@ -190,6 +190,8 @@ const trackControl = { //module which controls the speaker and can output&decode
 
     currentVolume: 50,
 
+    debugMode: false,
+
 
     setVolume: function(vol) {
         var _this = trackControl;
@@ -264,6 +266,7 @@ const trackControl = { //module which controls the speaker and can output&decode
 
             return _this.pipeline.speaker.once('close', function() {
                 trackControl.pipeline.timedInputStream.destroy();
+                trackControl.playingTrackInternal = false; //make sure to set flag or else new track doesn't play
                 trackControl.eventEmitter.emit("trackEnd");
             });
         }
@@ -283,7 +286,7 @@ const trackControl = { //module which controls the speaker and can output&decode
             if (_this.debugMode) {
                 console.info("_PAUSE");
             }
-            
+
             _this.playingTrackInternal = false;
 
             _this.pipeline.volumeAdjust.unpipe(_this.pipeline.speaker); //unpipe to stop playback

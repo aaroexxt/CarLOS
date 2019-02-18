@@ -567,7 +567,7 @@ const globals = {
                         trailColor: '#eee',
                         trailWidth: 1,
                         svgStyle: {width: '100%', height: '100%'},
-                        from: {color: '#FFEA82'},
+                        from: {color: '#39CE3C'},
                         to: {color: '#ED6A5A'},
                         step: (state, bar) => {
                             bar.path.setAttribute('stroke', state.color);

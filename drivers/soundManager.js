@@ -162,6 +162,9 @@ const SoundManagerV2 = {
                             if (_this.debugMode) {
                                 console.log("trackControllerEvent: trackEnd, next track");
                             }
+                            _this.playingTrack = false;
+                            _this.trackAudioController.playingTrackInternal = false; //make sure that state is properly configured
+
                             _this.processClientEvent({ //process client event: track has ended, next track
                                 type: "trackForward",
                                 origin: "internal (trackFinished)"
