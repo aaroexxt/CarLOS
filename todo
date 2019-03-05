@@ -28,6 +28,7 @@ playlist support
 
 cache neural network weights for more efficient starting of server(brain.js toFunction)
 
+better music UI/airplay HUD (like alert box maybe?)
 
 
 BUGS THAT I GOTTA FIX FOR TOMMORROW
@@ -70,8 +71,7 @@ MAJ REQUIRED FEATURES BEFORE RELEASE:
 retry button on client side
 
 
-STUFF FOR TMR (again):
-- airplay volume support
+
 
 
 COOL FRAMEWORKS TO IMPLEMENT:
@@ -134,6 +134,8 @@ finish fixing cleaning directories (ESSENTIAL) DONE
 DebugMode for all modules DONE
 BIG CHANGE: stream soundcloud on nodejs side with option to switch to client side CANCELED
 volume progressbar or indicator of some sort DONE
+STUFF FOR TMR (again):
+- airplay volume support DONE
 
 cosserver wrapper that is like a watchdog - pings it every few seconds and checks if it is ok, then kills it if its not DONE
 

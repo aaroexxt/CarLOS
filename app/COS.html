@@ -124,60 +124,7 @@
 			</center>
 		</div>
 		<script>
-			
-
-			var sessionData = "";
-
 			globals.masterInit();
-
-			login.readySteps.runtimeInformationProvided = false;
-			globals.requestRuntimeInformation( () => {
-				login.readySteps.runtimeInformationProvided = true;
-			});
-
-			if (typeof annyang !== "undefined") {
-				annyang.debug(true);
-				/*annyang.addCommands({
-					':data': function(data) {
-						globals.voice.onSpeech(data);
-					}
-				});*/
-				annyang.addCallback('error', function(e) {
-					console.error("Error with annyang: "+JSON.stringify(e));
-				});
-				annyang.addCallback('errorNetwork', function() {
-					console.error("Error with annyang connecting to internet");
-				});
-				annyang.addCallback('errorPermissionBlocked', function() {
-					console.error("Error with annyang permission blocked");
-				});
-				annyang.addCallback('errorPermissionDenied', function() {
-					console.error("Error with annyang permission denied");
-				});
-
-				annyang.addCallback('result', function(data) {
-					console.log("result: "+JSON.stringify(data));
-					/*if (SpeechKITT.isListening()) {
-						SpeechKITT.toggleRecognition(); //disable speechKitt
-					}*/
-					globals.voice.onSpeech(data);
-				});
-				if (typeof SpeechKITT !== "undefined") {
-					// Tell KITT to use annyang
-					SpeechKITT.annyang();
-
-					// Define a stylesheet for KITT to use
-					SpeechKITT.setStylesheet('js/speechkittthemes/flat.css');
-					SpeechKITT.displayRecognizedSentence(false); //broken so implemented my own
-				} else {
-					console.error("SpeechKITT not defined; annyang is active however");
-				}
-			} else {
-				console.error("Annyang is not defined; was it included in the source code?");
-			}
-
-			setTimeout(login.initialize, 1000); //init because im on a plane and at bottom because it shouldnt interfere
-
 		</script>
 	</body>
 </html>
