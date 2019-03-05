@@ -17,6 +17,14 @@ const Speaker = require("speaker");
 const mp3d = require('mp3-duration');
 const path = require('path');
 const colors = require("colors");
+const pcmVolume = require("pcm-volume");
+//helpful util functions
+const nMap = function (number, in_min, in_max, out_min, out_max) { //number mapping
+    return (number - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+const clamp = function(number, min, max) { //clamp values
+    return Math.min(Math.max(number, min), max);
+}
 
 const {trackTimerModule, interactTimerModule, trackAudioController} = require("./trackTimers&Controllers.js");
 
@@ -37,14 +45,26 @@ ACTUAL CODE LOL
 const SoundManagerV2 = {
     debugMode: false,
 
+    //Track State Machine
     playingTrack: false, //boolean whether track is playing or not
     wasPlayingTrackBeforeAirplay: false, //boolean whether track was playing before airplay took over
-    playingAirplay: false,
+    playingAirplay: false, //boolean whether airplay is playing
     currentPlayingTrack: {}, //current playing track in object form
 
+    //Addtl Modules
     trackTimer: trackTimerModule,
     interactTimer: interactTimerModule,
     trackAudioController: trackAudioController,
+
+    //Airplay Addtl Constants
+    airplayPipeline: { //pipeline of airplay stream
+        stream: undefined,
+        volumeTweak: {setVolume: function(){}}, //dummy function
+        speaker: undefined
+    },
+    pcm_MINVOLUME: 0, //pcm constants, shouldn't be changed for any reason
+    pcm_MAXVOLUME: 1.5,
+
     trackController: { //coordinates all the modules together
         play: function(trackObject, internalOrigin) { //if internalorigin flag is set, don't pause because the speaker already closed
             var _this = SoundManagerV2;
@@ -232,13 +252,27 @@ const SoundManagerV2 = {
         if (_this.debugMode) {
             console.log("airplay status: connect. pausing music");
         }
-        stream.pipe(new Speaker({channels: 2,
-        bitDepth: 16,
-        sampleRate: 44100,
-        bitRate: 128}));
+
+        let aP = _this.airplayPipeline; //airplayPipeline object
+        let tAP = _this.trackAudioController; //trackAudioController object
+
+        aP.stream = stream;
+        aP.volumeTweak = new pcmVolume();
+        aP.speaker = new Speaker({
+            channels: 2,
+            bitDepth: 16,
+            sampleRate: 44100,
+            bitRate: 128
+        }); //initialize all airplayPipeline objects
+
+        tAP.currentVolume = clamp(tAP.currentVolume, 0, 100); //clamp range
+
+        aP.volumeTweak.setVolume(nMap(tAP.currentVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME)); //map the volume
+
+        aP.stream.pipe(aP.volumeTweak).pipe(aP.speaker); //pipe all 3 objects
 
         _this.wasPlayingTrackBeforeAirplay = _this.playingTrack;
-        console.log(_this.playingTrack)
+
         if (_this.playingTrack) {
             _this.trackController.pause();
         }
@@ -253,10 +287,15 @@ const SoundManagerV2 = {
             console.log("airplay status: disconnect. playing music");
         }
 
+        let aP = _this.airplayPipeline; //airplayPipeline object
+        aP.stream.unpipe(aP.volumeTweak); //unpipe stuff
+        aP.volumeTweak.unpipe(aP.speaker);
+        aP.speaker.close(); //close/end speaker object
+
         _this.playingAirplay = false;
 
         _this.playingTrack = _this.wasPlayingTrackBeforeAirplay;
-        console.log(_this.playingTrack)
+
         if (_this.wasPlayingTrackBeforeAirplay) {
             _this.trackController.resume();
         }
@@ -312,10 +351,16 @@ const SoundManagerV2 = {
                             }
                             break;
                         case "volumeUp":
-                            _this.trackAudioController.setVolume(_this.trackAudioController.currentVolume+soundcloud.localSoundcloudSettings.volStep);
+                            var newVolume = _this.trackAudioController.currentVolume+soundcloud.localSoundcloudSettings.volStep;
+                            _this.trackAudioController.setVolume(newVolume);
+                            _this.airplayPipeline.volumeTweak.setVolume(nMap(newVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME));
+                            //set for both airplay and regular track audio
                             break;
                         case "volumeDown":
-                            _this.trackAudioController.setVolume(_this.trackAudioController.currentVolume-soundcloud.localSoundcloudSettings.volStep);
+                            var newVolume = _this.trackAudioController.currentVolume-soundcloud.localSoundcloudSettings.volStep;
+                            _this.trackAudioController.setVolume(newVolume);
+                            _this.airplayPipeline.volumeTweak.setVolume(nMap(newVolume, 0, 100, _this.pcm_MINVOLUME, _this.pcm_MAXVOLUME));
+                            //set for both airplay and regular track audio
                             break;
                         case "trackForward":
                             let internalForward = (ev.origin.indexOf("internal") > -1);
