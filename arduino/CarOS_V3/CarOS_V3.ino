@@ -161,9 +161,9 @@ void setup()
   debugPrintln("ALLSENSOR Test"); debugPrintln("");
   
   /* Initialise the 1st sensor */
-  debugPrintln("Selecting accel module");
+  debugPrintln("Selecting accel module (also gyro, etc.)");
   tcaselect(ACCELADDR);
-  debugPrintln("Selected accel");
+  debugPrintln("Selected accel module (also gyro, etc.)");
   if(!accel.begin())
   {
     debugPrintln("No accel sensor detected");
@@ -176,9 +176,45 @@ void setup()
     }
   }
 
+  if(!mag.begin())
+  {
+    debugPrintln("No mag sensor detected");
+    magConnected = false;
+  } else {
+    debugPrintln("MAG OK");
+    magConnected = true;
+    if (DEBUGMODE) {
+      displaySensorDetailsMag();
+    }
+  }
+
+  if(!gyro.begin())
+  {
+    debugPrintln("No gyro sensor detected");
+    gyroConnected = false;
+  } else {
+    debugPrintln("GYRO OK");
+    gyroConnected = true;
+    if (DEBUGMODE) {
+      displaySensorDetailsGyro();
+    }
+  }
+
+  if(!bmp.begin())
+  {
+      displaySensorDetailsBmp();
+    }
+  }
+
   
 
   debugPrintln("Selecting tsl1");
+    debugPrintln("No bmp sensor detected");
+    bmpConnected = false;
+  } else {
+    debugPrintln("ACCEL OK");
+    bmpConnected = true;
+    if (DEBUGMODE) {
   tcaselect(LIGHTADDR);
   debugPrintln("Selected tsl1");
   if(!tsl1.begin())
