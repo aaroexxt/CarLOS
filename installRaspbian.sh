@@ -44,6 +44,9 @@ echo "GOING TO TAKE A WHILE. IT IS DOING SOMETHING EVEN IF IT DOESN'T LOOK LIKE 
 sudo dd bs=1m if=raspbian.img of=/dev/rdisk$1 conv=sync
 echo "removing unneeded files";
 sudo rm -f raspbian.zip raspbian.img;
+echo "enabling ssh";
+cd /Volumes/boot;
+sudo touch ssh
 echo "done";
 exit 0;
 
