@@ -47,6 +47,11 @@ sudo rm -f raspbian.zip raspbian.img;
 echo "enabling ssh";
 cd /Volumes/boot;
 sudo touch ssh
+sudo touch wpa_supplicant.conf;
+echo 'network={' >> wpa_supplicant.conf;
+echo '	ssid="BPWireless1"' >> wpa_supplicant.conf;
+echo '	psk=a9353d2e6556fdf61ee8ffe1af7ad8b5de0875fa03defe4155f28f0570ae91c8' >> wpa_supplicant.conf;
+echo '}' >> wpa_supplicant.conf;
 echo "done";
 exit 0;
 
