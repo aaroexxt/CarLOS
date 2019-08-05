@@ -30,6 +30,14 @@ if [[ $(id -u) -ne 0 ]]
 fi
 trap 'abort' 0;
 
+platform='unknown'
+unamestr=`uname`
+if [[ "$unamestr" == 'Linux' ]]; then
+   platform='linux'
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   platform='mac'
+fi
+
 START=$(date +%s);
 installall="false";
 dir="";
@@ -64,7 +72,9 @@ while true; do
 done
 dir=${dir%/}; #remove trailing slash
 echo "Step 1/4: Installing required packages...";
-sudo apt-get install -y git || echo "Couldn't install git; are you using Linux?";
+if [ "$platform" = "linux" ]; then
+    sudo apt-get install -y git;
+fi
 #old package cmd which doesn't exist;
 echo "Packages installed successfully.";
 echo "Step 2/4: Downloading Installer files...";
