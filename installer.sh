@@ -64,7 +64,7 @@ while true; do
 done
 dir=${dir%/}; #remove trailing slash
 echo "Step 1/4: Installing required packages...";
-sudo apt-get install -y git;
+sudo apt-get install -y git || echo "Couldn't install git; are you using Linux?";
 #old package cmd which doesn't exist;
 echo "Packages installed successfully.";
 echo "Step 2/4: Downloading Installer files...";

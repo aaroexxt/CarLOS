@@ -978,7 +978,7 @@ AUTHrouter.post('/regular', (req, res, next) => {
           return res.end(RequestHandler.SUCCESS());
         })
     })(req, res, next);
-})
+});
 
 AUTHrouter.get('/cv', (req, res, next) => {
 	console.log('Inside GET request on /loginCV, sessID: '+req.sessionID)
