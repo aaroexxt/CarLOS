@@ -26,6 +26,7 @@
             {"file": "/state.geo.json", "strokeColor": "#F00000", "fillColor": "#1EB300", "opacity": 0.01, "strokeWeight": 2}
         ],
         "defaultMapdataFile": "OSM.mbtiles",
+        "fakeSecondMapdataFile": "../../../../../../../Volumes/test/fullmaptiles.mbtiles",
 
         "logLevel": 4,
         "logDirectory": "logs",

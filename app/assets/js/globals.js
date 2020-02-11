@@ -412,10 +412,10 @@ const globals = {
                     };
 
                     //done adding so change state
-                    moduleReference.state = "initializeLoad"; 
+                    moduleReference.state = "initializeLoad";
                 },
                 initializeLoad: function(moduleReference) {
-                    var loadBar = new ProgressBar.Line('#'+moduleReference.properties.loadBarElementName, {
+                    var loadBar = new ProgressBar.Line(document.getElementById(moduleReference.properties.loadBarElementName), {
                         strokeWidth: 2,
                         easing: 'easeInOut',
                         duration: 1400,
