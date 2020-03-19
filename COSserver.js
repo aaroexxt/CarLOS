@@ -461,24 +461,24 @@ NeuralResponder.init(neuralSettings)
 .catch( err => {
 	console.error("Error initializing NeuralResponseMatcher: "+err);
 })
-
+*/
+console.log("Intializing deepspeech");
 const deepSpeechUtils = require('./drivers/deepspeechWrapper.js'); //deepspeech wrapper
 deepSpeechUtils.init(neuralSettings)
 .then( () => {
 	console.importantInfo("NEURAL_DEEPSPEECH OK");
+	//example usage of deepspeech module
+	console.log("taking audio sample of 7000 ms")
+	deepSpeechUtils.takeAudioSample(10000).then(buffer => {
+		console.log("audio sample taken; processing");
+		deepSpeechUtils.runInference(buffer).then( recog => {
+			console.log("Inference run w/recog "+JSON.stringify(recog))
+		})
+	})
 })
 .catch( e => {
 	console.error("Error initializing deepspeech: "+e);
-})
-
-//example usage of deepspeech module
-console.log("taking audio sample of 7000 ms")
-deepSpeechUtils.takeAudioSample(10000).then(buffer => {
-	console.log("audio sample taken; processing");
-	deepSpeechUtils.runInference(buffer).then( recog => {
-		console.log("Inference run w/recog "+recog)
-	})
-})*/
+});
 
 /*******************************
 --I10-- READING FROM STDIN --I10--
