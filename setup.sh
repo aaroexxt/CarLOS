@@ -17,7 +17,7 @@ echo "Making directories...";
 mkdir -p $cwd/node_modules;
 if [ "$platform" = "linux" ]; then
     echo "Installing node (linux)...";
-    curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+    curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
     sudo apt-get install -y nodejs;
     sudo apt-get install -y gcc g++ make cmake;
     echo "Installing python and pip (linux)...";
@@ -29,6 +29,8 @@ if [ "$platform" = "linux" ]; then
     sudo apt-get install -y libx11-dev
     sudo apt-get install -y libpng-dev;
     sudo apt-get install -y libopenblas-dev;
+    sudo apt-get install -y libopenal-dev;
+    sudo apt install libavahi-compat-libdnssd-dev -y;
     echo "Installing I2C utils...";
     sudo apt-get install -y python-imaging python-smbus i2c-tools
     echo "Starting vnc..."
@@ -73,9 +75,7 @@ sudo npm install -g n
 sudo n 10.15.0
 #sudo npm install npm@5.5.1 -g #update npm
 sudo npm install npm@latest -g
-
-echo "Installing packages...";
-sudo npm i -g npm@latest;
+#sudo npm i -g npm@latest;
 
 echo "Installing node-gyp";
 sudo npm install -g node-gyp;
