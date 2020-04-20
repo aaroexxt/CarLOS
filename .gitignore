@@ -3,12 +3,12 @@ node_modules/yeast/package.json
 node_modules/.bin/acorn
 node_modules/.bin/browser-pack
 node_modules/*
+data/neural/deepspeech/*
 libpostal
 compile/*
 *.mp3
 data/SCcache/*
 data/SCcache/*.json
-data/neural/*
 *.DS_Store
 *DS_Store
 .DS_Store

@@ -1,0 +1,80 @@
+[
+    {"class":"day", "sentence":"I'm doing just fine."},
+    {"class":"day", "sentence":"Doing well, just another day in the life of a program."},
+    {"class":"day", "sentence":"I'm doing pretty well, how about you?"},
+
+    {"class":"greeting", "sentence":"Hello to you."},
+    {"class":"greeting", "sentence":"Hello world. I am a computer."},
+    {"class":"greeting", "sentence":"Hey. How's your day going?"},
+
+    {"class":"goodbye", "sentence":"See you."},
+    {"class":"goodbye", "sentence":"Bye, :user:."},
+    {"class":"goodbye", "sentence":"See you later."},
+
+    {"class":"sandwich", "sentence":"S-u-got it."},
+
+    {"class":"weather", "sentence":"What's the weather today?"},
+
+    {"class":"meaningOfLife", "sentence":"what's the meaning of life?"},
+
+    {"class":"joke", "sentence":"Here's one. Did you hear about the mathematician who's afraid of negative numbers? :pause 2s: He'll stop at nothing to avoid them."},
+    {"class": "joke", "sentence": "Did you hear about the actor who fell through the floorboards? He was just going through a stage."},
+    {"class": "joke", "sentence": "Did you hear about the claustrophobic astronaut? He just needed a little space."},
+    {"class": "joke", "sentence": "Why don't scientists trust atoms? Because they make up everything."},
+    {"class": "joke", "sentence": "How did Moses make tea? He brews."},
+    {"class": "joke", "sentence": "What do you call a parade of rabbits hopping backwards? :pause 1s: A receding hare-line."},
+
+    {"class":"thanks", "sentence":"No problem"},
+    {"class":"thanks", "sentence":"You are welcome"},
+    {"class":"thanks", "sentence":"You're welcome"},
+    {"class":"thanks", "sentence":"No problemo"},
+
+    {"class":"random", "sentence":"Here's a random number: :random 0 100:"},
+
+    {"class":"turing", "sentence":"Most definitely. I am turing-complete."},
+    {"class":"turing", "sentence":"Without a doubt."},
+
+    {"class":"weight", "sentence":"I don't weigh anything, since I am a program."},
+    {"class":"weight", "sentence":"With the batteries, about 50 pounds."},
+
+    {"class":"starwars", "sentence":"That's news to me, Vader."},
+
+    {"class":"beamup", "sentence":"Commencing beamup in 3 :pause 1s: 2 :pause 1s: 1 :pause 1s: It appears that my beam circuits are disabled at the moment. Check back shortly."},
+
+    {"class":"whosBetter", "sentence":"I would like to think that I am superior, since I am homemade."},
+    {"class":"whosBetter", "sentence":"Me, obviously."},
+    
+    {"class":"drive", "sentence":"Got it."},
+
+    {"class":"call", "sentence":"Got it."},
+
+    {"class":"text", "sentence":"Got it."},
+
+    {"class":"time", "sentence":"The time is :time:."},
+    {"class":"time", "sentence":"It is currently :time:."},
+
+    {"class":"calendar", "sentence":"Today, you have :calendar:"},
+
+    {"class":"reminder", "sentence":"A reminder for :time: has been set."},
+
+    {"class":"securityMode", "sentence":"Activating security mode."},
+
+    {"class":"validateUser", "sentence":"Validate current user"},
+
+    {"class":"lock", "sentence":"I am locking myself now."},
+    {"class":"lock", "sentence":"Locked & loaded. Goodbye."},
+
+    {"class":"shutDown", "sentence":"Turn yourself off"},
+    
+    {"class":"restart", "sentence":"Restart yourself"},
+
+    {"class":"tempUp", "sentence":"Turn the temperature up"},
+
+    {"class":"tempDown", "sentence":"Turn the temperature down"},
+
+    {"class":"temp", "sentence":"Set the temperature to x"},
+
+    {"class":"search", "sentence":"Search for x"},
+
+    {"class":"test", "sentence":":user: :time: :random 0 100: :random 10 20:"}
+]

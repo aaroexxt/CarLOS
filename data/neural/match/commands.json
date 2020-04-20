@@ -1,0 +1,127 @@
+[
+    {"class":"greeting", "sentence":"good day"},
+    {"class":"greeting", "sentence": "what's up"},
+    {"class":"greeting", "sentence": "whats up"},
+    {"class":"greeting", "sentence": "whatsup"},
+    {"class":"greeting", "sentence": "hello"},
+
+    {"class":"day", "sentence":"How is your day going?"},
+    {"class":"day", "sentence":"What's your day like?"},
+    {"class":"day", "sentence":"how is it going today?"},
+    {"class":"day", "sentence":"how are you?"},
+    {"class":"day", "sentence":"how is your day?"},
+
+    {"class":"goodbye", "sentence":"have a nice day"},
+    {"class":"goodbye", "sentence":"see you later"},
+    {"class":"goodbye", "sentence":"have a nice day"},
+    {"class":"goodbye", "sentence":"talk to you soon"},
+    {"class":"goodbye", "sentence":"goodbye"},
+    {"class":"goodbye", "sentence":"bye"},
+
+    {"class":"sandwich", "sentence":"make me a sandwich"},
+    {"class":"sandwich", "sentence":"can you make a sandwich?"},
+    {"class":"sandwich", "sentence":"having a sandwich today?"},
+    {"class":"sandwich", "sentence":"what's for lunch?"},
+
+    {"class":"weather", "sentence":"What's the weather today?"},
+    {"class":"weather", "sentence":"Today's weather"},
+    {"class":"weather", "sentence":"Forecast for today"},
+    {"class":"weather", "sentence":"Today's forecast"},
+
+    {"class":"meaningOfLife", "sentence":"what's the meaning of life?"},
+
+    {"class":"joke", "sentence":"Tell me a joke"},
+    {"class":"joke", "sentence":"Give me another joke"},
+    {"class":"joke", "sentence":"Make me laugh"},
+    {"class":"joke", "sentence":"joke"},
+
+    {"class":"thanks", "sentence":"Thank you"},
+    {"class":"thanks", "sentence":"Thank u"},
+    {"class":"thanks", "sentence":"Thanks"},
+
+    {"class":"random", "sentence":"Give me a random number."},
+    {"class":"random", "sentence":"Random number from * to **", "commandInfo": ["random", "*", "**"] },
+
+    {"class":"turing", "sentence":"Do you pass the turing test?"},
+    {"class":"turing", "sentence":"Will you pass the turing test?"},
+    {"class":"turing", "sentence":"Are you Turing complete?"},
+
+    {"class":"weight", "sentence":"How much do you weigh?"},
+    {"class":"weight", "sentence":"What's your weight?"},
+
+    {"class":"starwars", "sentence":"I'm your father"},
+    {"class":"starwars", "sentence":"Luke, I am your father"},
+
+    {"class":"beamup", "sentence":"Beam me up"},
+    {"class":"beamup", "sentence":"Beam me up, Scotty"},
+
+    {"class":"whosBetter", "sentence":"Who is better, you or Google?"},
+    {"class":"whosBetter", "sentence":"Who is better, you or Siri?"},
+    {"class":"whosBetter", "sentence":"Who is better"},
+    
+    {"class":"drive", "sentence":"Drive to location *"},
+    {"class":"drive", "sentence":"Drive me to * location"},
+    {"class":"drive", "sentence":"Drive to *"},
+    {"class":"drive", "sentence":"Drive me to *"},
+
+    {"class":"call", "sentence":"Call *"},
+    {"class":"call", "sentence":"Call person *"},
+
+    {"class":"text", "sentence":"Text *"},
+    {"class":"text", "sentence":"Text person *"},
+
+    {"class":"time", "sentence":"What's the time?"},
+    {"class":"time", "sentence":"Give me the time"},
+    {"class":"time", "sentence":"Time of day"},
+    {"class":"time", "sentence":"What's the time of day"},
+
+    {"class":"calendar", "sentence":"Check my calendar for *"},
+    {"class":"calendar", "sentence":"Check my calendar"},
+
+    {"class":"reminder", "sentence":"Set a reminder to do * for ** time"},
+    {"class":"reminder", "sentence":"Remind me to *"},
+    {"class":"reminder", "sentence":"Remind me to do *"},
+    {"class":"reminder", "sentence":"Can you remind me to do * at ** time"},
+
+    {"class":"securityMode", "sentence":"Switch to security mode"},
+    {"class":"securityMode", "sentence":"Switch to valet mode"},
+
+    {"class":"validateUser", "sentence":"Validate current user"},
+
+    {"class":"lock", "sentence":"Lock"},
+    {"class":"lock", "sentence":"Lock yourself"},
+
+    {"class":"shutDown", "sentence":"Turn yourself off"},
+    {"class":"shutDown", "sentence":"Shut down"},
+    {"class":"shutDown", "sentence":"Shutdown"},
+    
+    {"class":"restart", "sentence":"Restart yourself"},
+    {"class":"restart", "sentence":"Restart"},
+
+    {"class":"tempUp", "sentence":"Turn the temperature up"},
+    {"class":"tempUp", "sentence":"It's cold in here"},
+    {"class":"tempUp", "sentence":"Make it hotter"},
+    {"class":"tempUp", "sentence":"Turn the inside temperature up"},
+
+    {"class":"tempDown", "sentence":"Turn the temperature down"},
+    {"class":"tempDown", "sentence":"It's hot in here"},
+    {"class":"tempDown", "sentence":"Make it colder"},
+    {"class":"tempDown", "sentence":"Turn the inside temperature down"},
+
+    {"class":"temp", "sentence":"Set the temperature to *"},
+
+    {"class":"search", "sentence":"Search for *"},
+    {"class":"search", "sentence":"Search on the internet for *"},
+    {"class":"search", "sentence":"Find * on the internet"},
+    {"class":"search", "sentence":"Give me information about *"},
+
+    {"class":"error", "sentence":"I'm sorry, I didn't quite catch that. Try again."},
+    {"class":"error", "sentence":"catch that. Try again."},
+    {"class":"error", "sentence":"I'm sorry. Try again."},
+    {"class":"error", "sentence":"didn't quite catch that"},
+
+    {"class":"test", "sentence":"test"},
+    {"class":"test", "sentence":"test me please"},
+    {"class":"test", "sentence":"testing testing 123"},
+    {"class":"test", "sentence":"testme"}
+]
